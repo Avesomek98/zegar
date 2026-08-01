@@ -40,6 +40,13 @@ const MONTH_NAMES = [
 ];
 
 const addTodayShiftBtn = document.getElementById("addTodayShiftBtn");
+const polandStatusCard = document.getElementById("polandStatusCard");
+const polandStatusFlag = document.getElementById("polandStatusFlag");
+const polandStatusText = document.getElementById("polandStatusText");
+const polandCountdownText = document.getElementById("polandCountdownText");
+const polandScheduleDialog = document.getElementById("polandScheduleDialog");
+const polandScheduleList = document.getElementById("polandScheduleList");
+const closePolandScheduleBtn = document.getElementById("closePolandScheduleBtn");
 const history = document.getElementById("history");
 const settingsBtn = document.getElementById("settingsBtn");
 const settingsDialog = document.getElementById("settingsDialog");
@@ -80,12 +87,31 @@ const polandTripForm = document.getElementById("polandTripForm");
 const polandTripDate = document.getElementById("polandTripDate");
 const closePolandTripBtn = document.getElementById("closePolandTripBtn");
 
+const vacationBtn = document.getElementById("vacationBtn");
+const vacationDialog = document.getElementById("vacationDialog");
+const vacationForm = document.getElementById("vacationForm");
+const vacationStartDate = document.getElementById("vacationStartDate");
+const vacationEndDate = document.getElementById("vacationEndDate");
+const closeVacationBtn = document.getElementById("closeVacationBtn");
+
+const weekHoursBtn = document.getElementById("weekHoursBtn");
+const weekHoursDialog = document.getElementById("weekHoursDialog");
+const weekHoursForm = document.getElementById("weekHoursForm");
+const weekHoursStartDate = document.getElementById("weekHoursStartDate");
+const weekHoursEndDate = document.getElementById("weekHoursEndDate");
+const weekHoursStart = document.getElementById("weekHoursStart");
+const weekHoursEnd = document.getElementById("weekHoursEnd");
+const weekHoursBreak = document.getElementById("weekHoursBreak");
+const weekHoursSkipWeekends = document.getElementById("weekHoursSkipWeekends");
+const closeWeekHoursBtn = document.getElementById("closeWeekHoursBtn");
+
 let editingDate = null;
 let dayTotalsCache = new Map();
 let monthsIndexCache = new Map();
 let selectedMonthKey = null;
 let activeShiftCache = null; // { start, end, label } | null
 let customStat = null; // { mode: "day" | "month", key: "YYYY-MM-DD" | "YYYY-MM" }
+let vacationDatesCache = new Set(); // Set<"YYYY-MM-DD"> dni oznaczonych jako Urlop
 
 const NIGHT_START_HOUR = 20;
 const NIGHT_END_HOUR = 6;
@@ -339,6 +365,16 @@ function sundayOverlapHours(start, end) {
     return totalMs / 1000 / 60 / 60;
 }
 
+function buildVacationDates(entries) {
+    const dates = new Set();
+    entries.forEach((entry) => {
+        if (entry.note === "Urlop") {
+            dates.add(dateKey(new Date(entry.start_time)));
+        }
+    });
+    return dates;
+}
+
 function buildDayTotals(entries) {
     const dayTotals = new Map();
     entries.forEach((entry) => {
@@ -515,6 +551,8 @@ function renderMonth(key) {
     let monthHours = 0;
     let monthNight = 0;
     let monthSunday = 0;
+    let monthVacationDays = 0;
+    let monthVacationChargeableDays = 0;
 
     [...month.days.keys()].sort().reverse().forEach((dKey) => {
         const day = month.days.get(dKey);
@@ -563,11 +601,19 @@ function renderMonth(key) {
 
         monthHours += dayHours;
 
+        const isVacation = day.sessions.some((s) => s.note === "Urlop");
         const dow = day.date.getDay();
-        const isWeekend = dow === 0 || dow === 6;
+        const isWeekendDay = dow === 0 || dow === 6;
+
+        if (isVacation) {
+            monthVacationDays += 1;
+            if (!isWeekendDay) monthVacationChargeableDays += 1;
+        }
+
+        const isWeekend = !isVacation && isWeekendDay;
 
         const card = document.createElement("div");
-        card.className = "day-card" + (isWeekend ? " day-card--weekend" : "");
+        card.className = "day-card" + (isVacation ? " day-card--vacation" : isWeekend ? " day-card--weekend" : "");
         card.innerHTML = `
             <div class="day-card-header">
                 <strong>${day.date.toLocaleDateString("pl-PL", { weekday: "long", day: "numeric", month: "long" })}</strong>
@@ -582,6 +628,9 @@ function renderMonth(key) {
     const totalParts = [`Suma: ${monthHours.toFixed(2)} godz.`];
     if (monthNight > 0.005) totalParts.push(`🌙 ${monthNight.toFixed(2)} godz. nocnych`);
     if (monthSunday > 0.005) totalParts.push(`🔴 ${monthSunday.toFixed(2)} godz. niedzielnych`);
+    if (monthVacationDays > 0) {
+        totalParts.push(`🌴 ${monthVacationDays} ${monthVacationDays === 1 ? "dzień" : "dni"} urlopu (${monthVacationChargeableDays} z puli, bez sob/nd)`);
+    }
 
     const total = document.createElement("p");
     total.className = "month-total";
@@ -592,7 +641,9 @@ function renderMonth(key) {
 function refreshHistoryView(entries) {
     dayTotalsCache = buildDayTotals(entries);
     monthsIndexCache = buildMonthsIndex(entries);
+    vacationDatesCache = buildVacationDates(entries);
     renderQuickStats();
+    renderPolandStatus();
 
     const key = populateMonthPicker(monthsIndexCache);
 
@@ -791,8 +842,234 @@ polandTripForm.onsubmit = async (event) => {
     polandTripDialog.close();
 };
 
+vacationBtn.onclick = () => {
+    if (!vacationStartDate.value) vacationStartDate.value = dateKey(new Date());
+    if (!vacationEndDate.value) vacationEndDate.value = vacationStartDate.value;
+    vacationDialog.showModal();
+};
+
+closeVacationBtn.onclick = () => vacationDialog.close();
+
+vacationForm.onsubmit = async (event) => {
+    event.preventDefault();
+    if (!vacationStartDate.value || !vacationEndDate.value) return;
+
+    const [sy, sm, sd] = vacationStartDate.value.split("-").map(Number);
+    const [ey, em, ed] = vacationEndDate.value.split("-").map(Number);
+    const rangeStart = new Date(sy, sm - 1, sd);
+    const rangeEnd = new Date(ey, em - 1, ed);
+
+    if (rangeEnd < rangeStart) {
+        alert("Data \"Do\" nie może być wcześniejsza niż \"Od\".");
+        return;
+    }
+
+    const submitBtn = vacationForm.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+
+    const day = new Date(rangeStart);
+    while (day <= rangeEnd) {
+        await deleteSessionsForDay(day);
+        const dayStart = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 0, 0, 0, 0);
+        await saveEntry({
+            start_time: dayStart.toISOString(),
+            end_time: dayStart.toISOString(),
+            hours: 0,
+            break_minutes: 0,
+            note: "Urlop"
+        });
+        day.setDate(day.getDate() + 1);
+    }
+
+    selectedMonthKey = monthKey(rangeStart);
+    refreshHistoryView(await loadHistory());
+    submitBtn.disabled = false;
+    vacationDialog.close();
+};
+
+function previousWeekRange() {
+    const today = new Date();
+    const daysSinceMonday = (today.getDay() + 6) % 7;
+    const thisMonday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - daysSinceMonday);
+    const prevMonday = new Date(thisMonday);
+    prevMonday.setDate(prevMonday.getDate() - 7);
+    const prevSunday = new Date(prevMonday);
+    prevSunday.setDate(prevSunday.getDate() + 6);
+    return { start: prevMonday, end: prevSunday };
+}
+
+weekHoursBtn.onclick = () => {
+    const { start, end } = previousWeekRange();
+    weekHoursStartDate.value = dateKey(start);
+    weekHoursEndDate.value = dateKey(end);
+    if (activeShiftCache) {
+        weekHoursStart.value = activeShiftCache.start;
+        weekHoursEnd.value = activeShiftCache.end;
+    }
+    weekHoursDialog.showModal();
+};
+
+closeWeekHoursBtn.onclick = () => weekHoursDialog.close();
+
+weekHoursForm.onsubmit = async (event) => {
+    event.preventDefault();
+    if (!weekHoursStartDate.value || !weekHoursEndDate.value) return;
+
+    const [sy, sm, sd] = weekHoursStartDate.value.split("-").map(Number);
+    const [ey, em, ed] = weekHoursEndDate.value.split("-").map(Number);
+    const rangeStart = new Date(sy, sm - 1, sd);
+    const rangeEnd = new Date(ey, em - 1, ed);
+
+    if (rangeEnd < rangeStart) {
+        alert("Data \"Do\" nie może być wcześniejsza niż \"Od\".");
+        return;
+    }
+
+    const [sh, smi] = weekHoursStart.value.split(":").map(Number);
+    const [eh, emi] = weekHoursEnd.value.split(":").map(Number);
+    const breakMinutes = parseInt(weekHoursBreak.value, 10);
+    if ([sh, smi, eh, emi].some((n) => Number.isNaN(n)) || Number.isNaN(breakMinutes) || breakMinutes < 0) return;
+
+    const skipWeekends = weekHoursSkipWeekends.checked;
+
+    const submitBtn = weekHoursForm.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+
+    const day = new Date(rangeStart);
+    while (day <= rangeEnd) {
+        const dow = day.getDay();
+        if (!(skipWeekends && (dow === 0 || dow === 6))) {
+            const start = new Date(day.getFullYear(), day.getMonth(), day.getDate(), sh, smi, 0, 0);
+            const end = new Date(day.getFullYear(), day.getMonth(), day.getDate(), eh, emi, 0, 0);
+            if (end <= start) {
+                end.setDate(end.getDate() + 1);
+            }
+            await replaceDaySession(new Date(day), start, end, breakMinutes);
+        }
+        day.setDate(day.getDate() + 1);
+    }
+
+    selectedMonthKey = monthKey(rangeStart);
+    refreshHistoryView(await loadHistory());
+    submitBtn.disabled = false;
+    weekHoursDialog.close();
+};
+
+// Cykl wyjazdow do Polski: co 14 dni, poczawszy od czwartku 30.07.2026.
+// W Polsce: czwartek-niedziela (4 dni), reszta cyklu (10 dni) - w Niemczech.
+const POLAND_TRIP_ANCHOR = new Date(2026, 6, 30);
+const POLAND_CYCLE_DAYS = 14;
+const POLAND_HOME_DAYS = 4;
+
+function daysBetween(a, b) {
+    return Math.round((b - a) / (1000 * 60 * 60 * 24));
+}
+
+function findNearestFutureDate(dateKeySet, fromDate) {
+    let nearest = null;
+    dateKeySet.forEach((key) => {
+        const [y, m, d] = key.split("-").map(Number);
+        const date = new Date(y, m - 1, d);
+        if (date > fromDate && (!nearest || date < nearest)) {
+            nearest = date;
+        }
+    });
+    return nearest;
+}
+
+function renderPolandStatus() {
+    const today = new Date();
+    const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const todayKey = dateKey(todayMidnight);
+
+    // Urlop = jestes w domu (Polska), niezaleznie od normalnej rotacji.
+    if (vacationDatesCache.has(todayKey)) {
+        let cursor = new Date(todayMidnight);
+        let daysUntilReturn = 0;
+        while (vacationDatesCache.has(dateKey(cursor))) {
+            cursor.setDate(cursor.getDate() + 1);
+            daysUntilReturn += 1;
+        }
+
+        polandStatusFlag.textContent = "🇵🇱";
+        polandStatusText.textContent = "Jesteś w Polsce (urlop)";
+        polandCountdownText.textContent = daysUntilReturn === 0
+            ? "Dziś wracasz do Niemiec"
+            : `Wracasz do Niemiec za ${daysUntilReturn} ${daysUntilReturn === 1 ? "dzień" : "dni"} (urlop)`;
+        return;
+    }
+
+    const daysSinceAnchor = daysBetween(POLAND_TRIP_ANCHOR, todayMidnight);
+    const cyclePos = ((daysSinceAnchor % POLAND_CYCLE_DAYS) + POLAND_CYCLE_DAYS) % POLAND_CYCLE_DAYS;
+    const inPolandByCycle = cyclePos < POLAND_HOME_DAYS;
+
+    if (inPolandByCycle) {
+        const daysUntilReturn = POLAND_HOME_DAYS - cyclePos;
+        polandStatusFlag.textContent = "🇵🇱";
+        polandStatusText.textContent = "Jesteś w Polsce";
+        polandCountdownText.textContent = daysUntilReturn === 0
+            ? "Dziś wracasz do Niemiec"
+            : `Wracasz do Niemiec za ${daysUntilReturn} ${daysUntilReturn === 1 ? "dzień" : "dni"}`;
+        return;
+    }
+
+    // W Niemczech - sprawdz, czy zaplanowany urlop wypada wczesniej niz normalny zjazd.
+    const daysUntilCycleTrip = cyclePos === 0 ? 0 : POLAND_CYCLE_DAYS - cyclePos;
+    const cycleTripDate = new Date(todayMidnight);
+    cycleTripDate.setDate(cycleTripDate.getDate() + daysUntilCycleTrip);
+
+    const nearestVacationStart = findNearestFutureDate(vacationDatesCache, todayMidnight);
+
+    let nextTripDate = cycleTripDate;
+    let isVacationTrip = false;
+    if (nearestVacationStart && nearestVacationStart < cycleTripDate) {
+        nextTripDate = nearestVacationStart;
+        isVacationTrip = true;
+    }
+
+    const daysUntilNextTrip = daysBetween(todayMidnight, nextTripDate);
+    const nextTripLabel = nextTripDate.toLocaleDateString("pl-PL", { day: "numeric", month: "long", year: "numeric" });
+
+    polandStatusFlag.textContent = "🇩🇪";
+    polandStatusText.textContent = "Jesteś w Niemczech";
+    polandCountdownText.textContent = daysUntilNextTrip === 0
+        ? (isVacationTrip ? "Dziś zaczyna się Twój urlop w Polsce!" : "Dziś jedziesz do Polski!")
+        : `Zjazd do Polski za ${daysUntilNextTrip} ${daysUntilNextTrip === 1 ? "dzień" : "dni"} (${nextTripLabel}${isVacationTrip ? " — urlop" : ""})`;
+}
+
+function nextPolandTripDates(count) {
+    const today = new Date();
+    const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const daysSinceAnchor = daysBetween(POLAND_TRIP_ANCHOR, todayMidnight);
+    const cyclePos = ((daysSinceAnchor % POLAND_CYCLE_DAYS) + POLAND_CYCLE_DAYS) % POLAND_CYCLE_DAYS;
+    const daysUntilNextTrip = cyclePos === 0 ? 0 : POLAND_CYCLE_DAYS - cyclePos;
+
+    const dates = [];
+    for (let i = 0; i < count; i++) {
+        const d = new Date(todayMidnight);
+        d.setDate(d.getDate() + daysUntilNextTrip + i * POLAND_CYCLE_DAYS);
+        dates.push(d);
+    }
+    return dates;
+}
+
+polandStatusCard.onclick = () => {
+    const dates = nextPolandTripDates(10);
+    polandScheduleList.innerHTML = dates
+        .map((d, i) => {
+            const label = d.toLocaleDateString("pl-PL", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+            return `<li>${label}${i === 0 ? " — najbliższy" : ""}</li>`;
+        })
+        .join("");
+    polandScheduleDialog.showModal();
+};
+
+closePolandScheduleBtn.onclick = () => polandScheduleDialog.close();
+
 (async function init() {
     document.getElementById("year").textContent = new Date().getFullYear();
+
+    renderPolandStatus();
 
     await refreshActiveShiftCache();
     populateActiveShiftSelect();

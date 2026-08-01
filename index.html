@@ -55,6 +55,14 @@
         </div>
     </div>
 
+    <div id="polandStatusCard" class="poland-status-card">
+        <div class="poland-status-flag" id="polandStatusFlag">🇩🇪</div>
+        <div class="poland-status-body">
+            <strong id="polandStatusText">—</strong>
+            <span id="polandCountdownText" class="hint">—</span>
+        </div>
+    </div>
+
     <div class="active-shift-row">
         <label class="field-label" for="activeShiftSelect">Zmiana w tym tygodniu</label>
         <select id="activeShiftSelect"></select>
@@ -66,6 +74,9 @@
     </div>
 
     <button type="button" id="addTodayShiftBtn">✓ Dodaj dzisiejsze godziny</button>
+    <button type="button" id="weekHoursBtn" class="secondary-btn">📅 Dodaj cały tydzień</button>
+    <button type="button" id="vacationBtn" class="secondary-btn">🏖️ Ustaw urlop</button>
+    <button type="button" id="polandTripBtn" class="secondary-btn">🛫 Wyjazd do Polski</button>
 
     <div id="quickStats" class="quick-stats"></div>
 
@@ -73,13 +84,12 @@
     <p class="hint">Wybierz miesiąc i kliknij ✏️ przy dniu, żeby poprawić godziny albo go usunąć.</p>
     <select id="monthPicker" class="month-picker"></select>
     <button type="button" id="addDayBtn" class="secondary-btn">+ Dodaj dzień ręcznie</button>
-    <button type="button" id="polandTripBtn" class="secondary-btn">🛫 Wyjazd do Polski</button>
     <div id="history"></div>
 </div>
 
 <footer class="app-footer">
-    <p>Created by Arek &middot; v0.5 &middot; &copy; <span id="year"></span></p>
-    <p class="version-badge">v0.5 &middot; prototype, not yet released for public use</p>
+    <p>Created by Arek &middot; v0.6 &middot; &copy; <span id="year"></span></p>
+    <p class="version-badge">v0.6 &middot; prototype, not yet released for public use</p>
     <button type="button" id="changelogBtn" class="link-btn">Co nowego? (changelog)</button>
 </footer>
 
@@ -111,6 +121,60 @@
             <button type="submit">Zapisz</button>
         </div>
     </form>
+</dialog>
+
+<dialog id="weekHoursDialog">
+    <h2>Dodaj godziny na cały tydzień</h2>
+    <p class="hint">
+        Ustawi te same godziny "od–do" dla każdego dnia w zakresie.
+        Nadpisze istniejące wpisy dla tych dni.
+    </p>
+    <form id="weekHoursForm">
+        <label class="field-label" for="weekHoursStartDate">Od (dzień)</label>
+        <input type="date" id="weekHoursStartDate" required>
+        <label class="field-label" for="weekHoursEndDate">Do (dzień)</label>
+        <input type="date" id="weekHoursEndDate" required>
+        <label class="field-label" for="weekHoursStart">Od (godzina)</label>
+        <input type="time" id="weekHoursStart" required>
+        <label class="field-label" for="weekHoursEnd">Do (godzina)</label>
+        <input type="time" id="weekHoursEnd" required>
+        <label class="field-label" for="weekHoursBreak">Przerwa (min)</label>
+        <input type="number" id="weekHoursBreak" min="0" step="1" value="45" required>
+        <label class="checkbox-label">
+            <input type="checkbox" id="weekHoursSkipWeekends" checked>
+            Pomiń soboty i niedziele
+        </label>
+        <div class="dialog-actions">
+            <button type="button" id="closeWeekHoursBtn">Anuluj</button>
+            <button type="submit">Zapisz</button>
+        </div>
+    </form>
+</dialog>
+
+<dialog id="vacationDialog">
+    <h2>Ustaw urlop</h2>
+    <p class="hint">
+        Oznaczy każdy dzień w zakresie jako dzień wolny (0h) z notatką
+        "Urlop". Nadpisze istniejące wpisy w tym zakresie.
+    </p>
+    <form id="vacationForm">
+        <label class="field-label" for="vacationStartDate">Od</label>
+        <input type="date" id="vacationStartDate" required>
+        <label class="field-label" for="vacationEndDate">Do</label>
+        <input type="date" id="vacationEndDate" required>
+        <div class="dialog-actions">
+            <button type="button" id="closeVacationBtn">Anuluj</button>
+            <button type="submit">Zapisz</button>
+        </div>
+    </form>
+</dialog>
+
+<dialog id="polandScheduleDialog">
+    <h2>Najbliższe wyjazdy do Polski</h2>
+    <ul id="polandScheduleList" class="changelog-list"></ul>
+    <div class="dialog-actions">
+        <button type="button" id="closePolandScheduleBtn">Zamknij</button>
+    </div>
 </dialog>
 
 <dialog id="polandTripDialog">
@@ -148,6 +212,17 @@
 
 <dialog id="changelogDialog">
     <h2>Co nowego</h2>
+
+    <h3>v0.6 &middot; 2026-08-01</h3>
+    <ul class="changelog-list">
+        <li>Karta statusu 🇵🇱/🇩🇪 na głównym ekranie — pokazuje, czy aktualnie jesteś w Polsce czy w Niemczech, i odliczanie do wyjazdu/powrotu (cykl co 14 dni, czwartek–niedziela w Polsce).</li>
+        <li>Kliknięcie karty statusu pokazuje listę najbliższych terminów wyjazdów do Polski.</li>
+        <li>Status i odliczanie uwzględniają teraz urlop — jeśli jesteś na urlopie, liczy dni do powrotu na jego podstawie; jeśli zaplanowany urlop wypada wcześniej niż zwykły zjazd, pokazuje wcześniejszy termin.</li>
+        <li>Nowa opcja "🏖️ Ustaw urlop" — zakres dat oznaczany jako dni wolne z notatką, wyróżniony na zielono w historii (z pierwszeństwem nad kolorem weekendu).</li>
+        <li>Podsumowanie miesiąca pokazuje teraz liczbę dni urlopu, w tym ile z nich odejmuje się z puli urlopowej w pracy (bez sobót/niedziel).</li>
+        <li>Nowa opcja "📅 Dodaj cały tydzień" — masowe dodawanie tych samych godzin dla zakresu dni (domyślnie poprzedni tydzień), z opcją pominięcia weekendu.</li>
+        <li>Uporządkowano przyciski głównego ekranu — "Wyjazd do Polski" i "Ustaw urlop" przeniesione wyżej, obok "Dodaj dzisiejsze godziny".</li>
+    </ul>
 
     <h3>v0.5 &middot; 2026-08-01</h3>
     <ul class="changelog-list">

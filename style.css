@@ -34,6 +34,10 @@
     --weekend-bg: #fff7ed;
     --weekend-accent: #f59e0b;
     --weekend-text: #9a3412;
+
+    --vacation-bg: #f0fdf4;
+    --vacation-accent: #22c55e;
+    --vacation-text: #166534;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -71,6 +75,10 @@
         --weekend-bg: #3a2712;
         --weekend-accent: #f0b429;
         --weekend-text: #f5c88a;
+
+        --vacation-bg: #10261a;
+        --vacation-accent: #4ade80;
+        --vacation-text: #86efac;
     }
 }
 
@@ -102,6 +110,9 @@
     --weekend-bg: #3a2712;
     --weekend-accent: #f0b429;
     --weekend-text: #f5c88a;
+    --vacation-bg: #10261a;
+    --vacation-accent: #4ade80;
+    --vacation-text: #86efac;
 }
 
 :root[data-theme="light"] {
@@ -132,6 +143,9 @@
     --weekend-bg: #fff7ed;
     --weekend-accent: #f59e0b;
     --weekend-text: #9a3412;
+    --vacation-bg: #f0fdf4;
+    --vacation-accent: #22c55e;
+    --vacation-text: #166534;
 }
 
 body {
@@ -348,6 +362,15 @@ li {
     color: var(--weekend-text);
 }
 
+.day-card--vacation {
+    background: var(--vacation-bg);
+    border-left: 3px solid var(--vacation-accent);
+}
+
+.day-card--vacation .day-card-header strong {
+    color: var(--vacation-text);
+}
+
 .day-card-header {
     display: flex;
     align-items: center;
@@ -422,6 +445,39 @@ dialog::backdrop {
 .hint {
     font-size: 14px;
     color: var(--text-muted);
+}
+
+.poland-status-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 15px;
+    padding: 12px 14px;
+    background: var(--stat-bg);
+    border-radius: 10px;
+    cursor: pointer;
+}
+
+.poland-status-flag {
+    font-size: 28px;
+    line-height: 1;
+}
+
+.poland-status-body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.poland-status-body strong {
+    font-size: 15px;
+    color: var(--text);
+}
+
+.poland-status-body .hint {
+    font-size: 13px;
+    margin: 0;
 }
 
 .active-shift-row {
@@ -615,6 +671,15 @@ dialog::backdrop {
     font-size: 14px;
     color: var(--text-muted);
     margin-bottom: 4px;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: var(--text-muted);
+    margin-top: 10px;
 }
 
 #editDayForm input[type="date"],
