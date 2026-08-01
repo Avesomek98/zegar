@@ -34,12 +34,16 @@
 
     <p id="status">Nie pracujesz.</p>
 
+    <div id="quickStats" class="quick-stats"></div>
+
     <h2>Historia</h2>
+    <p class="hint">Kliknij ✏️ przy dniu, żeby poprawić godziny albo go usunąć.</p>
     <div id="history"></div>
 </div>
 
 <footer class="app-footer">
     <p>Made by Arek &middot; &copy; <span id="year"></span></p>
+    <p class="version-badge">wersja 0.1 &middot; prototyp, jeszcze nie do użytku publicznego</p>
 </footer>
 
 <dialog id="settingsDialog">
@@ -54,6 +58,26 @@
         <div id="scheduleRows"></div>
         <div class="dialog-actions">
             <button type="button" id="closeSettingsBtn">Anuluj</button>
+            <button type="submit">Zapisz</button>
+        </div>
+    </form>
+
+    <hr class="divider">
+
+    <h2>Strefa niebezpieczna</h2>
+    <p class="hint">Usuwa WSZYSTKIE zapisane godziny pracy z bazy, na wszystkich urządzeniach. Tej operacji nie da się cofnąć.</p>
+    <button type="button" id="resetAllBtn" class="danger-btn">Wykasuj wszystkie dane</button>
+</dialog>
+
+<dialog id="editDayDialog">
+    <h2>Edytuj dzień</h2>
+    <p id="editDayDate" class="hint"></p>
+    <form id="editDayForm">
+        <label class="field-label" for="editDayHours">Godziny</label>
+        <input type="number" id="editDayHours" step="0.01" min="0" required>
+        <div class="dialog-actions">
+            <button type="button" id="deleteDayBtn" class="danger-btn">Usuń dzień</button>
+            <button type="button" id="closeEditDayBtn">Anuluj</button>
             <button type="submit">Zapisz</button>
         </div>
     </form>

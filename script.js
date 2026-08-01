@@ -30,6 +30,18 @@ const settingsDialog = document.getElementById("settingsDialog");
 const scheduleForm = document.getElementById("scheduleForm");
 const scheduleRows = document.getElementById("scheduleRows");
 const closeSettingsBtn = document.getElementById("closeSettingsBtn");
+const resetAllBtn = document.getElementById("resetAllBtn");
+const quickStats = document.getElementById("quickStats");
+
+const editDayDialog = document.getElementById("editDayDialog");
+const editDayForm = document.getElementById("editDayForm");
+const editDayDate = document.getElementById("editDayDate");
+const editDayHours = document.getElementById("editDayHours");
+const deleteDayBtn = document.getElementById("deleteDayBtn");
+const closeEditDayBtn = document.getElementById("closeEditDayBtn");
+
+let editingDate = null;
+let dayTotalsCache = new Map();
 
 let scheduleCache = {};
 
@@ -102,12 +114,84 @@ async function saveEntry(entry) {
     }
 }
 
+function dayBounds(date) {
+    const start = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0);
+    const end = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1, 0, 0, 0, 0);
+    return { start, end };
+}
+
+async function deleteSessionsForDay(date) {
+    const { start, end } = dayBounds(date);
+    const { error } = await supabase
+        .from("work_sessions")
+        .delete()
+        .gte("start_time", start.toISOString())
+        .lt("start_time", end.toISOString());
+
+    if (error) {
+        console.error(error);
+        alert("Nie udało się usunąć wpisów dla tego dnia.");
+        return false;
+    }
+    return true;
+}
+
+async function replaceDayHours(date, hours) {
+    const deleted = await deleteSessionsForDay(date);
+    if (!deleted) return false;
+
+    if (hours > 0) {
+        const { start } = dayBounds(date);
+        const end = new Date(start.getTime() + hours * 60 * 60 * 1000);
+        await saveEntry({
+            start_time: start.toISOString(),
+            end_time: end.toISOString(),
+            hours: Number(hours.toFixed(2))
+        });
+    }
+    return true;
+}
+
+async function resetAllData() {
+    const { error } = await supabase
+        .from("work_sessions")
+        .delete()
+        .not("id", "is", null);
+
+    if (error) {
+        console.error(error);
+        alert("Nie udało się zresetować bazy.");
+        return false;
+    }
+    return true;
+}
+
 function dateKey(d) {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 function monthKey(d) {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function renderQuickStats() {
+    const now = new Date();
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    const todayHours = dayTotalsCache.get(dateKey(now))?.hours || 0;
+    const yesterdayHours = dayTotalsCache.get(dateKey(yesterday))?.hours || 0;
+
+    quickStats.innerHTML = `
+        <div class="stat-card">
+            <span class="stat-label">Dziś</span>
+            <span class="stat-value">${todayHours.toFixed(2)} godz.</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-label">Wczoraj</span>
+            <span class="stat-value">${yesterdayHours.toFixed(2)} godz.</span>
+        </div>
+    `;
 }
 
 function renderHistory(entries) {
@@ -123,15 +207,17 @@ function renderHistory(entries) {
             hours: (existing ? existing.hours : 0) + Number(entry.hours)
         });
     });
+    dayTotalsCache = dayTotals;
+    renderQuickStats();
 
     const months = new Map();
-    dayTotals.forEach(({ date, hours }) => {
-        const key = monthKey(date);
-        if (!months.has(key)) {
-            months.set(key, { date, days: [], total: 0 });
+    dayTotals.forEach(({ date, hours }, key) => {
+        const mKey = monthKey(date);
+        if (!months.has(mKey)) {
+            months.set(mKey, { date, days: [], total: 0 });
         }
-        const month = months.get(key);
-        month.days.push({ date, hours });
+        const month = months.get(mKey);
+        month.days.push({ date, hours, dayKey: key });
         month.total += hours;
     });
 
@@ -157,9 +243,13 @@ function renderHistory(entries) {
         const list = document.createElement("ul");
         month.days
             .sort((a, b) => b.date - a.date)
-            .forEach(({ date, hours }) => {
+            .forEach(({ date, hours, dayKey }) => {
                 const item = document.createElement("li");
-                item.textContent = `${date.toLocaleDateString()} - ${hours.toFixed(2)} godz.`;
+                item.className = "day-row";
+                item.innerHTML = `
+                    <span>${date.toLocaleDateString()} - ${hours.toFixed(2)} godz.</span>
+                    <button type="button" class="edit-day-btn" data-day-key="${dayKey}" aria-label="Edytuj dzień">✏️</button>
+                `;
                 list.appendChild(item);
             });
         section.appendChild(list);
@@ -263,6 +353,63 @@ scheduleForm.onsubmit = async (event) => {
     await saveSchedule(schedule);
     submitBtn.disabled = false;
     settingsDialog.close();
+};
+
+history.addEventListener("click", (event) => {
+    const btn = event.target.closest(".edit-day-btn");
+    if (!btn) return;
+
+    const entry = dayTotalsCache.get(btn.dataset.dayKey);
+    if (!entry) return;
+
+    editingDate = entry.date;
+    editDayDate.textContent = entry.date.toLocaleDateString("pl-PL", {
+        weekday: "long", day: "numeric", month: "long", year: "numeric"
+    });
+    editDayHours.value = entry.hours.toFixed(2);
+    editDayDialog.showModal();
+});
+
+closeEditDayBtn.onclick = () => editDayDialog.close();
+
+editDayForm.onsubmit = async (event) => {
+    event.preventDefault();
+    if (!editingDate) return;
+
+    const hours = parseFloat(editDayHours.value);
+    if (isNaN(hours) || hours < 0) return;
+
+    const submitBtn = editDayForm.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    await replaceDayHours(editingDate, hours);
+    renderHistory(await loadHistory());
+    submitBtn.disabled = false;
+    editDayDialog.close();
+};
+
+deleteDayBtn.onclick = async () => {
+    if (!editingDate) return;
+    if (!confirm(`Na pewno usunąć wszystkie godziny z dnia ${editingDate.toLocaleDateString()}?`)) return;
+
+    deleteDayBtn.disabled = true;
+    await deleteSessionsForDay(editingDate);
+    renderHistory(await loadHistory());
+    deleteDayBtn.disabled = false;
+    editDayDialog.close();
+};
+
+resetAllBtn.onclick = async () => {
+    if (!confirm("Na pewno usunąć WSZYSTKIE zapisane godziny? Tej operacji nie można cofnąć.")) return;
+    if (!confirm("Na 100%? To wykasuje całą historię ze wszystkich urządzeń.")) return;
+
+    resetAllBtn.disabled = true;
+    const ok = await resetAllData();
+    resetAllBtn.disabled = false;
+
+    if (ok) {
+        settingsDialog.close();
+        renderHistory(await loadHistory());
+    }
 };
 
 (async function init() {
