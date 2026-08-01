@@ -38,6 +38,15 @@
     --vacation-bg: #f0fdf4;
     --vacation-accent: #22c55e;
     --vacation-text: #166534;
+
+    --worked-bg: #4a90d9;
+    --worked-text: #ffffff;
+    --shift0-bg: #2563eb;
+    --shift1-bg: #0ea5e9;
+    --shift2-bg: #6366f1;
+    --shift3-bg: #0d9488;
+    --sunday-work-bg: #db2777;
+    --sunday-work-text: #ffffff;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -79,6 +88,15 @@
         --vacation-bg: #10261a;
         --vacation-accent: #4ade80;
         --vacation-text: #86efac;
+
+        --worked-bg: #4f8cff;
+        --worked-text: #ffffff;
+        --shift0-bg: #3b82f6;
+        --shift1-bg: #38bdf8;
+        --shift2-bg: #818cf8;
+        --shift3-bg: #2dd4bf;
+        --sunday-work-bg: #ec4899;
+        --sunday-work-text: #ffffff;
     }
 }
 
@@ -113,6 +131,14 @@
     --vacation-bg: #10261a;
     --vacation-accent: #4ade80;
     --vacation-text: #86efac;
+    --worked-bg: #4f8cff;
+    --worked-text: #ffffff;
+    --shift0-bg: #3b82f6;
+    --shift1-bg: #38bdf8;
+    --shift2-bg: #818cf8;
+    --shift3-bg: #2dd4bf;
+    --sunday-work-bg: #ec4899;
+    --sunday-work-text: #ffffff;
 }
 
 :root[data-theme="light"] {
@@ -146,6 +172,14 @@
     --vacation-bg: #f0fdf4;
     --vacation-accent: #22c55e;
     --vacation-text: #166534;
+    --worked-bg: #4a90d9;
+    --worked-text: #ffffff;
+    --shift0-bg: #2563eb;
+    --shift1-bg: #0ea5e9;
+    --shift2-bg: #6366f1;
+    --shift3-bg: #0d9488;
+    --sunday-work-bg: #db2777;
+    --sunday-work-text: #ffffff;
 }
 
 body {
@@ -320,6 +354,158 @@ li {
     font-size: 15px;
 }
 
+.month-calendar {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    grid-auto-rows: 1fr;
+    align-items: stretch;
+    gap: 4px;
+    margin-top: 12px;
+    margin-bottom: 14px;
+}
+
+.cal-weekday {
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-faint);
+    padding-bottom: 2px;
+}
+
+.cal-cell {
+    position: relative;
+    box-sizing: border-box;
+    width: 100%;
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    line-height: 1;
+    border-radius: 6px;
+    border: none;
+    background: var(--day-card-bg);
+    color: var(--text);
+    cursor: pointer;
+    padding: 0;
+    margin: 0;
+    font-family: inherit;
+}
+
+.cal-cell--empty {
+    visibility: hidden;
+    cursor: default;
+}
+
+.cal-cell--worked,
+.cal-cell--preset-0,
+.cal-cell--preset-1,
+.cal-cell--preset-2,
+.cal-cell--preset-3,
+.cal-cell--sunday-work {
+    color: var(--worked-text);
+    font-weight: 700;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, .2);
+}
+
+.cal-cell--worked {
+    background: var(--worked-bg);
+}
+
+.cal-cell--preset-0 {
+    background: var(--shift0-bg);
+}
+
+.cal-cell--preset-1 {
+    background: var(--shift1-bg);
+}
+
+.cal-cell--preset-2 {
+    background: var(--shift2-bg);
+}
+
+.cal-cell--preset-3 {
+    background: var(--shift3-bg);
+}
+
+.cal-cell--sunday-work {
+    background: var(--sunday-work-bg);
+    color: var(--sunday-work-text);
+}
+
+.cal-cell--weekend {
+    background: var(--weekend-bg);
+    color: var(--weekend-text);
+}
+
+.cal-cell--vacation {
+    background: var(--vacation-bg);
+    color: var(--vacation-text);
+    font-weight: 600;
+}
+
+.cal-cell--off {
+    background: var(--night-badge-bg);
+    color: var(--night-badge-text);
+}
+
+.cal-cell--today {
+    outline: 2px solid var(--vacation-accent);
+    outline-offset: -2px;
+}
+
+.cal-cell--future {
+    opacity: 0.35;
+    cursor: default;
+}
+
+.cal-cell--range-mid {
+    background: var(--stat-bg);
+    border-radius: 0;
+}
+
+.cal-cell--range-start,
+.cal-cell--range-end {
+    background: var(--worked-bg);
+    color: var(--worked-text);
+    font-weight: 700;
+}
+
+.cal-cell--has-data::after {
+    content: "";
+    position: absolute;
+    bottom: 3px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--weekend-accent);
+}
+
+.cal-cell--range-start.cal-cell--has-data::after,
+.cal-cell--range-end.cal-cell--has-data::after {
+    background: var(--worked-text);
+}
+
+.week-range-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 8px;
+}
+
+.week-range-header span {
+    font-weight: 600;
+    font-size: 14px;
+    text-transform: capitalize;
+}
+
+.week-range-header .icon-btn {
+    padding: 4px 12px;
+    font-size: 18px;
+}
+
+
 #history {
     max-height: 55vh;
     overflow-y: auto;
@@ -445,6 +631,16 @@ dialog::backdrop {
 .hint {
     font-size: 14px;
     color: var(--text-muted);
+}
+
+#dayDetailsBody {
+    margin-top: 4px;
+}
+
+#dayDetailsBody .day-summary {
+    font-weight: 700;
+    color: var(--text);
+    margin: 0 0 10px;
 }
 
 .poland-status-card {
@@ -684,7 +880,12 @@ dialog::backdrop {
 
 #editDayForm input[type="date"],
 #editDayForm input[type="time"],
-#editDayForm input[type="number"] {
+#editDayForm input[type="number"],
+#editDayForm select,
+#weekHoursForm input[type="date"],
+#weekHoursForm input[type="time"],
+#weekHoursForm input[type="number"],
+#weekHoursForm select {
     width: 100%;
     padding: 10px;
     font-size: 16px;

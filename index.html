@@ -50,6 +50,7 @@
             <h1>Licznik Godzin Pracy</h1>
         </div>
         <div class="top-actions">
+            <button id="refreshBtn" class="icon-btn" type="button" aria-label="Odśwież aplikację">🔄</button>
             <button id="themeToggleBtn" class="icon-btn" type="button" aria-label="Przełącz motyw">🌙</button>
             <button id="settingsBtn" class="icon-btn" type="button" aria-label="Ustawienia">⚙</button>
         </div>
@@ -73,7 +74,7 @@
         </div>
     </div>
 
-    <button type="button" id="addTodayShiftBtn">✓ Dodaj dzisiejsze godziny</button>
+    <button type="button" id="addTodayShiftBtn">✓ Dodaj dzisiejszy dzień</button>
     <button type="button" id="weekHoursBtn" class="secondary-btn">📅 Dodaj cały tydzień</button>
     <button type="button" id="vacationBtn" class="secondary-btn">🏖️ Ustaw urlop</button>
     <button type="button" id="polandTripBtn" class="secondary-btn">🛫 Wyjazd do Polski</button>
@@ -83,13 +84,15 @@
     <h2>Historia</h2>
     <p class="hint">Wybierz miesiąc i kliknij ✏️ przy dniu, żeby poprawić godziny albo go usunąć.</p>
     <select id="monthPicker" class="month-picker"></select>
+    <div id="monthCalendar" class="month-calendar"></div>
+    <button type="button" id="exportMonthBtn" class="secondary-btn">⬇️ Eksportuj miesiąc (CSV)</button>
     <button type="button" id="addDayBtn" class="secondary-btn">+ Dodaj dzień ręcznie</button>
     <div id="history"></div>
 </div>
 
 <footer class="app-footer">
-    <p>Created by Arek &middot; v0.6 &middot; &copy; <span id="year"></span></p>
-    <p class="version-badge">v0.6 &middot; prototype, not yet released for public use</p>
+    <p>Created by Arek &middot; v0.7 &middot; &copy; <span id="year"></span></p>
+    <p class="version-badge">v0.7 &middot; prototype, not yet released for public use</p>
     <button type="button" id="changelogBtn" class="link-btn">Co nowego? (changelog)</button>
 </footer>
 
@@ -108,12 +111,18 @@
     <form id="editDayForm">
         <label class="field-label" for="editDayDateInput">Data</label>
         <input type="date" id="editDayDateInput" required>
+        <label class="field-label" for="editDayPreset">Szablon (opcjonalnie)</label>
+        <select id="editDayPreset"></select>
         <label class="field-label" for="editDayStart">Od</label>
         <input type="time" id="editDayStart" required>
         <label class="field-label" for="editDayEnd">Do</label>
         <input type="time" id="editDayEnd" required>
         <label class="field-label" for="editDayBreak">Przerwa (min)</label>
         <input type="number" id="editDayBreak" min="0" step="1" value="45" required>
+        <label class="checkbox-label">
+            <input type="checkbox" id="editDayMarkTripOff">
+            🛫 To dzień wyjazdu do Polski — oznacz kolejny dzień jako wolny
+        </label>
         <p class="hint">Jeśli "Do" jest wcześniej niż "Od" (np. 20:00 → 6:00), system założy, że zmiana kończy się następnego dnia. Przerwa jest odejmowana od czasu brutto — wynikiem jest czas netto.</p>
         <div class="dialog-actions">
             <button type="button" id="deleteDayBtn" class="danger-btn">Usuń dzień</button>
@@ -130,10 +139,17 @@
         Nadpisze istniejące wpisy dla tych dni.
     </p>
     <form id="weekHoursForm">
-        <label class="field-label" for="weekHoursStartDate">Od (dzień)</label>
-        <input type="date" id="weekHoursStartDate" required>
-        <label class="field-label" for="weekHoursEndDate">Do (dzień)</label>
-        <input type="date" id="weekHoursEndDate" required>
+        <label class="field-label">Zakres dni</label>
+        <p class="hint">Stuknij dzień początkowy, potem dzień końcowy — oba w tym samym kalendarzu.</p>
+        <div class="week-range-header">
+            <button type="button" id="weekRangePrevBtn" class="icon-btn" aria-label="Poprzedni miesiąc">‹</button>
+            <span id="weekRangeMonthLabel"></span>
+            <button type="button" id="weekRangeNextBtn" class="icon-btn" aria-label="Następny miesiąc">›</button>
+        </div>
+        <div id="weekRangeCalendar" class="month-calendar"></div>
+        <p id="weekRangeSummary" class="hint"></p>
+        <label class="field-label" for="weekHoursPreset">Szablon (opcjonalnie)</label>
+        <select id="weekHoursPreset"></select>
         <label class="field-label" for="weekHoursStart">Od (godzina)</label>
         <input type="time" id="weekHoursStart" required>
         <label class="field-label" for="weekHoursEnd">Do (godzina)</label>
@@ -194,6 +210,15 @@
     </form>
 </dialog>
 
+<dialog id="dayDetailsDialog">
+    <h2 id="dayDetailsTitle">Szczegóły dnia</h2>
+    <div id="dayDetailsBody"></div>
+    <div class="dialog-actions">
+        <button type="button" id="dayDetailsEditBtn">✏️ Edytuj</button>
+        <button type="button" id="closeDayDetailsBtn">Zamknij</button>
+    </div>
+</dialog>
+
 <dialog id="customStatsDialog">
     <h2>Podgląd innego okresu</h2>
     <form id="customStatsForm">
@@ -212,6 +237,18 @@
 
 <dialog id="changelogDialog">
     <h2>Co nowego</h2>
+
+    <h3>v0.7 &middot; 2026-08-01</h3>
+    <ul class="changelog-list">
+        <li>Nowa siatka kalendarza w widoku historii — miesiąc jako 7-kolumnowa siatka dni, kolorowana wg tego, co się danego dnia działo: konkretny szablon zmiany (każdy w innym kolorze), godziny niedzielne osobnym kolorem, weekend, urlop, dzień wolny.</li>
+        <li>Kliknięcie wypełnionego dnia w kalendarzu otwiera okienko ze szczegółami tego dnia (z przyciskiem "Edytuj"); kliknięcie pustego dnia otwiera dodawanie.</li>
+        <li>Eksport miesiąca do pliku CSV — na iPhonie od razu przez natywne okno "Udostępnij" (Numbers, Mail, AirDrop).</li>
+        <li>Szablony zmian dostępne też w dialogach "Dodaj dzień ręcznie" i "Dodaj cały tydzień".</li>
+        <li>"Dodaj cały tydzień": zakres dni wybiera się teraz w jednym kalendarzu (zamiast dwóch osobnych pól daty), z oznaczeniem dni, które już mają zapisane dane.</li>
+        <li>Zablokowano możliwość dodawania/edytowania dni z przyszłości.</li>
+        <li>Usunięto zbędne okno potwierdzenia przy usuwaniu dnia.</li>
+        <li>Poprawki błędów: kalendarz nie czyścił się po skasowaniu wszystkich danych; siatka kalendarza nachodziła na przycisk eksportu.</li>
+    </ul>
 
     <h3>v0.6 &middot; 2026-08-01</h3>
     <ul class="changelog-list">

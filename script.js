@@ -55,7 +55,10 @@ const closeSettingsBtn = document.getElementById("closeSettingsBtn");
 const resetAllBtn = document.getElementById("resetAllBtn");
 const quickStats = document.getElementById("quickStats");
 const monthPicker = document.getElementById("monthPicker");
+const exportMonthBtn = document.getElementById("exportMonthBtn");
+const monthCalendar = document.getElementById("monthCalendar");
 const themeToggleBtn = document.getElementById("themeToggleBtn");
+const refreshBtn = document.getElementById("refreshBtn");
 const changelogBtn = document.getElementById("changelogBtn");
 const changelogDialog = document.getElementById("changelogDialog");
 const closeChangelogBtn = document.getElementById("closeChangelogBtn");
@@ -64,9 +67,11 @@ const editDayDialog = document.getElementById("editDayDialog");
 const editDayTitle = document.getElementById("editDayTitle");
 const editDayForm = document.getElementById("editDayForm");
 const editDayDateInput = document.getElementById("editDayDateInput");
+const editDayPreset = document.getElementById("editDayPreset");
 const editDayStart = document.getElementById("editDayStart");
 const editDayEnd = document.getElementById("editDayEnd");
 const editDayBreak = document.getElementById("editDayBreak");
+const editDayMarkTripOff = document.getElementById("editDayMarkTripOff");
 const deleteDayBtn = document.getElementById("deleteDayBtn");
 const closeEditDayBtn = document.getElementById("closeEditDayBtn");
 const addDayBtn = document.getElementById("addDayBtn");
@@ -75,6 +80,13 @@ const customShiftFields = document.getElementById("customShiftFields");
 const activeShiftCustomStart = document.getElementById("activeShiftCustomStart");
 const activeShiftCustomEnd = document.getElementById("activeShiftCustomEnd");
 const applyCustomShiftBtn = document.getElementById("applyCustomShiftBtn");
+
+const dayDetailsDialog = document.getElementById("dayDetailsDialog");
+const dayDetailsTitle = document.getElementById("dayDetailsTitle");
+const dayDetailsBody = document.getElementById("dayDetailsBody");
+const dayDetailsEditBtn = document.getElementById("dayDetailsEditBtn");
+const closeDayDetailsBtn = document.getElementById("closeDayDetailsBtn");
+let dayDetailsCurrentKey = null;
 
 const customStatsDialog = document.getElementById("customStatsDialog");
 const customStatsForm = document.getElementById("customStatsForm");
@@ -98,13 +110,21 @@ const closeVacationBtn = document.getElementById("closeVacationBtn");
 const weekHoursBtn = document.getElementById("weekHoursBtn");
 const weekHoursDialog = document.getElementById("weekHoursDialog");
 const weekHoursForm = document.getElementById("weekHoursForm");
-const weekHoursStartDate = document.getElementById("weekHoursStartDate");
-const weekHoursEndDate = document.getElementById("weekHoursEndDate");
+const weekRangeCalendar = document.getElementById("weekRangeCalendar");
+const weekRangePrevBtn = document.getElementById("weekRangePrevBtn");
+const weekRangeNextBtn = document.getElementById("weekRangeNextBtn");
+const weekRangeMonthLabel = document.getElementById("weekRangeMonthLabel");
+const weekRangeSummary = document.getElementById("weekRangeSummary");
+const weekHoursPreset = document.getElementById("weekHoursPreset");
 const weekHoursStart = document.getElementById("weekHoursStart");
 const weekHoursEnd = document.getElementById("weekHoursEnd");
 const weekHoursBreak = document.getElementById("weekHoursBreak");
 const weekHoursSkipWeekends = document.getElementById("weekHoursSkipWeekends");
 const closeWeekHoursBtn = document.getElementById("closeWeekHoursBtn");
+
+let weekRangeStart = null;
+let weekRangeEnd = null;
+let weekRangeViewDate = new Date();
 
 let editingDate = null;
 let dayTotalsCache = new Map();
@@ -140,6 +160,10 @@ themeToggleBtn.onclick = () => {
 };
 
 updateThemeToggleButton();
+
+refreshBtn.onclick = () => {
+    window.location.reload();
+};
 
 changelogBtn.onclick = () => changelogDialog.showModal();
 closeChangelogBtn.onclick = () => changelogDialog.close();
@@ -537,9 +561,203 @@ function populateMonthPicker(months) {
     return keep;
 }
 
+const CAL_WEEKDAY_LETTERS = ["Pn", "Wt", "Śr", "Cz", "Pt", "So", "Nd"];
+
+function matchShiftPresetIndex(session) {
+    const startHM = timeInputValue(session.start);
+    const endHM = timeInputValue(session.end);
+    return SHIFT_PRESETS.findIndex((p) => p.start === startHM && p.end === endHM);
+}
+
+function renderMonthCalendar(key) {
+    monthCalendar.innerHTML = "";
+    if (!key) return;
+
+    const [y, m] = key.split("-").map(Number);
+    const firstOfMonth = new Date(y, m - 1, 1);
+    const daysInMonth = new Date(y, m, 0).getDate();
+    const month = monthsIndexCache.get(key);
+    const todayKey = dateKey(new Date());
+
+    CAL_WEEKDAY_LETTERS.forEach((label) => {
+        const head = document.createElement("div");
+        head.className = "cal-weekday";
+        head.textContent = label;
+        monthCalendar.appendChild(head);
+    });
+
+    const firstDow = (firstOfMonth.getDay() + 6) % 7;
+    for (let i = 0; i < firstDow; i++) {
+        const filler = document.createElement("div");
+        filler.className = "cal-cell cal-cell--empty";
+        monthCalendar.appendChild(filler);
+    }
+
+    for (let d = 1; d <= daysInMonth; d++) {
+        const date = new Date(y, m - 1, d);
+        const dKey = dateKey(date);
+        const day = month?.days.get(dKey);
+
+        const cell = document.createElement("button");
+        cell.type = "button";
+        cell.className = "cal-cell";
+        cell.dataset.dayKey = dKey;
+        cell.textContent = String(d);
+
+        if (day) {
+            const isVacation = day.sessions.some((s) => s.note === "Urlop");
+            const isDayOff = day.sessions.some((s) => s.hours === 0 && s.start.getTime() === s.end.getTime());
+            const hasHours = day.sessions.some((s) => !(s.hours === 0 && s.start.getTime() === s.end.getTime()));
+
+            if (isVacation) {
+                cell.classList.add("cal-cell--vacation");
+            } else if (isDayOff) {
+                cell.classList.add("cal-cell--off");
+            } else if (hasHours) {
+                const workedSession = day.sessions.find((s) => !(s.hours === 0 && s.start.getTime() === s.end.getTime()));
+                const hasSundayHours = workedSession && sundayOverlapHours(workedSession.start, workedSession.end) > 0.005;
+
+                if (hasSundayHours) {
+                    cell.classList.add("cal-cell--sunday-work");
+                } else {
+                    const presetIdx = workedSession ? matchShiftPresetIndex(workedSession) : -1;
+                    cell.classList.add(presetIdx >= 0 ? `cal-cell--preset-${presetIdx}` : "cal-cell--worked");
+                }
+            }
+        } else {
+            const dow = date.getDay();
+            if (dow === 0 || dow === 6) cell.classList.add("cal-cell--weekend");
+        }
+
+        if (dKey === todayKey) cell.classList.add("cal-cell--today");
+        if (dKey > todayKey) cell.classList.add("cal-cell--future");
+
+        monthCalendar.appendChild(cell);
+    }
+}
+
+monthCalendar.addEventListener("click", (event) => {
+    const cell = event.target.closest(".cal-cell:not(.cal-cell--empty)");
+    if (!cell) return;
+
+    const dKey = cell.dataset.dayKey;
+    const day = monthsIndexCache.get(selectedMonthKey)?.days.get(dKey);
+
+    if (day) {
+        openDayDetails(dKey);
+        return;
+    }
+
+    const [y, m, d] = dKey.split("-").map(Number);
+    const clickedDate = new Date(y, m - 1, d);
+    const todayMidnight = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
+    if (clickedDate > todayMidnight) {
+        return;
+    }
+
+    openEditDialog({
+        original: null,
+        date: clickedDate,
+        start: null,
+        end: null,
+        breakMinutes: DEFAULT_BREAK_MINUTES
+    });
+});
+
+function buildDaySessionsHtml(day) {
+    let dayHours = 0;
+    let dayNight = 0;
+    let daySunday = 0;
+
+    const sessionsHtml = day.sessions
+        .sort((a, b) => a.start - b.start)
+        .map((session) => {
+            const net = netHours(session);
+            const night = nightOverlapHours(session.start, session.end);
+            const sunday = sundayOverlapHours(session.start, session.end);
+            dayHours += net;
+            dayNight += night;
+            daySunday += sunday;
+
+            const nightNote = night > 0.005
+                ? `<span class="night-badge">🌙 ${night.toFixed(2)} godz. nocnych</span>`
+                : "";
+            const sundayNote = sunday > 0.005
+                ? `<span class="sunday-badge">🔴 ${sunday.toFixed(2)} godz. niedzielnych</span>`
+                : "";
+
+            const isDayOff = session.hours === 0 && session.start.getTime() === session.end.getTime();
+            const timeRow = isDayOff
+                ? `<div class="session-row"><span>Dzień wolny</span><span>0.00 godz.</span></div>`
+                : `<div class="session-row">
+                    <span>${formatTime(session.start)}–${formatTime(session.end)}</span>
+                    <span>${net.toFixed(2)} godz.</span>
+                </div>`;
+            const metaRow = isDayOff
+                ? ""
+                : `<div class="session-meta">brutto ${session.hours.toFixed(2)} godz. &middot; −${session.breakMinutes} min przerwy</div>`;
+            const noteRow = session.note
+                ? `<div class="session-note">📝 ${session.note}</div>`
+                : "";
+
+            return `
+                ${timeRow}
+                ${metaRow}
+                ${noteRow}
+                ${nightNote}
+                ${sundayNote}
+            `;
+        })
+        .join("");
+
+    return { sessionsHtml, dayHours, dayNight, daySunday };
+}
+
+function openEditDialogForDay(dayKey) {
+    const day = monthsIndexCache.get(selectedMonthKey)?.days.get(dayKey);
+    if (!day || day.sessions.length === 0) return;
+
+    const primarySession = day.sessions.reduce((min, s) => (s.start < min.start ? s : min), day.sessions[0]);
+    const earliestStart = day.sessions.reduce((min, s) => (s.start < min ? s.start : min), day.sessions[0].start);
+    const latestEnd = day.sessions.reduce((max, s) => (s.end > max ? s.end : max), day.sessions[0].end);
+
+    openEditDialog({
+        original: earliestStart,
+        date: earliestStart,
+        start: earliestStart,
+        end: latestEnd,
+        breakMinutes: primarySession.breakMinutes
+    });
+}
+
+function openDayDetails(dKey) {
+    const day = monthsIndexCache.get(selectedMonthKey)?.days.get(dKey);
+    if (!day) return;
+
+    dayDetailsCurrentKey = dKey;
+    const { sessionsHtml, dayHours } = buildDaySessionsHtml(day);
+
+    dayDetailsTitle.textContent = day.date.toLocaleDateString("pl-PL", {
+        weekday: "long", day: "numeric", month: "long", year: "numeric"
+    });
+    dayDetailsBody.innerHTML = `
+        <p class="day-summary">Suma: ${dayHours.toFixed(2)} godz.</p>
+        ${sessionsHtml}
+    `;
+    dayDetailsDialog.showModal();
+}
+
+dayDetailsEditBtn.onclick = () => {
+    dayDetailsDialog.close();
+    openEditDialogForDay(dayDetailsCurrentKey);
+};
+
+closeDayDetailsBtn.onclick = () => dayDetailsDialog.close();
+
 function renderMonth(key) {
     selectedMonthKey = key;
     history.innerHTML = "";
+    renderMonthCalendar(key);
 
     const month = monthsIndexCache.get(key);
     if (!month) {
@@ -557,50 +775,11 @@ function renderMonth(key) {
 
     [...month.days.keys()].sort().reverse().forEach((dKey) => {
         const day = month.days.get(dKey);
-        let dayHours = 0;
-
-        const sessionsHtml = day.sessions
-            .sort((a, b) => a.start - b.start)
-            .map((session) => {
-                const net = netHours(session);
-                const night = nightOverlapHours(session.start, session.end);
-                const sunday = sundayOverlapHours(session.start, session.end);
-                dayHours += net;
-                monthNight += night;
-                monthSunday += sunday;
-
-                const nightNote = night > 0.005
-                    ? `<span class="night-badge">🌙 ${night.toFixed(2)} godz. nocnych</span>`
-                    : "";
-                const sundayNote = sunday > 0.005
-                    ? `<span class="sunday-badge">🔴 ${sunday.toFixed(2)} godz. niedzielnych</span>`
-                    : "";
-
-                const isDayOff = session.hours === 0 && session.start.getTime() === session.end.getTime();
-                const timeRow = isDayOff
-                    ? `<div class="session-row"><span>Dzień wolny</span><span>0.00 godz.</span></div>`
-                    : `<div class="session-row">
-                        <span>${formatTime(session.start)}–${formatTime(session.end)}</span>
-                        <span>${net.toFixed(2)} godz.</span>
-                    </div>`;
-                const metaRow = isDayOff
-                    ? ""
-                    : `<div class="session-meta">brutto ${session.hours.toFixed(2)} godz. &middot; −${session.breakMinutes} min przerwy</div>`;
-                const noteRow = session.note
-                    ? `<div class="session-note">📝 ${session.note}</div>`
-                    : "";
-
-                return `
-                    ${timeRow}
-                    ${metaRow}
-                    ${noteRow}
-                    ${nightNote}
-                    ${sundayNote}
-                `;
-            })
-            .join("");
+        const { sessionsHtml, dayHours, dayNight, daySunday } = buildDaySessionsHtml(day);
 
         monthHours += dayHours;
+        monthNight += dayNight;
+        monthSunday += daySunday;
 
         const isVacation = day.sessions.some((s) => s.note === "Urlop");
         const dow = day.date.getDay();
@@ -615,6 +794,7 @@ function renderMonth(key) {
 
         const card = document.createElement("div");
         card.className = "day-card" + (isVacation ? " day-card--vacation" : isWeekend ? " day-card--weekend" : "");
+        card.dataset.dayKey = dKey;
         card.innerHTML = `
             <div class="day-card-header">
                 <strong>${day.date.toLocaleDateString("pl-PL", { weekday: "long", day: "numeric", month: "long" })}</strong>
@@ -639,6 +819,100 @@ function renderMonth(key) {
     history.appendChild(total);
 }
 
+function csvEscape(value) {
+    const str = String(value ?? "");
+    if (/[",\n]/.test(str)) {
+        return `"${str.replace(/"/g, '""')}"`;
+    }
+    return str;
+}
+
+function buildMonthCsv(key) {
+    const month = monthsIndexCache.get(key);
+    if (!month) return null;
+
+    const rows = [[
+        "Data", "Dzień tygodnia", "Od", "Do", "Brutto (godz.)",
+        "Przerwa (min)", "Netto (godz.)", "Nocne (godz.)", "Niedzielne (godz.)", "Notatka"
+    ]];
+
+    let totalNet = 0;
+    let totalNight = 0;
+    let totalSunday = 0;
+    let rowCount = 0;
+
+    [...month.days.keys()].sort().forEach((dKey) => {
+        const day = month.days.get(dKey);
+        day.sessions
+            .sort((a, b) => a.start - b.start)
+            .forEach((session) => {
+                const net = netHours(session);
+                const night = nightOverlapHours(session.start, session.end);
+                const sunday = sundayOverlapHours(session.start, session.end);
+                totalNet += net;
+                totalNight += night;
+                totalSunday += sunday;
+                rowCount += 1;
+
+                const isDayOff = session.hours === 0 && session.start.getTime() === session.end.getTime();
+
+                rows.push([
+                    day.date.toLocaleDateString("pl-PL"),
+                    day.date.toLocaleDateString("pl-PL", { weekday: "long" }),
+                    isDayOff ? "-" : formatTime(session.start),
+                    isDayOff ? "-" : formatTime(session.end),
+                    session.hours.toFixed(2),
+                    String(session.breakMinutes),
+                    net.toFixed(2),
+                    night > 0.005 ? night.toFixed(2) : "",
+                    sunday > 0.005 ? sunday.toFixed(2) : "",
+                    session.note || ""
+                ]);
+            });
+    });
+
+    if (rowCount === 0) return null;
+
+    rows.push([]);
+    rows.push(["Suma", "", "", "", "", "", totalNet.toFixed(2), totalNight.toFixed(2), totalSunday.toFixed(2), ""]);
+
+    return rows.map((row) => row.map(csvEscape).join(",")).join("\r\n");
+}
+
+exportMonthBtn.onclick = async () => {
+    if (!selectedMonthKey) return;
+
+    const csv = buildMonthCsv(selectedMonthKey);
+    if (!csv) {
+        alert("Brak danych do eksportu w tym miesiącu.");
+        return;
+    }
+
+    const monthLabel = monthPicker.options[monthPicker.selectedIndex]?.textContent || selectedMonthKey;
+    const filename = `godziny-${selectedMonthKey}.csv`;
+    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
+    const file = new File([blob], filename, { type: "text/csv" });
+
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+            await navigator.share({ files: [file], title: `Godziny pracy — ${monthLabel}` });
+            return;
+        } catch (err) {
+            if (err.name === "AbortError") return;
+            console.error(err);
+        }
+    }
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+};
+
 function refreshHistoryView(entries) {
     dayTotalsCache = buildDayTotals(entries);
     monthsIndexCache = buildMonthsIndex(entries);
@@ -652,6 +926,7 @@ function refreshHistoryView(entries) {
         renderMonth(key);
     } else {
         history.innerHTML = "";
+        renderMonthCalendar(null);
         const empty = document.createElement("p");
         empty.textContent = "Brak zapisanych godzin.";
         history.appendChild(empty);
@@ -687,36 +962,36 @@ closeSettingsBtn.onclick = () => settingsDialog.close();
 
 // editingDate = data dnia, ktory faktycznie istnieje w bazie (do skasowania/przeniesienia).
 // null oznacza tryb "dodaj nowy dzien" - nic nie trzeba usuwac przed zapisem.
+const editDayPresetOptions = SHIFT_PRESETS
+    .map((p, i) => `<option value="${i}">${p.label}</option>`)
+    .join("");
+
+editDayPreset.onchange = () => {
+    const preset = SHIFT_PRESETS[editDayPreset.value];
+    if (!preset) return;
+    editDayStart.value = preset.start;
+    editDayEnd.value = preset.end;
+    editDayPreset.value = "";
+};
+
 function openEditDialog({ original, date, start, end, breakMinutes }) {
     editingDate = original;
     editDayTitle.textContent = original ? "Edytuj dzień" : "Dodaj dzień";
     deleteDayBtn.style.display = original ? "" : "none";
     editDayDateInput.value = dateKey(date);
+    editDayDateInput.max = dateKey(new Date());
+    editDayPreset.innerHTML = `<option value="">— wybierz —</option>${editDayPresetOptions}`;
     editDayStart.value = start ? timeInputValue(start) : "";
     editDayEnd.value = end ? timeInputValue(end) : "";
     editDayBreak.value = breakMinutes;
+    editDayMarkTripOff.checked = false;
     editDayDialog.showModal();
 }
 
 history.addEventListener("click", (event) => {
     const btn = event.target.closest(".edit-day-btn");
     if (!btn) return;
-
-    const dayKey = btn.dataset.dayKey;
-    const day = monthsIndexCache.get(selectedMonthKey)?.days.get(dayKey);
-    if (!day || day.sessions.length === 0) return;
-
-    const primarySession = day.sessions.reduce((min, s) => (s.start < min.start ? s : min), day.sessions[0]);
-    const earliestStart = day.sessions.reduce((min, s) => (s.start < min ? s.start : min), day.sessions[0].start);
-    const latestEnd = day.sessions.reduce((max, s) => (s.end > max ? s.end : max), day.sessions[0].end);
-
-    openEditDialog({
-        original: earliestStart,
-        date: earliestStart,
-        start: earliestStart,
-        end: latestEnd,
-        breakMinutes: primarySession.breakMinutes
-    });
+    openEditDialogForDay(btn.dataset.dayKey);
 });
 
 addDayBtn.onclick = () => {
@@ -744,6 +1019,12 @@ editDayForm.onsubmit = async (event) => {
     if ([y, mo, dd, sh, sm, eh, em].some((n) => Number.isNaN(n)) || Number.isNaN(breakMinutes) || breakMinutes < 0) return;
 
     const targetDate = new Date(y, mo - 1, dd);
+    const todayMidnight = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
+    if (targetDate > todayMidnight) {
+        alert("Nie można dodać godzin dla dnia, który jeszcze nie nastąpił.");
+        return;
+    }
+
     const start = new Date(y, mo - 1, dd, sh, sm, 0, 0);
     const end = new Date(y, mo - 1, dd, eh, em, 0, 0);
     if (end <= start) {
@@ -758,6 +1039,20 @@ editDayForm.onsubmit = async (event) => {
     }
     await replaceDaySession(targetDate, start, end, breakMinutes);
 
+    if (editDayMarkTripOff.checked) {
+        const nextDay = new Date(targetDate);
+        nextDay.setDate(nextDay.getDate() + 1);
+        await deleteSessionsForDay(nextDay);
+        const nextDayStart = new Date(nextDay.getFullYear(), nextDay.getMonth(), nextDay.getDate(), 0, 0, 0, 0);
+        await saveEntry({
+            start_time: nextDayStart.toISOString(),
+            end_time: nextDayStart.toISOString(),
+            hours: 0,
+            break_minutes: 0,
+            note: "Dzień wolny (wyjazd do Polski)"
+        });
+    }
+
     selectedMonthKey = monthKey(targetDate);
     refreshHistoryView(await loadHistory());
     submitBtn.disabled = false;
@@ -766,7 +1061,6 @@ editDayForm.onsubmit = async (event) => {
 
 deleteDayBtn.onclick = async () => {
     if (!editingDate) return;
-    if (!confirm(`Na pewno usunąć wszystkie godziny z dnia ${editingDate.toLocaleDateString()}?`)) return;
 
     deleteDayBtn.disabled = true;
     await deleteSessionsForDay(editingDate);
@@ -817,13 +1111,17 @@ polandTripForm.onsubmit = async (event) => {
     await deleteSessionsForDay(tripDay);
     const tripStart = new Date(tripDay);
     tripStart.setHours(6, 0, 0, 0);
-    const tripEnd = new Date(tripStart.getTime() + 6 * 60 * 60 * 1000);
+    const tripBreakMinutes = 15;
+    // Brutto = 6h netto + przerwa, zeby po odjeciu przerwy wyszlo dokladnie 6h.
+    const tripGrossMs = (6 * 60 + tripBreakMinutes) * 60 * 1000;
+    const tripEnd = new Date(tripStart.getTime() + tripGrossMs);
+    const tripGrossHours = tripGrossMs / (1000 * 60 * 60);
     await saveEntry({
         start_time: tripStart.toISOString(),
         end_time: tripEnd.toISOString(),
-        hours: 6,
-        break_minutes: 0,
-        note: "Wyjazd do Polski – skrócony dzień (6h)"
+        hours: Number(tripGrossHours.toFixed(2)),
+        break_minutes: tripBreakMinutes,
+        note: "Wyjazd do Polski – skrócony dzień (6h netto)"
     });
 
     await deleteSessionsForDay(dayOff);
@@ -899,14 +1197,126 @@ function previousWeekRange() {
     return { start: prevMonday, end: prevSunday };
 }
 
+weekHoursPreset.onchange = () => {
+    const preset = SHIFT_PRESETS[weekHoursPreset.value];
+    if (!preset) return;
+    weekHoursStart.value = preset.start;
+    weekHoursEnd.value = preset.end;
+    weekHoursPreset.value = "";
+};
+
+function renderWeekRangeSummary() {
+    if (weekRangeStart && weekRangeEnd) {
+        weekRangeSummary.textContent = `Zaznaczono: ${weekRangeStart.toLocaleDateString("pl-PL")} – ${weekRangeEnd.toLocaleDateString("pl-PL")}`;
+    } else if (weekRangeStart) {
+        weekRangeSummary.textContent = `Początek: ${weekRangeStart.toLocaleDateString("pl-PL")} — stuknij dzień końcowy.`;
+    } else {
+        weekRangeSummary.textContent = "Stuknij dzień początkowy zakresu.";
+    }
+}
+
+function renderWeekRangeCalendar() {
+    weekRangeCalendar.innerHTML = "";
+
+    const y = weekRangeViewDate.getFullYear();
+    const m = weekRangeViewDate.getMonth();
+    const firstOfMonth = new Date(y, m, 1);
+    const daysInMonth = new Date(y, m + 1, 0).getDate();
+    const todayMidnight = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
+
+    weekRangeMonthLabel.textContent = firstOfMonth.toLocaleDateString("pl-PL", { month: "long", year: "numeric" });
+    weekRangeNextBtn.disabled = y === todayMidnight.getFullYear() && m === todayMidnight.getMonth();
+
+    const monthData = monthsIndexCache.get(monthKey(firstOfMonth));
+
+    CAL_WEEKDAY_LETTERS.forEach((label) => {
+        const head = document.createElement("div");
+        head.className = "cal-weekday";
+        head.textContent = label;
+        weekRangeCalendar.appendChild(head);
+    });
+
+    const firstDow = (firstOfMonth.getDay() + 6) % 7;
+    for (let i = 0; i < firstDow; i++) {
+        const filler = document.createElement("div");
+        filler.className = "cal-cell cal-cell--empty";
+        weekRangeCalendar.appendChild(filler);
+    }
+
+    for (let d = 1; d <= daysInMonth; d++) {
+        const date = new Date(y, m, d);
+        const cell = document.createElement("button");
+        cell.type = "button";
+        cell.className = "cal-cell";
+        cell.textContent = String(d);
+        cell.dataset.date = dateKey(date);
+
+        if (date > todayMidnight) {
+            cell.classList.add("cal-cell--future");
+        }
+        if (date.getTime() === todayMidnight.getTime()) {
+            cell.classList.add("cal-cell--today");
+        }
+        if (weekRangeStart && date.getTime() === weekRangeStart.getTime()) {
+            cell.classList.add("cal-cell--range-start");
+        }
+        if (weekRangeEnd && date.getTime() === weekRangeEnd.getTime()) {
+            cell.classList.add("cal-cell--range-end");
+        }
+        if (weekRangeStart && weekRangeEnd && date > weekRangeStart && date < weekRangeEnd) {
+            cell.classList.add("cal-cell--range-mid");
+        }
+        if (monthData?.days.has(dateKey(date))) {
+            cell.classList.add("cal-cell--has-data");
+        }
+
+        weekRangeCalendar.appendChild(cell);
+    }
+
+    renderWeekRangeSummary();
+}
+
+weekRangeCalendar.addEventListener("click", (event) => {
+    const cell = event.target.closest(".cal-cell:not(.cal-cell--empty):not(.cal-cell--future)");
+    if (!cell) return;
+
+    const [y, m, d] = cell.dataset.date.split("-").map(Number);
+    const clicked = new Date(y, m - 1, d);
+
+    if (!weekRangeStart || (weekRangeStart && weekRangeEnd)) {
+        weekRangeStart = clicked;
+        weekRangeEnd = null;
+    } else if (clicked < weekRangeStart) {
+        weekRangeEnd = weekRangeStart;
+        weekRangeStart = clicked;
+    } else {
+        weekRangeEnd = clicked;
+    }
+
+    renderWeekRangeCalendar();
+});
+
+weekRangePrevBtn.onclick = () => {
+    weekRangeViewDate = new Date(weekRangeViewDate.getFullYear(), weekRangeViewDate.getMonth() - 1, 1);
+    renderWeekRangeCalendar();
+};
+
+weekRangeNextBtn.onclick = () => {
+    weekRangeViewDate = new Date(weekRangeViewDate.getFullYear(), weekRangeViewDate.getMonth() + 1, 1);
+    renderWeekRangeCalendar();
+};
+
 weekHoursBtn.onclick = () => {
     const { start, end } = previousWeekRange();
-    weekHoursStartDate.value = dateKey(start);
-    weekHoursEndDate.value = dateKey(end);
+    weekRangeStart = start;
+    weekRangeEnd = end;
+    weekRangeViewDate = new Date(start.getFullYear(), start.getMonth(), 1);
+    weekHoursPreset.innerHTML = `<option value="">— wybierz —</option>${editDayPresetOptions}`;
     if (activeShiftCache) {
         weekHoursStart.value = activeShiftCache.start;
         weekHoursEnd.value = activeShiftCache.end;
     }
+    renderWeekRangeCalendar();
     weekHoursDialog.showModal();
 };
 
@@ -914,17 +1324,13 @@ closeWeekHoursBtn.onclick = () => weekHoursDialog.close();
 
 weekHoursForm.onsubmit = async (event) => {
     event.preventDefault();
-    if (!weekHoursStartDate.value || !weekHoursEndDate.value) return;
-
-    const [sy, sm, sd] = weekHoursStartDate.value.split("-").map(Number);
-    const [ey, em, ed] = weekHoursEndDate.value.split("-").map(Number);
-    const rangeStart = new Date(sy, sm - 1, sd);
-    const rangeEnd = new Date(ey, em - 1, ed);
-
-    if (rangeEnd < rangeStart) {
-        alert("Data \"Do\" nie może być wcześniejsza niż \"Od\".");
+    if (!weekRangeStart || !weekRangeEnd) {
+        alert("Zaznacz dzień początkowy i końcowy zakresu w kalendarzu.");
         return;
     }
+
+    const rangeStart = weekRangeStart;
+    const rangeEnd = weekRangeEnd;
 
     const [sh, smi] = weekHoursStart.value.split(":").map(Number);
     const [eh, emi] = weekHoursEnd.value.split(":").map(Number);
