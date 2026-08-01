@@ -266,6 +266,8 @@ scheduleForm.onsubmit = async (event) => {
 };
 
 (async function init() {
+    document.getElementById("year").textContent = new Date().getFullYear();
+
     await refreshScheduleCache();
     renderHistory(await loadHistory());
 

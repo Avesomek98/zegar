@@ -124,3 +124,16 @@ dialog::backdrop {
 .dialog-actions button {
     margin-top: 0;
 }
+
+.app-footer {
+    max-width: 500px;
+    margin: 20px auto 0;
+    padding: 10px 20px 0;
+    text-align: center;
+}
+
+.app-footer p {
+    margin: 0;
+    font-size: 13px;
+    color: #999;
+}
