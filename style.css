@@ -361,23 +361,29 @@ dialog::backdrop {
     color: var(--text-muted);
 }
 
-.schedule-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 10px;
-    flex-wrap: wrap;
+.active-shift-row {
+    margin-top: 10px;
 }
 
-.day-label {
-    flex: 1 0 130px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
+.active-shift-row .field-label {
+    margin-bottom: 4px;
 }
 
-.schedule-row input[type="time"] {
-    padding: 4px;
+#activeShiftSelect {
+    width: 100%;
+    padding: 10px;
+    font-size: 15px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--input-bg);
+    color: var(--text);
+}
+
+.session-note {
+    font-size: 12px;
+    font-style: italic;
+    color: var(--text-faint);
+    margin-top: 2px;
 }
 
 .dialog-actions {
@@ -473,6 +479,35 @@ dialog::backdrop {
     margin-top: 2px;
 }
 
+.stat-card--action {
+    width: auto;
+    margin-top: 0;
+    font: inherit;
+    border: none;
+    cursor: pointer;
+    text-align: center;
+}
+
+.stat-mode-toggle {
+    display: flex;
+    gap: 16px;
+    font-size: 14px;
+    color: var(--text-muted);
+}
+
+#customStatsForm input[type="date"],
+#customStatsForm input[type="month"] {
+    width: 100%;
+    padding: 10px;
+    font-size: 16px;
+    box-sizing: border-box;
+    margin-top: 12px;
+    background: var(--input-bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+}
+
 .edit-day-btn {
     width: auto;
     padding: 4px 8px;
@@ -482,12 +517,6 @@ dialog::backdrop {
     border: none;
     cursor: pointer;
     flex-shrink: 0;
-}
-
-.divider {
-    border: none;
-    border-top: 1px solid var(--divider);
-    margin: 20px 0;
 }
 
 .danger-btn {

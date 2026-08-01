@@ -4,16 +4,14 @@ import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./config.js";
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const ACTIVE_START_KEY = "activeStartTime";
 
-const WEEKDAYS = [
-    { key: "mon", label: "Poniedziałek" },
-    { key: "tue", label: "Wtorek" },
-    { key: "wed", label: "Środa" },
-    { key: "thu", label: "Czwartek" },
-    { key: "fri", label: "Piątek" },
-    { key: "sat", label: "Sobota" },
-    { key: "sun", label: "Niedziela" }
+const SHIFT_PRESETS = [
+    { label: "6:00–16:45", start: "06:00", end: "16:45" },
+    { label: "6:00–15:45", start: "06:00", end: "15:45" },
+    { label: "11:30–22:15", start: "11:30", end: "22:15" },
+    { label: "14:00–22:15", start: "14:00", end: "22:15" },
+    { label: "19:30–6:00", start: "19:30", end: "06:00" },
+    { label: "21:45–8:30", start: "21:45", end: "08:30" }
 ];
-const WEEKDAY_KEY_BY_JS_DAY = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 const MONTH_NAMES = [
     "Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec",
     "Lipiec", "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień"
@@ -27,8 +25,6 @@ const status = document.getElementById("status");
 const history = document.getElementById("history");
 const settingsBtn = document.getElementById("settingsBtn");
 const settingsDialog = document.getElementById("settingsDialog");
-const scheduleForm = document.getElementById("scheduleForm");
-const scheduleRows = document.getElementById("scheduleRows");
 const closeSettingsBtn = document.getElementById("closeSettingsBtn");
 const resetAllBtn = document.getElementById("resetAllBtn");
 const quickStats = document.getElementById("quickStats");
@@ -48,11 +44,26 @@ const editDayBreak = document.getElementById("editDayBreak");
 const deleteDayBtn = document.getElementById("deleteDayBtn");
 const closeEditDayBtn = document.getElementById("closeEditDayBtn");
 const addDayBtn = document.getElementById("addDayBtn");
+const activeShiftSelect = document.getElementById("activeShiftSelect");
+
+const customStatsDialog = document.getElementById("customStatsDialog");
+const customStatsForm = document.getElementById("customStatsForm");
+const customStatsDate = document.getElementById("customStatsDate");
+const customStatsMonth = document.getElementById("customStatsMonth");
+const closeCustomStatsBtn = document.getElementById("closeCustomStatsBtn");
+
+const polandTripBtn = document.getElementById("polandTripBtn");
+const polandTripDialog = document.getElementById("polandTripDialog");
+const polandTripForm = document.getElementById("polandTripForm");
+const polandTripDate = document.getElementById("polandTripDate");
+const closePolandTripBtn = document.getElementById("closePolandTripBtn");
 
 let editingDate = null;
 let dayTotalsCache = new Map();
 let monthsIndexCache = new Map();
 let selectedMonthKey = null;
+let activeShiftCache = null; // { start, end, label } | null
+let customStat = null; // { mode: "day" | "month", key: "YYYY-MM-DD" | "YYYY-MM" }
 
 const NIGHT_START_HOUR = 20;
 const NIGHT_END_HOUR = 6;
@@ -84,12 +95,10 @@ updateThemeToggleButton();
 changelogBtn.onclick = () => changelogDialog.showModal();
 closeChangelogBtn.onclick = () => changelogDialog.close();
 
-let scheduleCache = {};
-
-async function refreshScheduleCache() {
+async function refreshActiveShiftCache() {
     const { data, error } = await supabase
         .from("app_settings")
-        .select("schedule")
+        .select("active_shift")
         .eq("id", 1)
         .single();
 
@@ -97,25 +106,44 @@ async function refreshScheduleCache() {
         console.error(error);
         return;
     }
-    scheduleCache = data?.schedule || {};
+    activeShiftCache = data?.active_shift || null;
 }
 
-async function saveSchedule(schedule) {
+async function saveActiveShift(shift) {
     const { error } = await supabase
         .from("app_settings")
-        .upsert({ id: 1, schedule, updated_at: new Date().toISOString() });
+        .upsert({ id: 1, active_shift: shift, updated_at: new Date().toISOString() });
 
     if (error) {
         console.error(error);
-        alert("Nie udało się zapisać ustawień w bazie.");
+        alert("Nie udało się zapisać zmiany w bazie.");
         return;
     }
-    scheduleCache = schedule;
+    activeShiftCache = shift;
 }
 
-function clampToSchedule(start, end, schedule) {
-    const rule = schedule[WEEKDAY_KEY_BY_JS_DAY[start.getDay()]];
-    if (!rule || !rule.enabled) {
+function populateActiveShiftSelect() {
+    const presetOptions = SHIFT_PRESETS
+        .map((p, i) => `<option value="${i}">${p.label}</option>`)
+        .join("");
+    activeShiftSelect.innerHTML = `<option value="">Brak (nie przycinaj godzin)</option>${presetOptions}`;
+
+    const idx = activeShiftCache
+        ? SHIFT_PRESETS.findIndex((p) => p.start === activeShiftCache.start && p.end === activeShiftCache.end)
+        : -1;
+    activeShiftSelect.value = idx >= 0 ? String(idx) : "";
+}
+
+activeShiftSelect.onchange = async () => {
+    const preset = SHIFT_PRESETS[activeShiftSelect.value];
+    activeShiftSelect.disabled = true;
+    await saveActiveShift(preset ? { start: preset.start, end: preset.end, label: preset.label } : null);
+    activeShiftSelect.disabled = false;
+};
+
+function clampToSchedule(start, end) {
+    const rule = activeShiftCache;
+    if (!rule) {
         return { start, end };
     }
 
@@ -126,6 +154,9 @@ function clampToSchedule(start, end, schedule) {
     const [eh, em] = rule.end.split(":").map(Number);
     const schedEnd = new Date(start);
     schedEnd.setHours(eh, em, 0, 0);
+    if (schedEnd <= schedStart) {
+        schedEnd.setDate(schedEnd.getDate() + 1);
+    }
 
     return {
         start: start < schedStart ? schedStart : start,
@@ -314,10 +345,24 @@ function buildMonthsIndex(entries) {
             start,
             end,
             hours: Number(entry.hours),
-            breakMinutes: Number(entry.break_minutes ?? DEFAULT_BREAK_MINUTES)
+            breakMinutes: Number(entry.break_minutes ?? DEFAULT_BREAK_MINUTES),
+            note: entry.note || null
         });
     });
     return months;
+}
+
+function monthNetTotal(key) {
+    const month = monthsIndexCache.get(key);
+    if (!month) return 0;
+
+    let total = 0;
+    month.days.forEach((day) => {
+        day.sessions.forEach((session) => {
+            total += netHours(session);
+        });
+    });
+    return total;
 }
 
 function renderQuickStats() {
@@ -328,6 +373,24 @@ function renderQuickStats() {
     const todayHours = dayTotalsCache.get(dateKey(now))?.hours || 0;
     const yesterdayHours = dayTotalsCache.get(dateKey(yesterday))?.hours || 0;
 
+    let customLabel = "Inny dzień";
+    let customValue = "Wybierz ▸";
+
+    if (customStat) {
+        if (customStat.mode === "day") {
+            const [y, m, d] = customStat.key.split("-").map(Number);
+            const date = new Date(y, m - 1, d);
+            const hours = dayTotalsCache.get(customStat.key)?.hours || 0;
+            customLabel = date.toLocaleDateString("pl-PL", { day: "numeric", month: "short" });
+            customValue = `${hours.toFixed(2)} godz.`;
+        } else {
+            const [y, m] = customStat.key.split("-").map(Number);
+            const hours = monthNetTotal(customStat.key);
+            customLabel = `${MONTH_NAMES[m - 1]} ${y}`;
+            customValue = `${hours.toFixed(2)} godz.`;
+        }
+    }
+
     quickStats.innerHTML = `
         <div class="stat-card">
             <span class="stat-label">Dziś</span>
@@ -337,8 +400,46 @@ function renderQuickStats() {
             <span class="stat-label">Wczoraj</span>
             <span class="stat-value">${yesterdayHours.toFixed(2)} godz.</span>
         </div>
+        <button type="button" class="stat-card stat-card--action" id="customStatBtn">
+            <span class="stat-label">${customLabel}</span>
+            <span class="stat-value">${customValue}</span>
+        </button>
     `;
 }
+
+quickStats.addEventListener("click", (event) => {
+    if (event.target.closest("#customStatBtn")) {
+        if (!customStatsDate.value) customStatsDate.value = dateKey(new Date());
+        if (!customStatsMonth.value) customStatsMonth.value = monthKey(new Date());
+        customStatsDialog.showModal();
+    }
+});
+
+customStatsForm.querySelectorAll('input[name="statMode"]').forEach((radio) => {
+    radio.onchange = () => {
+        const mode = customStatsForm.querySelector('input[name="statMode"]:checked').value;
+        customStatsDate.style.display = mode === "day" ? "" : "none";
+        customStatsMonth.style.display = mode === "month" ? "" : "none";
+    };
+});
+
+closeCustomStatsBtn.onclick = () => customStatsDialog.close();
+
+customStatsForm.onsubmit = (event) => {
+    event.preventDefault();
+    const mode = customStatsForm.querySelector('input[name="statMode"]:checked').value;
+
+    if (mode === "day") {
+        if (!customStatsDate.value) return;
+        customStat = { mode: "day", key: customStatsDate.value };
+    } else {
+        if (!customStatsMonth.value) return;
+        customStat = { mode: "month", key: customStatsMonth.value };
+    }
+
+    renderQuickStats();
+    customStatsDialog.close();
+};
 
 function populateMonthPicker(months) {
     const sortedKeys = [...months.keys()].sort().reverse();
@@ -404,12 +505,24 @@ function renderMonth(key) {
                     ? `<span class="sunday-badge">🔴 ${sunday.toFixed(2)} godz. niedzielnych</span>`
                     : "";
 
-                return `
-                    <div class="session-row">
+                const isDayOff = session.hours === 0 && session.start.getTime() === session.end.getTime();
+                const timeRow = isDayOff
+                    ? `<div class="session-row"><span>Dzień wolny</span><span>0.00 godz.</span></div>`
+                    : `<div class="session-row">
                         <span>${formatTime(session.start)}–${formatTime(session.end)}</span>
                         <span>${net.toFixed(2)} godz.</span>
-                    </div>
-                    <div class="session-meta">brutto ${session.hours.toFixed(2)} godz. &middot; −${session.breakMinutes} min przerwy</div>
+                    </div>`;
+                const metaRow = isDayOff
+                    ? ""
+                    : `<div class="session-meta">brutto ${session.hours.toFixed(2)} godz. &middot; −${session.breakMinutes} min przerwy</div>`;
+                const noteRow = session.note
+                    ? `<div class="session-note">📝 ${session.note}</div>`
+                    : "";
+
+                return `
+                    ${timeRow}
+                    ${metaRow}
+                    ${noteRow}
                     ${nightNote}
                     ${sundayNote}
                 `;
@@ -446,9 +559,9 @@ function renderMonth(key) {
 
 function refreshHistoryView(entries) {
     dayTotalsCache = buildDayTotals(entries);
+    monthsIndexCache = buildMonthsIndex(entries);
     renderQuickStats();
 
-    monthsIndexCache = buildMonthsIndex(entries);
     const key = populateMonthPicker(monthsIndexCache);
 
     if (key) {
@@ -488,7 +601,7 @@ stopBtn.onclick = async () => {
     }
 
     const endTime = new Date();
-    const { start: effStart, end: effEnd } = clampToSchedule(startTime, endTime, scheduleCache);
+    const { start: effStart, end: effEnd } = clampToSchedule(startTime, endTime);
     const diffMs = Math.max(0, effEnd - effStart);
     const diff = diffMs / 1000 / 60 / 60;
 
@@ -506,55 +619,8 @@ stopBtn.onclick = async () => {
     setIdle();
 };
 
-function buildScheduleRows() {
-    scheduleRows.innerHTML = "";
-
-    WEEKDAYS.forEach(({ key, label }) => {
-        const rule = scheduleCache[key] || { enabled: false, start: "06:00", end: "14:00" };
-
-        const row = document.createElement("div");
-        row.className = "schedule-row";
-        row.dataset.day = key;
-        row.innerHTML = `
-            <label class="day-label">
-                <input type="checkbox" class="day-enabled" ${rule.enabled ? "checked" : ""}>
-                ${label}
-            </label>
-            <input type="time" class="day-start" value="${rule.start}">
-            <input type="time" class="day-end" value="${rule.end}">
-        `;
-        scheduleRows.appendChild(row);
-    });
-}
-
-settingsBtn.onclick = async () => {
-    settingsBtn.disabled = true;
-    await refreshScheduleCache();
-    settingsBtn.disabled = false;
-    buildScheduleRows();
-    settingsDialog.showModal();
-};
-
+settingsBtn.onclick = () => settingsDialog.showModal();
 closeSettingsBtn.onclick = () => settingsDialog.close();
-
-scheduleForm.onsubmit = async (event) => {
-    event.preventDefault();
-
-    const schedule = {};
-    scheduleRows.querySelectorAll(".schedule-row").forEach((row) => {
-        schedule[row.dataset.day] = {
-            enabled: row.querySelector(".day-enabled").checked,
-            start: row.querySelector(".day-start").value,
-            end: row.querySelector(".day-end").value
-        };
-    });
-
-    const submitBtn = scheduleForm.querySelector('button[type="submit"]');
-    submitBtn.disabled = true;
-    await saveSchedule(schedule);
-    submitBtn.disabled = false;
-    settingsDialog.close();
-};
 
 // editingDate = data dnia, ktory faktycznie istnieje w bazie (do skasowania/przeniesienia).
 // null oznacza tryb "dodaj nowy dzien" - nic nie trzeba usuwac przed zapisem.
@@ -660,10 +726,65 @@ resetAllBtn.onclick = async () => {
     }
 };
 
+polandTripBtn.onclick = () => {
+    if (!polandTripDate.value) {
+        const today = new Date();
+        const nextThursday = new Date(today);
+        const daysUntilThursday = (4 - today.getDay() + 7) % 7 || 7;
+        nextThursday.setDate(today.getDate() + daysUntilThursday);
+        polandTripDate.value = dateKey(nextThursday);
+    }
+    polandTripDialog.showModal();
+};
+
+closePolandTripBtn.onclick = () => polandTripDialog.close();
+
+polandTripForm.onsubmit = async (event) => {
+    event.preventDefault();
+    if (!polandTripDate.value) return;
+
+    const [y, m, d] = polandTripDate.value.split("-").map(Number);
+    const tripDay = new Date(y, m - 1, d);
+    const dayOff = new Date(tripDay);
+    dayOff.setDate(dayOff.getDate() + 1);
+
+    const submitBtn = polandTripForm.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+
+    await deleteSessionsForDay(tripDay);
+    const tripStart = new Date(tripDay);
+    tripStart.setHours(6, 0, 0, 0);
+    const tripEnd = new Date(tripStart.getTime() + 6 * 60 * 60 * 1000);
+    await saveEntry({
+        start_time: tripStart.toISOString(),
+        end_time: tripEnd.toISOString(),
+        hours: 6,
+        break_minutes: 0,
+        note: "Wyjazd do Polski – skrócony dzień (6h)"
+    });
+
+    await deleteSessionsForDay(dayOff);
+    const dayOffStart = new Date(dayOff);
+    dayOffStart.setHours(0, 0, 0, 0);
+    await saveEntry({
+        start_time: dayOffStart.toISOString(),
+        end_time: dayOffStart.toISOString(),
+        hours: 0,
+        break_minutes: 0,
+        note: "Dzień wolny (wyjazd do Polski)"
+    });
+
+    selectedMonthKey = monthKey(tripDay);
+    refreshHistoryView(await loadHistory());
+    submitBtn.disabled = false;
+    polandTripDialog.close();
+};
+
 (async function init() {
     document.getElementById("year").textContent = new Date().getFullYear();
 
-    await refreshScheduleCache();
+    await refreshActiveShiftCache();
+    populateActiveShiftSelect();
     refreshHistoryView(await loadHistory());
 
     const savedStart = localStorage.getItem(ACTIVE_START_KEY);

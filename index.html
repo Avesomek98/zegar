@@ -43,6 +43,11 @@
     <button id="startBtn">▶ Rozpocznij pracę</button>
     <button id="stopBtn">■ Zakończ pracę</button>
 
+    <div class="active-shift-row">
+        <label class="field-label" for="activeShiftSelect">Zmiana w tym tygodniu</label>
+        <select id="activeShiftSelect"></select>
+    </div>
+
     <p id="status">Nie pracujesz.</p>
 
     <div id="quickStats" class="quick-stats"></div>
@@ -51,36 +56,24 @@
     <p class="hint">Wybierz miesiąc i kliknij ✏️ przy dniu, żeby poprawić godziny albo go usunąć.</p>
     <select id="monthPicker" class="month-picker"></select>
     <button type="button" id="addDayBtn" class="secondary-btn">+ Dodaj dzień ręcznie</button>
+    <button type="button" id="polandTripBtn" class="secondary-btn">🛫 Wyjazd do Polski</button>
     <div id="history"></div>
 </div>
 
 <footer class="app-footer">
-    <p>Created by Arek &middot; v0.3 &middot; &copy; <span id="year"></span></p>
-    <p class="version-badge">v0.3 &middot; prototype, not yet released for public use</p>
+    <p>Created by Arek &middot; v0.4 &middot; &copy; <span id="year"></span></p>
+    <p class="version-badge">v0.4 &middot; prototype, not yet released for public use</p>
     <button type="button" id="changelogBtn" class="link-btn">Co nowego? (changelog)</button>
 </footer>
 
 <dialog id="settingsDialog">
-    <h2>Ustawienia godzin pracy</h2>
-    <p class="hint">
-        Dla zaznaczonych dni system policzy tylko godziny w podanym przedziale
-        — np. jeśli zaznaczysz start wcześniej albo koniec później, nadmiar
-        zostanie obcięty do podanych godzin. Dni odznaczone liczą się na
-        podstawie realnego czasu start/stop.
-    </p>
-    <form id="scheduleForm">
-        <div id="scheduleRows"></div>
-        <div class="dialog-actions">
-            <button type="button" id="closeSettingsBtn">Anuluj</button>
-            <button type="submit">Zapisz</button>
-        </div>
-    </form>
-
-    <hr class="divider">
-
     <h2>Zarządzanie danymi</h2>
     <p class="hint">Usuwa WSZYSTKIE zapisane godziny pracy z bazy, na wszystkich urządzeniach. Tej operacji nie da się cofnąć.</p>
     <button type="button" id="resetAllBtn" class="danger-btn">Wykasuj wszystkie dane</button>
+
+    <div class="dialog-actions">
+        <button type="button" id="closeSettingsBtn">Zamknij</button>
+    </div>
 </dialog>
 
 <dialog id="editDayDialog">
@@ -103,8 +96,50 @@
     </form>
 </dialog>
 
+<dialog id="polandTripDialog">
+    <h2>Wyjazd do Polski</h2>
+    <p class="hint">
+        Ustawi wybrany dzień (czwartek) na 6 godzin pracy bez przerwy
+        i oznaczy kolejny dzień (piątek) jako dzień wolny. Nadpisze
+        istniejące wpisy dla obu dni.
+    </p>
+    <form id="polandTripForm">
+        <label class="field-label" for="polandTripDate">Data wyjazdu (czwartek)</label>
+        <input type="date" id="polandTripDate" required>
+        <div class="dialog-actions">
+            <button type="button" id="closePolandTripBtn">Anuluj</button>
+            <button type="submit">Zapisz</button>
+        </div>
+    </form>
+</dialog>
+
+<dialog id="customStatsDialog">
+    <h2>Podgląd innego okresu</h2>
+    <form id="customStatsForm">
+        <div class="stat-mode-toggle">
+            <label><input type="radio" name="statMode" value="day" checked> Dzień</label>
+            <label><input type="radio" name="statMode" value="month"> Cały miesiąc</label>
+        </div>
+        <input type="date" id="customStatsDate">
+        <input type="month" id="customStatsMonth" style="display:none">
+        <div class="dialog-actions">
+            <button type="button" id="closeCustomStatsBtn">Anuluj</button>
+            <button type="submit">Pokaż</button>
+        </div>
+    </form>
+</dialog>
+
 <dialog id="changelogDialog">
     <h2>Co nowego</h2>
+
+    <h3>v0.4 &middot; 2026-08-01</h3>
+    <ul class="changelog-list">
+        <li>Nowa kafelka "Inny dzień" w podglądzie godzin — sprawdź dowolny dzień z kalendarza albo podsumowanie całego wybranego miesiąca.</li>
+        <li>"Zmiana w tym tygodniu" na głównym ekranie — szybki wybór jednego z 6 gotowych szablonów godzin (np. 6:00–16:45, 21:45–8:30), który automatycznie przycina zarejestrowane godziny.</li>
+        <li>Poprawka przycinania godzin dla zmian nocnych przechodzących przez północ (np. 21:45–8:30).</li>
+        <li>Nowa opcja "🛫 Wyjazd do Polski" — jednym kliknięciem ustawia skrócony dzień pracy (6h) i oznacza kolejny dzień jako wolny.</li>
+        <li>Usunięto stary, ręczny grafik godzin per dzień tygodnia z Ustawień — zastąpiony prostszą "Zmianą w tym tygodniu".</li>
+    </ul>
 
     <h3>v0.3 &middot; 2026-08-01</h3>
     <ul class="changelog-list">
