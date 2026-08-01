@@ -21,7 +21,10 @@
 <body>
 
 <div class="container">
-    <h1>⏰ Licznik Godzin Pracy</h1>
+    <div class="top-bar">
+        <h1>⏰ Licznik Godzin Pracy</h1>
+        <button id="settingsBtn" class="icon-btn" type="button" aria-label="Ustawienia">⚙</button>
+    </div>
 
     <button id="startBtn">▶ Rozpocznij pracę</button>
     <button id="stopBtn">■ Zakończ pracę</button>
@@ -29,8 +32,25 @@
     <p id="status">Nie pracujesz.</p>
 
     <h2>Historia</h2>
-    <ul id="history"></ul>
+    <div id="history"></div>
 </div>
+
+<dialog id="settingsDialog">
+    <h2>Ustawienia godzin pracy</h2>
+    <p class="hint">
+        Dla zaznaczonych dni system policzy tylko godziny w podanym przedziale
+        — np. jeśli zaznaczysz start wcześniej albo koniec później, nadmiar
+        zostanie obcięty do podanych godzin. Dni odznaczone liczą się na
+        podstawie realnego czasu start/stop.
+    </p>
+    <form id="scheduleForm">
+        <div id="scheduleRows"></div>
+        <div class="dialog-actions">
+            <button type="button" id="closeSettingsBtn">Anuluj</button>
+            <button type="submit">Zapisz</button>
+        </div>
+    </form>
+</dialog>
 
 <script type="module" src="script.js"></script>
 <script>
