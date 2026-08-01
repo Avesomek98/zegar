@@ -56,7 +56,7 @@
         <p id="authMessage" class="hint auth-message" style="display:none;"></p>
 
         <footer class="app-footer auth-footer">
-            <p>Created by Arek &middot; v0.8 &middot; &copy; <span id="authYear"></span></p>
+            <p>Created by Arek &middot; v1.0 &middot; &copy; <span id="authYear"></span></p>
             <p class="version-badge">prototype, not yet released for public use</p>
         </footer>
     </div>
@@ -68,6 +68,7 @@
             <img src="icons/icon-192.png" alt="" class="brand-logo">
             <h1>Kalendarz Pracy</h1>
         </div>
+        <div class="top-bar-poland-slot" id="topBarPolandSlot"></div>
         <div class="top-actions">
             <button id="accountBtn" class="icon-btn" type="button" aria-label="Konto">👤</button>
             <button id="refreshBtn" class="icon-btn" type="button" aria-label="Odśwież aplikację">🔄</button>
@@ -76,42 +77,52 @@
         </div>
     </div>
 
-    <div id="polandStatusCard" class="poland-status-card">
-        <div class="poland-status-flag" id="polandStatusFlag">🇩🇪</div>
-        <div class="poland-status-body">
-            <strong id="polandStatusText">—</strong>
-            <span id="polandCountdownText" class="hint">—</span>
+    <div class="app-sidebar">
+        <div id="polandStatusCard" class="poland-status-card">
+            <div class="poland-status-flag" id="polandStatusFlag">🇩🇪</div>
+            <div class="poland-status-body">
+                <strong id="polandStatusText">—</strong>
+                <span id="polandCountdownText" class="hint">—</span>
+            </div>
         </div>
+
+        <div class="active-shift-row">
+            <label class="field-label" for="activeShiftSelect">Zmiana w tym tygodniu</label>
+            <select id="activeShiftSelect"></select>
+            <div id="customShiftFields" class="custom-shift-fields" style="display:none;">
+                <input type="time" id="activeShiftCustomStart">
+                <input type="time" id="activeShiftCustomEnd">
+                <button type="button" id="applyCustomShiftBtn" class="secondary-btn">Zastosuj</button>
+            </div>
+        </div>
+
+        <div class="sidebar-actions">
+            <button type="button" id="addTodayShiftBtn">✓ Dodaj dzisiejszy dzień</button>
+            <button type="button" id="weekHoursBtn" class="secondary-btn">📅 Dodaj cały tydzień</button>
+            <button type="button" id="vacationBtn" class="secondary-btn">🏖️ Ustaw urlop</button>
+            <button type="button" id="polandTripBtn" class="secondary-btn">🛫 Wyjazd do Polski</button>
+        </div>
+
+        <div id="quickStats" class="quick-stats"></div>
     </div>
 
-    <div class="active-shift-row">
-        <label class="field-label" for="activeShiftSelect">Zmiana w tym tygodniu</label>
-        <select id="activeShiftSelect"></select>
-        <div id="customShiftFields" class="custom-shift-fields" style="display:none;">
-            <input type="time" id="activeShiftCustomStart">
-            <input type="time" id="activeShiftCustomEnd">
-            <button type="button" id="applyCustomShiftBtn" class="secondary-btn">Zastosuj</button>
+    <div class="app-main">
+        <div class="calendar-section">
+            <h2>Historia</h2>
+            <p class="hint">Wybierz miesiąc i kliknij ✏️ przy dniu, żeby poprawić godziny albo go usunąć.</p>
+            <select id="monthPicker" class="month-picker"></select>
+            <div id="monthCalendar" class="month-calendar"></div>
+        </div>
+        <div class="history-section">
+            <button type="button" id="exportMonthBtn" class="secondary-btn">⬇️ Eksportuj miesiąc (CSV)</button>
+            <button type="button" id="addDayBtn" class="secondary-btn">+ Dodaj dzień ręcznie</button>
+            <div id="history"></div>
         </div>
     </div>
-
-    <button type="button" id="addTodayShiftBtn">✓ Dodaj dzisiejszy dzień</button>
-    <button type="button" id="weekHoursBtn" class="secondary-btn">📅 Dodaj cały tydzień</button>
-    <button type="button" id="vacationBtn" class="secondary-btn">🏖️ Ustaw urlop</button>
-    <button type="button" id="polandTripBtn" class="secondary-btn">🛫 Wyjazd do Polski</button>
-
-    <div id="quickStats" class="quick-stats"></div>
-
-    <h2>Historia</h2>
-    <p class="hint">Wybierz miesiąc i kliknij ✏️ przy dniu, żeby poprawić godziny albo go usunąć.</p>
-    <select id="monthPicker" class="month-picker"></select>
-    <div id="monthCalendar" class="month-calendar"></div>
-    <button type="button" id="exportMonthBtn" class="secondary-btn">⬇️ Eksportuj miesiąc (CSV)</button>
-    <button type="button" id="addDayBtn" class="secondary-btn">+ Dodaj dzień ręcznie</button>
-    <div id="history"></div>
 </div>
 
 <footer class="app-footer">
-    <p>Created by Arek &middot; v0.8 &middot; &copy; <span id="year"></span></p>
+    <p>Created by Arek &middot; v1.0 &middot; &copy; <span id="year"></span></p>
     <p class="version-badge">prototype, not yet released for public use</p>
     <button type="button" id="changelogBtn" class="link-btn">Co nowego? (changelog)</button>
 </footer>
@@ -290,6 +301,17 @@
 
 <dialog id="changelogDialog">
     <h2>Co nowego</h2>
+
+    <h3>v1.0 &middot; 2026-08-01</h3>
+    <ul class="changelog-list">
+        <li>Nowy układ interfejsu na komputerze/laptopie (od szerokości ok. 1024px) — telefon wygląda dokładnie tak jak wcześniej, bez zmian.</li>
+        <li>Ekran podzielony na dwa panele: boczny z akcjami w stylu listy zakładek przeglądarki i główny z kalendarzem oraz historią.</li>
+        <li>Logo i nazwa aplikacji w lewym górnym rogu nagłówka; ikony konta, odświeżania, motywu i ustawień w prawym.</li>
+        <li>Karta statusu Polska/Niemcy z odliczaniem do zjazdu przeniesiona na komputerze do nagłówka jako kompaktowa "wysepka".</li>
+        <li>Większy, czytelniejszy kalendarz miesięczny na szerokich ekranach.</li>
+        <li>Płaski układ oddzielony cienkimi liniami zamiast cieni, inspirowany serwisem X/Twitter — sekcje panelu bocznego i głównego są teraz wyraźnie odseparowane, zamiast jednego ciągu treści.</li>
+        <li>Poprawka: przełącznik trybu ciemnego na ekranie logowania na iPhonie nie zasłania już wyspy powiadomień (Dynamic Island) / notcha.</li>
+    </ul>
 
     <h3>v0.8 &middot; 2026-08-01</h3>
     <ul class="changelog-list">

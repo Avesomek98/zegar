@@ -370,6 +370,26 @@ authThemeToggleBtn.onclick = toggleTheme;
 
 updateThemeToggleButton();
 
+// Na desktopie (patrz style.css @media min-width:1024px) okienko "jestes w PL/DE"
+// przenosimy fizycznie do naglowka, zeby nie duplikowac id/logiki. Na telefonie
+// wraca na swoje pierwotne miejsce w panelu bocznym.
+const topBarPolandSlot = document.getElementById("topBarPolandSlot");
+const appSidebar = document.querySelector(".app-sidebar");
+const desktopLayoutQuery = window.matchMedia("(min-width: 1024px)");
+
+function placePolandStatusCard(isDesktop) {
+    if (isDesktop) {
+        if (polandStatusCard.parentElement !== topBarPolandSlot) {
+            topBarPolandSlot.appendChild(polandStatusCard);
+        }
+    } else if (polandStatusCard.parentElement !== appSidebar) {
+        appSidebar.insertBefore(polandStatusCard, appSidebar.firstChild);
+    }
+}
+
+placePolandStatusCard(desktopLayoutQuery.matches);
+desktopLayoutQuery.addEventListener("change", (event) => placePolandStatusCard(event.matches));
+
 refreshBtn.onclick = () => {
     window.location.reload();
 };
