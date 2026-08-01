@@ -317,6 +317,8 @@ body {
 
 .pin-card .link-btn--secondary {
     display: block;
+    width: 100%;
+    text-align: center;
     margin-top: 16px;
     padding-top: 14px;
     border-top: 1px solid var(--divider);

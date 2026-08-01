@@ -213,6 +213,15 @@ supabase.auth.onAuthStateChange((event, session) => {
     }
 });
 
+// Kliknięcie w tło (poza treścią) zamyka dowolne okienko, tak jak w większości apek.
+document.querySelectorAll("dialog").forEach((dialog) => {
+    dialog.addEventListener("click", (event) => {
+        if (event.target === dialog) {
+            dialog.close();
+        }
+    });
+});
+
 const SHIFT_PRESETS = [
     { label: "6:00–16:45", start: "06:00", end: "16:45" },
     { label: "6:00–15:45", start: "06:00", end: "15:45" },
