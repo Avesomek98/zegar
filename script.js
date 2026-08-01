@@ -32,16 +32,58 @@ const scheduleRows = document.getElementById("scheduleRows");
 const closeSettingsBtn = document.getElementById("closeSettingsBtn");
 const resetAllBtn = document.getElementById("resetAllBtn");
 const quickStats = document.getElementById("quickStats");
+const monthPicker = document.getElementById("monthPicker");
+const themeToggleBtn = document.getElementById("themeToggleBtn");
+const changelogBtn = document.getElementById("changelogBtn");
+const changelogDialog = document.getElementById("changelogDialog");
+const closeChangelogBtn = document.getElementById("closeChangelogBtn");
 
 const editDayDialog = document.getElementById("editDayDialog");
+const editDayTitle = document.getElementById("editDayTitle");
 const editDayForm = document.getElementById("editDayForm");
-const editDayDate = document.getElementById("editDayDate");
-const editDayHours = document.getElementById("editDayHours");
+const editDayDateInput = document.getElementById("editDayDateInput");
+const editDayStart = document.getElementById("editDayStart");
+const editDayEnd = document.getElementById("editDayEnd");
+const editDayBreak = document.getElementById("editDayBreak");
 const deleteDayBtn = document.getElementById("deleteDayBtn");
 const closeEditDayBtn = document.getElementById("closeEditDayBtn");
+const addDayBtn = document.getElementById("addDayBtn");
 
 let editingDate = null;
 let dayTotalsCache = new Map();
+let monthsIndexCache = new Map();
+let selectedMonthKey = null;
+
+const NIGHT_START_HOUR = 20;
+const NIGHT_END_HOUR = 6;
+const NIGHT_BONUS_RATE = 0.2;
+const DEFAULT_BREAK_MINUTES = 45;
+
+const THEME_KEY = "theme";
+
+function effectiveTheme() {
+    const stored = localStorage.getItem(THEME_KEY);
+    if (stored === "light" || stored === "dark") return stored;
+    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
+function updateThemeToggleButton() {
+    const theme = effectiveTheme();
+    themeToggleBtn.textContent = theme === "dark" ? "☀️" : "🌙";
+    themeToggleBtn.setAttribute("aria-label", theme === "dark" ? "Włącz jasny motyw" : "Włącz ciemny motyw");
+}
+
+themeToggleBtn.onclick = () => {
+    const next = effectiveTheme() === "dark" ? "light" : "dark";
+    localStorage.setItem(THEME_KEY, next);
+    document.documentElement.dataset.theme = next;
+    updateThemeToggleButton();
+};
+
+updateThemeToggleButton();
+
+changelogBtn.onclick = () => changelogDialog.showModal();
+closeChangelogBtn.onclick = () => changelogDialog.close();
 
 let scheduleCache = {};
 
@@ -136,20 +178,24 @@ async function deleteSessionsForDay(date) {
     return true;
 }
 
-async function replaceDayHours(date, hours) {
+async function replaceDaySession(date, start, end, breakMinutes) {
     const deleted = await deleteSessionsForDay(date);
     if (!deleted) return false;
 
+    const hours = (end - start) / 1000 / 60 / 60;
     if (hours > 0) {
-        const { start } = dayBounds(date);
-        const end = new Date(start.getTime() + hours * 60 * 60 * 1000);
         await saveEntry({
             start_time: start.toISOString(),
             end_time: end.toISOString(),
-            hours: Number(hours.toFixed(2))
+            hours: Number(hours.toFixed(2)),
+            break_minutes: breakMinutes
         });
     }
     return true;
+}
+
+function netHours(session) {
+    return Math.max(0, session.hours - session.breakMinutes / 60);
 }
 
 async function resetAllData() {
@@ -174,6 +220,83 @@ function monthKey(d) {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
+function formatTime(d) {
+    return d.toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" });
+}
+
+function timeInputValue(d) {
+    return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
+// Ile godzin z przedziału [start, end] wypada w porze nocnej (20:00-6:00).
+function nightOverlapHours(start, end) {
+    let totalMs = 0;
+    const cursor = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+    cursor.setDate(cursor.getDate() - 1);
+
+    while (cursor.getTime() <= end.getTime()) {
+        const nightStart = new Date(cursor);
+        nightStart.setHours(NIGHT_START_HOUR, 0, 0, 0);
+        const nightEnd = new Date(cursor);
+        nightEnd.setDate(nightEnd.getDate() + 1);
+        nightEnd.setHours(NIGHT_END_HOUR, 0, 0, 0);
+
+        const overlapStart = start > nightStart ? start : nightStart;
+        const overlapEnd = end < nightEnd ? end : nightEnd;
+        if (overlapEnd > overlapStart) {
+            totalMs += overlapEnd - overlapStart;
+        }
+
+        cursor.setDate(cursor.getDate() + 1);
+    }
+
+    return totalMs / 1000 / 60 / 60;
+}
+
+function buildDayTotals(entries) {
+    const dayTotals = new Map();
+    entries.forEach((entry) => {
+        const date = new Date(entry.start_time);
+        const key = dateKey(date);
+        const net = netHours({
+            hours: Number(entry.hours),
+            breakMinutes: Number(entry.break_minutes ?? DEFAULT_BREAK_MINUTES)
+        });
+        const existing = dayTotals.get(key);
+        dayTotals.set(key, {
+            date,
+            hours: (existing ? existing.hours : 0) + net
+        });
+    });
+    return dayTotals;
+}
+
+function buildMonthsIndex(entries) {
+    const months = new Map();
+    entries.forEach((entry) => {
+        const start = new Date(entry.start_time);
+        const end = new Date(entry.end_time);
+        const dKey = dateKey(start);
+        const mKey = monthKey(start);
+
+        if (!months.has(mKey)) {
+            months.set(mKey, { date: start, days: new Map() });
+        }
+        const month = months.get(mKey);
+
+        if (!month.days.has(dKey)) {
+            month.days.set(dKey, { date: start, sessions: [] });
+        }
+        month.days.get(dKey).sessions.push({
+            start,
+            end,
+            hours: Number(entry.hours),
+            breakMinutes: Number(entry.break_minutes ?? DEFAULT_BREAK_MINUTES)
+        });
+    });
+    return months;
+}
+
 function renderQuickStats() {
     const now = new Date();
     const yesterday = new Date(now);
@@ -194,74 +317,117 @@ function renderQuickStats() {
     `;
 }
 
-function renderHistory(entries) {
+function populateMonthPicker(months) {
+    const sortedKeys = [...months.keys()].sort().reverse();
+    monthPicker.innerHTML = "";
+
+    if (sortedKeys.length === 0) {
+        const option = document.createElement("option");
+        option.value = "";
+        option.textContent = "Brak danych";
+        monthPicker.appendChild(option);
+        monthPicker.disabled = true;
+        return null;
+    }
+
+    monthPicker.disabled = false;
+    sortedKeys.forEach((key) => {
+        const month = months.get(key);
+        const option = document.createElement("option");
+        option.value = key;
+        option.textContent = `${MONTH_NAMES[month.date.getMonth()]} ${month.date.getFullYear()}`;
+        monthPicker.appendChild(option);
+    });
+
+    const keep = sortedKeys.includes(selectedMonthKey) ? selectedMonthKey : sortedKeys[0];
+    monthPicker.value = keep;
+    return keep;
+}
+
+function renderMonth(key) {
+    selectedMonthKey = key;
     history.innerHTML = "";
 
-    const dayTotals = new Map();
-    entries.forEach((entry) => {
-        const date = new Date(entry.start_time);
-        const key = dateKey(date);
-        const existing = dayTotals.get(key);
-        dayTotals.set(key, {
-            date,
-            hours: (existing ? existing.hours : 0) + Number(entry.hours)
-        });
-    });
-    dayTotalsCache = dayTotals;
-    renderQuickStats();
-
-    const months = new Map();
-    dayTotals.forEach(({ date, hours }, key) => {
-        const mKey = monthKey(date);
-        if (!months.has(mKey)) {
-            months.set(mKey, { date, days: [], total: 0 });
-        }
-        const month = months.get(mKey);
-        month.days.push({ date, hours, dayKey: key });
-        month.total += hours;
-    });
-
-    const sortedMonthKeys = [...months.keys()].sort().reverse();
-
-    if (sortedMonthKeys.length === 0) {
+    const month = monthsIndexCache.get(key);
+    if (!month) {
         const empty = document.createElement("p");
-        empty.textContent = "Brak zapisanych godzin.";
+        empty.textContent = "Brak zapisanych godzin w tym miesiącu.";
         history.appendChild(empty);
         return;
     }
 
-    sortedMonthKeys.forEach((key) => {
-        const month = months.get(key);
+    let monthHours = 0;
+    let monthNight = 0;
 
-        const section = document.createElement("section");
-        section.className = "month-group";
+    [...month.days.keys()].sort().reverse().forEach((dKey) => {
+        const day = month.days.get(dKey);
+        let dayHours = 0;
 
-        const heading = document.createElement("h3");
-        heading.textContent = `${MONTH_NAMES[month.date.getMonth()]} ${month.date.getFullYear()}`;
-        section.appendChild(heading);
+        const sessionsHtml = day.sessions
+            .sort((a, b) => a.start - b.start)
+            .map((session) => {
+                const net = netHours(session);
+                const night = nightOverlapHours(session.start, session.end);
+                dayHours += net;
+                monthNight += night;
 
-        const list = document.createElement("ul");
-        month.days
-            .sort((a, b) => b.date - a.date)
-            .forEach(({ date, hours, dayKey }) => {
-                const item = document.createElement("li");
-                item.className = "day-row";
-                item.innerHTML = `
-                    <span>${date.toLocaleDateString()} - ${hours.toFixed(2)} godz.</span>
-                    <button type="button" class="edit-day-btn" data-day-key="${dayKey}" aria-label="Edytuj dzień">✏️</button>
+                const nightNote = night > 0.005
+                    ? `<span class="night-badge">🌙 ${night.toFixed(2)} godz. nocnych &middot; +${(night * NIGHT_BONUS_RATE).toFixed(2)} godz. dodatku (20%)</span>`
+                    : "";
+
+                return `
+                    <div class="session-row">
+                        <span>${formatTime(session.start)}–${formatTime(session.end)}</span>
+                        <span>${net.toFixed(2)} godz.</span>
+                    </div>
+                    <div class="session-meta">brutto ${session.hours.toFixed(2)} godz. &middot; −${session.breakMinutes} min przerwy</div>
+                    ${nightNote}
                 `;
-                list.appendChild(item);
-            });
-        section.appendChild(list);
+            })
+            .join("");
 
-        const total = document.createElement("p");
-        total.className = "month-total";
-        total.textContent = `Suma: ${month.total.toFixed(2)} godz.`;
-        section.appendChild(total);
+        monthHours += dayHours;
 
-        history.appendChild(section);
+        const card = document.createElement("div");
+        card.className = "day-card";
+        card.innerHTML = `
+            <div class="day-card-header">
+                <strong>${day.date.toLocaleDateString("pl-PL", { weekday: "long", day: "numeric", month: "long" })}</strong>
+                <span>${dayHours.toFixed(2)} godz.</span>
+                <button type="button" class="edit-day-btn" data-day-key="${dKey}" aria-label="Edytuj dzień">✏️</button>
+            </div>
+            ${sessionsHtml}
+        `;
+        history.appendChild(card);
     });
+
+    const bonus = monthNight * NIGHT_BONUS_RATE;
+    const total = document.createElement("p");
+    total.className = "month-total";
+    total.textContent = monthNight > 0.005
+        ? `Suma: ${monthHours.toFixed(2)} godz. · 🌙 ${monthNight.toFixed(2)} godz. nocnych · +${bonus.toFixed(2)} godz. dodatku · razem ${(monthHours + bonus).toFixed(2)} godz. efektywnych`
+        : `Suma: ${monthHours.toFixed(2)} godz.`;
+    history.appendChild(total);
 }
+
+function refreshHistoryView(entries) {
+    dayTotalsCache = buildDayTotals(entries);
+    renderQuickStats();
+
+    monthsIndexCache = buildMonthsIndex(entries);
+    const key = populateMonthPicker(monthsIndexCache);
+
+    if (key) {
+        renderMonth(key);
+    } else {
+        history.innerHTML = "";
+        const empty = document.createElement("p");
+        empty.textContent = "Brak zapisanych godzin.";
+        history.appendChild(empty);
+    }
+}
+
+monthPicker.onchange = () => renderMonth(monthPicker.value);
 
 function setActive(time) {
     status.textContent = "Praca rozpoczęta o " + time.toLocaleTimeString();
@@ -296,9 +462,10 @@ stopBtn.onclick = async () => {
     await saveEntry({
         start_time: startTime.toISOString(),
         end_time: endTime.toISOString(),
-        hours: Number(diff.toFixed(2))
+        hours: Number(diff.toFixed(2)),
+        break_minutes: DEFAULT_BREAK_MINUTES
     });
-    renderHistory(await loadHistory());
+    refreshHistoryView(await loadHistory());
 
     localStorage.removeItem(ACTIVE_START_KEY);
     startTime = null;
@@ -355,34 +522,81 @@ scheduleForm.onsubmit = async (event) => {
     settingsDialog.close();
 };
 
+// editingDate = data dnia, ktory faktycznie istnieje w bazie (do skasowania/przeniesienia).
+// null oznacza tryb "dodaj nowy dzien" - nic nie trzeba usuwac przed zapisem.
+function openEditDialog({ original, date, start, end, breakMinutes }) {
+    editingDate = original;
+    editDayTitle.textContent = original ? "Edytuj dzień" : "Dodaj dzień";
+    deleteDayBtn.style.display = original ? "" : "none";
+    editDayDateInput.value = dateKey(date);
+    editDayStart.value = start ? timeInputValue(start) : "";
+    editDayEnd.value = end ? timeInputValue(end) : "";
+    editDayBreak.value = breakMinutes;
+    editDayDialog.showModal();
+}
+
 history.addEventListener("click", (event) => {
     const btn = event.target.closest(".edit-day-btn");
     if (!btn) return;
 
-    const entry = dayTotalsCache.get(btn.dataset.dayKey);
-    if (!entry) return;
+    const dayKey = btn.dataset.dayKey;
+    const day = monthsIndexCache.get(selectedMonthKey)?.days.get(dayKey);
+    if (!day || day.sessions.length === 0) return;
 
-    editingDate = entry.date;
-    editDayDate.textContent = entry.date.toLocaleDateString("pl-PL", {
-        weekday: "long", day: "numeric", month: "long", year: "numeric"
+    const primarySession = day.sessions.reduce((min, s) => (s.start < min.start ? s : min), day.sessions[0]);
+    const earliestStart = day.sessions.reduce((min, s) => (s.start < min ? s.start : min), day.sessions[0].start);
+    const latestEnd = day.sessions.reduce((max, s) => (s.end > max ? s.end : max), day.sessions[0].end);
+
+    openEditDialog({
+        original: earliestStart,
+        date: earliestStart,
+        start: earliestStart,
+        end: latestEnd,
+        breakMinutes: primarySession.breakMinutes
     });
-    editDayHours.value = entry.hours.toFixed(2);
-    editDayDialog.showModal();
 });
+
+addDayBtn.onclick = () => {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    openEditDialog({
+        original: null,
+        date: yesterday,
+        start: null,
+        end: null,
+        breakMinutes: DEFAULT_BREAK_MINUTES
+    });
+};
 
 closeEditDayBtn.onclick = () => editDayDialog.close();
 
 editDayForm.onsubmit = async (event) => {
     event.preventDefault();
-    if (!editingDate) return;
 
-    const hours = parseFloat(editDayHours.value);
-    if (isNaN(hours) || hours < 0) return;
+    const [y, mo, dd] = editDayDateInput.value.split("-").map(Number);
+    const [sh, sm] = editDayStart.value.split(":").map(Number);
+    const [eh, em] = editDayEnd.value.split(":").map(Number);
+    const breakMinutes = parseInt(editDayBreak.value, 10);
+    if ([y, mo, dd, sh, sm, eh, em].some((n) => Number.isNaN(n)) || Number.isNaN(breakMinutes) || breakMinutes < 0) return;
+
+    const targetDate = new Date(y, mo - 1, dd);
+    const start = new Date(y, mo - 1, dd, sh, sm, 0, 0);
+    const end = new Date(y, mo - 1, dd, eh, em, 0, 0);
+    if (end <= start) {
+        end.setDate(end.getDate() + 1);
+    }
 
     const submitBtn = editDayForm.querySelector('button[type="submit"]');
     submitBtn.disabled = true;
-    await replaceDayHours(editingDate, hours);
-    renderHistory(await loadHistory());
+
+    if (editingDate && dateKey(editingDate) !== dateKey(targetDate)) {
+        await deleteSessionsForDay(editingDate);
+    }
+    await replaceDaySession(targetDate, start, end, breakMinutes);
+
+    selectedMonthKey = monthKey(targetDate);
+    refreshHistoryView(await loadHistory());
     submitBtn.disabled = false;
     editDayDialog.close();
 };
@@ -393,7 +607,7 @@ deleteDayBtn.onclick = async () => {
 
     deleteDayBtn.disabled = true;
     await deleteSessionsForDay(editingDate);
-    renderHistory(await loadHistory());
+    refreshHistoryView(await loadHistory());
     deleteDayBtn.disabled = false;
     editDayDialog.close();
 };
@@ -408,7 +622,7 @@ resetAllBtn.onclick = async () => {
 
     if (ok) {
         settingsDialog.close();
-        renderHistory(await loadHistory());
+        refreshHistoryView(await loadHistory());
     }
 };
 
@@ -416,7 +630,7 @@ resetAllBtn.onclick = async () => {
     document.getElementById("year").textContent = new Date().getFullYear();
 
     await refreshScheduleCache();
-    renderHistory(await loadHistory());
+    refreshHistoryView(await loadHistory());
 
     const savedStart = localStorage.getItem(ACTIVE_START_KEY);
     if (savedStart) {

@@ -17,6 +17,14 @@
     <link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png">
 
     <link rel="stylesheet" href="style.css">
+    <script>
+        (function () {
+            var theme = localStorage.getItem("theme");
+            if (theme === "light" || theme === "dark") {
+                document.documentElement.dataset.theme = theme;
+            }
+        })();
+    </script>
 </head>
 <body>
 
@@ -26,7 +34,10 @@
             <img src="icons/icon-192.png" alt="" class="brand-logo">
             <h1>Licznik Godzin Pracy</h1>
         </div>
-        <button id="settingsBtn" class="icon-btn" type="button" aria-label="Ustawienia">⚙</button>
+        <div class="top-actions">
+            <button id="themeToggleBtn" class="icon-btn" type="button" aria-label="Przełącz motyw">🌙</button>
+            <button id="settingsBtn" class="icon-btn" type="button" aria-label="Ustawienia">⚙</button>
+        </div>
     </div>
 
     <button id="startBtn">▶ Rozpocznij pracę</button>
@@ -37,13 +48,16 @@
     <div id="quickStats" class="quick-stats"></div>
 
     <h2>Historia</h2>
-    <p class="hint">Kliknij ✏️ przy dniu, żeby poprawić godziny albo go usunąć.</p>
+    <p class="hint">Wybierz miesiąc i kliknij ✏️ przy dniu, żeby poprawić godziny albo go usunąć.</p>
+    <select id="monthPicker" class="month-picker"></select>
+    <button type="button" id="addDayBtn" class="secondary-btn">+ Dodaj dzień ręcznie</button>
     <div id="history"></div>
 </div>
 
 <footer class="app-footer">
     <p>Made by Arek &middot; &copy; <span id="year"></span></p>
-    <p class="version-badge">wersja 0.1 &middot; prototyp, jeszcze nie do użytku publicznego</p>
+    <p class="version-badge">v1.1 &middot; prototype, not yet released for public use</p>
+    <button type="button" id="changelogBtn" class="link-btn">Co nowego? (changelog)</button>
 </footer>
 
 <dialog id="settingsDialog">
@@ -64,23 +78,58 @@
 
     <hr class="divider">
 
-    <h2>Strefa niebezpieczna</h2>
+    <h2>Zarządzanie danymi</h2>
     <p class="hint">Usuwa WSZYSTKIE zapisane godziny pracy z bazy, na wszystkich urządzeniach. Tej operacji nie da się cofnąć.</p>
     <button type="button" id="resetAllBtn" class="danger-btn">Wykasuj wszystkie dane</button>
 </dialog>
 
 <dialog id="editDayDialog">
-    <h2>Edytuj dzień</h2>
-    <p id="editDayDate" class="hint"></p>
+    <h2 id="editDayTitle">Edytuj dzień</h2>
     <form id="editDayForm">
-        <label class="field-label" for="editDayHours">Godziny</label>
-        <input type="number" id="editDayHours" step="0.01" min="0" required>
+        <label class="field-label" for="editDayDateInput">Data</label>
+        <input type="date" id="editDayDateInput" required>
+        <label class="field-label" for="editDayStart">Od</label>
+        <input type="time" id="editDayStart" required>
+        <label class="field-label" for="editDayEnd">Do</label>
+        <input type="time" id="editDayEnd" required>
+        <label class="field-label" for="editDayBreak">Przerwa (min)</label>
+        <input type="number" id="editDayBreak" min="0" step="1" value="45" required>
+        <p class="hint">Jeśli "Do" jest wcześniej niż "Od" (np. 20:00 → 6:00), system założy, że zmiana kończy się następnego dnia. Przerwa jest odejmowana od czasu brutto — wynikiem jest czas netto.</p>
         <div class="dialog-actions">
             <button type="button" id="deleteDayBtn" class="danger-btn">Usuń dzień</button>
             <button type="button" id="closeEditDayBtn">Anuluj</button>
             <button type="submit">Zapisz</button>
         </div>
     </form>
+</dialog>
+
+<dialog id="changelogDialog">
+    <h2>Co nowego</h2>
+
+    <h3>v1.1 &middot; 2026-08-01</h3>
+    <ul class="changelog-list">
+        <li>Wybór miesiąca w historii + godziny "od–do" przy każdej sesji, nie tylko suma.</li>
+        <li>Dodatek nocny 20% za godziny 20:00–6:00, wyliczany automatycznie.</li>
+        <li>Przerwa 45 min domyślnie odejmowana od każdego dnia (brutto vs netto), z możliwością edycji.</li>
+        <li>Edycja dnia: zmiana godzin, przerwy, a nawet daty wpisu.</li>
+        <li>Ręczne dodawanie dni wstecz (np. uzupełnienie zeszłego miesiąca).</li>
+        <li>Usuwanie pojedynczego dnia i reset całej bazy danych.</li>
+        <li>Podgląd "Dziś" / "Wczoraj" nad historią.</li>
+        <li>Tryb ciemny — automatyczny wg systemu + ręczny przełącznik.</li>
+        <li>Przewijana lista historii zamiast rozciągania całej strony.</li>
+        <li>Nowe logo aplikacji i poprawiony nagłówek.</li>
+    </ul>
+
+    <h3>v0.1 &middot; pierwsza wersja</h3>
+    <ul class="changelog-list">
+        <li>Start/stop liczący godziny pracy, zapisywane w Supabase i zsynchronizowane między urządzeniami.</li>
+        <li>Konfigurowalny grafik zmian z automatycznym przycinaniem godzin spoza zmiany.</li>
+        <li>Instalacja jako PWA na iPhone (ikona, działanie offline).</li>
+    </ul>
+
+    <div class="dialog-actions">
+        <button type="button" id="closeChangelogBtn">Zamknij</button>
+    </div>
 </dialog>
 
 <script type="module" src="script.js"></script>
