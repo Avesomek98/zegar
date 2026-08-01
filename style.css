@@ -21,12 +21,19 @@
     --night-badge-bg: #eef2ff;
     --night-badge-text: #4338ca;
 
+    --sunday-badge-bg: #fdf2f8;
+    --sunday-badge-text: #be185d;
+
     --danger-bg: #fee2e2;
     --danger-text: #b91c1c;
     --danger-border: #fca5a5;
 
     --version-bg: #fffbeb;
     --version-text: #b45309;
+
+    --weekend-bg: #fff7ed;
+    --weekend-accent: #f59e0b;
+    --weekend-text: #9a3412;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -51,12 +58,19 @@
         --night-badge-bg: #2a2650;
         --night-badge-text: #b6a9ff;
 
+        --sunday-badge-bg: #3a1730;
+        --sunday-badge-text: #f472b6;
+
         --danger-bg: #3a1d20;
         --danger-text: #ff8a8a;
         --danger-border: #5c2b30;
 
         --version-bg: #3a2f15;
         --version-text: #f0c674;
+
+        --weekend-bg: #3a2712;
+        --weekend-accent: #f0b429;
+        --weekend-text: #f5c88a;
     }
 }
 
@@ -78,11 +92,16 @@
     --session-text: #c3c7d1;
     --night-badge-bg: #2a2650;
     --night-badge-text: #b6a9ff;
+    --sunday-badge-bg: #3a1730;
+    --sunday-badge-text: #f472b6;
     --danger-bg: #3a1d20;
     --danger-text: #ff8a8a;
     --danger-border: #5c2b30;
     --version-bg: #3a2f15;
     --version-text: #f0c674;
+    --weekend-bg: #3a2712;
+    --weekend-accent: #f0b429;
+    --weekend-text: #f5c88a;
 }
 
 :root[data-theme="light"] {
@@ -103,11 +122,16 @@
     --session-text: #444;
     --night-badge-bg: #eef2ff;
     --night-badge-text: #4338ca;
+    --sunday-badge-bg: #fdf2f8;
+    --sunday-badge-text: #be185d;
     --danger-bg: #fee2e2;
     --danger-text: #b91c1c;
     --danger-border: #fca5a5;
     --version-bg: #fffbeb;
     --version-text: #b45309;
+    --weekend-bg: #fff7ed;
+    --weekend-accent: #f59e0b;
+    --weekend-text: #9a3412;
 }
 
 body {
@@ -252,6 +276,15 @@ li {
     margin-top: 0;
 }
 
+.day-card--weekend {
+    background: var(--weekend-bg);
+    border-left: 3px solid var(--weekend-accent);
+}
+
+.day-card--weekend .day-card-header strong {
+    color: var(--weekend-text);
+}
+
 .day-card-header {
     display: flex;
     align-items: center;
@@ -289,6 +322,17 @@ li {
     font-size: 12px;
     color: var(--night-badge-text);
     background: var(--night-badge-bg);
+    padding: 2px 8px;
+    border-radius: 999px;
+}
+
+.sunday-badge {
+    display: inline-block;
+    margin-top: 4px;
+    margin-left: 6px;
+    font-size: 12px;
+    color: var(--sunday-badge-text);
+    background: var(--sunday-badge-bg);
     padding: 2px 8px;
     border-radius: 999px;
 }

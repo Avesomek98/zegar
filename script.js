@@ -56,7 +56,6 @@ let selectedMonthKey = null;
 
 const NIGHT_START_HOUR = 20;
 const NIGHT_END_HOUR = 6;
-const NIGHT_BONUS_RATE = 0.2;
 const DEFAULT_BREAK_MINUTES = 45;
 
 const THEME_KEY = "theme";
@@ -253,6 +252,30 @@ function nightOverlapHours(start, end) {
     return totalMs / 1000 / 60 / 60;
 }
 
+// Ile godzin z przedziału [start, end] wypada w niedzielę (kalendarzowo, 00:00-24:00).
+function sundayOverlapHours(start, end) {
+    let totalMs = 0;
+    const cursor = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+
+    while (cursor.getTime() < end.getTime()) {
+        if (cursor.getDay() === 0) {
+            const dayStart = new Date(cursor);
+            const dayEnd = new Date(cursor);
+            dayEnd.setDate(dayEnd.getDate() + 1);
+
+            const overlapStart = start > dayStart ? start : dayStart;
+            const overlapEnd = end < dayEnd ? end : dayEnd;
+            if (overlapEnd > overlapStart) {
+                totalMs += overlapEnd - overlapStart;
+            }
+        }
+
+        cursor.setDate(cursor.getDate() + 1);
+    }
+
+    return totalMs / 1000 / 60 / 60;
+}
+
 function buildDayTotals(entries) {
     const dayTotals = new Map();
     entries.forEach((entry) => {
@@ -358,6 +381,7 @@ function renderMonth(key) {
 
     let monthHours = 0;
     let monthNight = 0;
+    let monthSunday = 0;
 
     [...month.days.keys()].sort().reverse().forEach((dKey) => {
         const day = month.days.get(dKey);
@@ -368,11 +392,16 @@ function renderMonth(key) {
             .map((session) => {
                 const net = netHours(session);
                 const night = nightOverlapHours(session.start, session.end);
+                const sunday = sundayOverlapHours(session.start, session.end);
                 dayHours += net;
                 monthNight += night;
+                monthSunday += sunday;
 
                 const nightNote = night > 0.005
-                    ? `<span class="night-badge">🌙 ${night.toFixed(2)} godz. nocnych &middot; +${(night * NIGHT_BONUS_RATE).toFixed(2)} godz. dodatku (20%)</span>`
+                    ? `<span class="night-badge">🌙 ${night.toFixed(2)} godz. nocnych</span>`
+                    : "";
+                const sundayNote = sunday > 0.005
+                    ? `<span class="sunday-badge">🔴 ${sunday.toFixed(2)} godz. niedzielnych</span>`
                     : "";
 
                 return `
@@ -382,14 +411,18 @@ function renderMonth(key) {
                     </div>
                     <div class="session-meta">brutto ${session.hours.toFixed(2)} godz. &middot; −${session.breakMinutes} min przerwy</div>
                     ${nightNote}
+                    ${sundayNote}
                 `;
             })
             .join("");
 
         monthHours += dayHours;
 
+        const dow = day.date.getDay();
+        const isWeekend = dow === 0 || dow === 6;
+
         const card = document.createElement("div");
-        card.className = "day-card";
+        card.className = "day-card" + (isWeekend ? " day-card--weekend" : "");
         card.innerHTML = `
             <div class="day-card-header">
                 <strong>${day.date.toLocaleDateString("pl-PL", { weekday: "long", day: "numeric", month: "long" })}</strong>
@@ -401,12 +434,13 @@ function renderMonth(key) {
         history.appendChild(card);
     });
 
-    const bonus = monthNight * NIGHT_BONUS_RATE;
+    const totalParts = [`Suma: ${monthHours.toFixed(2)} godz.`];
+    if (monthNight > 0.005) totalParts.push(`🌙 ${monthNight.toFixed(2)} godz. nocnych`);
+    if (monthSunday > 0.005) totalParts.push(`🔴 ${monthSunday.toFixed(2)} godz. niedzielnych`);
+
     const total = document.createElement("p");
     total.className = "month-total";
-    total.textContent = monthNight > 0.005
-        ? `Suma: ${monthHours.toFixed(2)} godz. · 🌙 ${monthNight.toFixed(2)} godz. nocnych · +${bonus.toFixed(2)} godz. dodatku · razem ${(monthHours + bonus).toFixed(2)} godz. efektywnych`
-        : `Suma: ${monthHours.toFixed(2)} godz.`;
+    total.textContent = totalParts.join(" · ");
     history.appendChild(total);
 }
 
