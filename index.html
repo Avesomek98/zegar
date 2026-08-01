@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Licznik Godzin Pracy</title>
+    <title>Kalendarz Pracy</title>
 
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#4a90d9">
@@ -11,7 +11,7 @@
     <!-- iOS PWA support -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Godziny Pracy">
+    <meta name="apple-mobile-web-app-title" content="Kalendarz Pracy">
     <link rel="apple-touch-icon" href="icons/icon-180.png">
     <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
     <link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png">
@@ -23,23 +23,42 @@
             if (theme === "light" || theme === "dark") {
                 document.documentElement.dataset.theme = theme;
             }
-            if (localStorage.getItem("pinVerified") === "1") {
-                document.documentElement.dataset.pinOk = "1";
-            }
         })();
     </script>
 </head>
 <body>
 
-<div id="pinGate" class="pin-gate">
+<div id="authGate" class="pin-gate">
+    <button type="button" id="authThemeToggleBtn" class="icon-btn auth-theme-toggle" aria-label="Przełącz motyw">🌙</button>
     <div class="pin-card">
         <img src="icons/icon-192.png" alt="" class="pin-logo">
-        <h2>Podaj PIN</h2>
-        <form id="pinForm">
-            <input type="password" inputmode="numeric" pattern="[0-9]*" id="pinInput" maxlength="8" autocomplete="off" autofocus>
-            <button type="submit">Odblokuj</button>
-        </form>
-        <p id="pinError" class="hint pin-error" style="display:none;">Zły PIN, spróbuj ponownie.</p>
+        <h1 class="auth-brand-title">Kalendarz Pracy</h1>
+
+        <div id="authNormalSection">
+            <h2 id="authTitle">Zaloguj się</h2>
+            <form id="authForm">
+                <input type="email" id="authEmail" placeholder="E-mail" autocomplete="username" required>
+                <input type="password" id="authPassword" placeholder="Hasło" autocomplete="current-password" minlength="6" required>
+                <button type="submit" id="authSubmitBtn">Zaloguj się</button>
+            </form>
+            <button type="button" id="authToggleBtn" class="link-btn">Nie masz konta? Zarejestruj się</button>
+            <button type="button" id="forgotPasswordBtn" class="link-btn link-btn--secondary">Zapomniałeś hasła?</button>
+        </div>
+
+        <div id="authRecoverySection" style="display:none;">
+            <h2>Ustaw nowe hasło</h2>
+            <form id="recoveryForm">
+                <input type="password" id="recoveryPassword" placeholder="Nowe hasło (min. 6 znaków)" minlength="6" required>
+                <button type="submit">Zapisz nowe hasło</button>
+            </form>
+        </div>
+
+        <p id="authMessage" class="hint auth-message" style="display:none;"></p>
+
+        <footer class="app-footer auth-footer">
+            <p>Created by Arek &middot; v0.8 &middot; &copy; <span id="authYear"></span></p>
+            <p class="version-badge">prototype, not yet released for public use</p>
+        </footer>
     </div>
 </div>
 
@@ -47,9 +66,10 @@
     <div class="top-bar">
         <div class="brand">
             <img src="icons/icon-192.png" alt="" class="brand-logo">
-            <h1>Licznik Godzin Pracy</h1>
+            <h1>Kalendarz Pracy</h1>
         </div>
         <div class="top-actions">
+            <button id="accountBtn" class="icon-btn" type="button" aria-label="Konto">👤</button>
             <button id="refreshBtn" class="icon-btn" type="button" aria-label="Odśwież aplikację">🔄</button>
             <button id="themeToggleBtn" class="icon-btn" type="button" aria-label="Przełącz motyw">🌙</button>
             <button id="settingsBtn" class="icon-btn" type="button" aria-label="Ustawienia">⚙</button>
@@ -91,14 +111,47 @@
 </div>
 
 <footer class="app-footer">
-    <p>Created by Arek &middot; v0.7 &middot; &copy; <span id="year"></span></p>
-    <p class="version-badge">v0.7 &middot; prototype, not yet released for public use</p>
+    <p>Created by Arek &middot; v0.8 &middot; &copy; <span id="year"></span></p>
+    <p class="version-badge">prototype, not yet released for public use</p>
     <button type="button" id="changelogBtn" class="link-btn">Co nowego? (changelog)</button>
 </footer>
 
+<dialog id="accountDialog">
+    <h2>Konto</h2>
+    <p class="hint">Zalogowano jako <strong id="accountDialogEmail">—</strong></p>
+    <div class="dialog-actions">
+        <button type="button" id="accountLogoutBtn" class="danger-btn">Wyloguj się</button>
+        <button type="button" id="accountManageBtn">Zarządzaj kontem</button>
+        <button type="button" id="closeAccountBtn">Zamknij</button>
+    </div>
+</dialog>
+
 <dialog id="settingsDialog">
+    <h2>Konto</h2>
+    <p class="hint">Zalogowano jako <strong id="accountEmail">—</strong></p>
+    <button type="button" id="logoutBtn" class="secondary-btn">Wyloguj się</button>
+
+    <form id="changeEmailForm">
+        <label class="field-label" for="newEmailInput">Zmień e-mail</label>
+        <input type="email" id="newEmailInput" placeholder="nowy@email.com" required>
+        <button type="submit">Zmień e-mail</button>
+    </form>
+    <p id="changeEmailMessage" class="hint auth-message" style="display:none;"></p>
+
+    <form id="changePasswordForm">
+        <label class="field-label" for="newPasswordInput">Zmień hasło</label>
+        <input type="password" id="newPasswordInput" minlength="6" placeholder="Nowe hasło (min. 6 znaków)" required>
+        <button type="submit">Zmień hasło</button>
+    </form>
+    <p id="changePasswordMessage" class="hint auth-message" style="display:none;"></p>
+
+    <p class="hint">Usunięcie konta kasuje bezpowrotnie Twoje konto i WSZYSTKIE Twoje dane.</p>
+    <button type="button" id="deleteAccountBtn" class="danger-btn">Usuń konto na zawsze</button>
+
+    <hr class="divider">
+
     <h2>Zarządzanie danymi</h2>
-    <p class="hint">Usuwa WSZYSTKIE zapisane godziny pracy z bazy, na wszystkich urządzeniach. Tej operacji nie da się cofnąć.</p>
+    <p class="hint">Usuwa WSZYSTKIE zapisane godziny pracy z bazy. Tej operacji nie da się cofnąć.</p>
     <button type="button" id="resetAllBtn" class="danger-btn">Wykasuj wszystkie dane</button>
 
     <div class="dialog-actions">
@@ -237,6 +290,19 @@
 
 <dialog id="changelogDialog">
     <h2>Co nowego</h2>
+
+    <h3>v0.8 &middot; 2026-08-01</h3>
+    <ul class="changelog-list">
+        <li>Usunięto PIN — zastąpiony prawdziwym logowaniem przez Supabase Auth (e-mail + hasło), z rejestracją i wylogowaniem.</li>
+        <li>Każdy użytkownik ma teraz własne, w pełni odizolowane dane (wymuszone na poziomie bazy danych, nie tylko w kodzie apki).</li>
+        <li>Sesja utrzymuje się po odświeżeniu strony — nie trzeba logować się za każdym razem.</li>
+        <li>Nowy wskaźnik konta (👤) w rogu ekranu — szybki podgląd zalogowanego e-maila, wylogowanie i dostęp do zarządzania kontem.</li>
+        <li>Zarządzanie kontem: zmiana e-maila, zmiana hasła, usunięcie konta wraz ze wszystkimi danymi.</li>
+        <li>Reset zapomnianego hasła przez link wysyłany na e-mail.</li>
+        <li>Nowoczesny redesign ekranu logowania — nazwa i logo apki, gradientowe tło, przełącznik trybu ciemnego dostępny już na ekranie logowania.</li>
+        <li>Zmieniono oficjalną nazwę aplikacji na "Kalendarz Pracy".</li>
+        <li>Poprawka: otwarte okienka (np. Ustawienia) zamykają się automatycznie po wylogowaniu.</li>
+    </ul>
 
     <h3>v0.7 &middot; 2026-08-01</h3>
     <ul class="changelog-list">

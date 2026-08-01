@@ -1,6 +1,6 @@
 {
-    "name": "Licznik Godzin Pracy",
-    "short_name": "Godziny Pracy",
+    "name": "Kalendarz Pracy",
+    "short_name": "Kalendarz Pracy",
     "start_url": "./index.html",
     "scope": "./",
     "display": "standalone",

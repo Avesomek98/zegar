@@ -1,33 +1,217 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
-import { SUPABASE_URL, SUPABASE_ANON_KEY, PIN_HASH } from "./config.js";
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./config.js";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-const PIN_VERIFIED_KEY = "pinVerified";
 
-async function sha256Hex(text) {
-    const data = new TextEncoder().encode(text);
-    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-    return [...new Uint8Array(hashBuffer)].map((b) => b.toString(16).padStart(2, "0")).join("");
+let currentUserId = null;
+let appStarted = false;
+
+const authForm = document.getElementById("authForm");
+const authTitle = document.getElementById("authTitle");
+const authEmail = document.getElementById("authEmail");
+const authPassword = document.getElementById("authPassword");
+const authSubmitBtn = document.getElementById("authSubmitBtn");
+const authToggleBtn = document.getElementById("authToggleBtn");
+const authMessage = document.getElementById("authMessage");
+const authNormalSection = document.getElementById("authNormalSection");
+const authRecoverySection = document.getElementById("authRecoverySection");
+const forgotPasswordBtn = document.getElementById("forgotPasswordBtn");
+const recoveryForm = document.getElementById("recoveryForm");
+const recoveryPassword = document.getElementById("recoveryPassword");
+const accountEmail = document.getElementById("accountEmail");
+const logoutBtn = document.getElementById("logoutBtn");
+const changeEmailForm = document.getElementById("changeEmailForm");
+const newEmailInput = document.getElementById("newEmailInput");
+const changeEmailMessage = document.getElementById("changeEmailMessage");
+const changePasswordForm = document.getElementById("changePasswordForm");
+const newPasswordInput = document.getElementById("newPasswordInput");
+const changePasswordMessage = document.getElementById("changePasswordMessage");
+const deleteAccountBtn = document.getElementById("deleteAccountBtn");
+
+let authMode = "login";
+
+function setStatusMessage(el, text, isSuccess) {
+    el.textContent = text;
+    el.style.display = text ? "block" : "none";
+    el.classList.toggle("auth-message--success", Boolean(isSuccess));
 }
 
-const pinForm = document.getElementById("pinForm");
-const pinInput = document.getElementById("pinInput");
-const pinError = document.getElementById("pinError");
+function showAuthMessage(text, isSuccess) {
+    setStatusMessage(authMessage, text, isSuccess);
+}
 
-pinForm.onsubmit = async (event) => {
-    event.preventDefault();
-    const hash = await sha256Hex(pinInput.value.trim());
-
-    if (hash === PIN_HASH) {
-        localStorage.setItem(PIN_VERIFIED_KEY, "1");
-        document.documentElement.dataset.pinOk = "1";
-        pinError.style.display = "none";
+function updateAuthModeUI() {
+    if (authMode === "login") {
+        authTitle.textContent = "Zaloguj się";
+        authSubmitBtn.textContent = "Zaloguj się";
+        authToggleBtn.textContent = "Nie masz konta? Zarejestruj się";
     } else {
-        pinError.style.display = "block";
-        pinInput.value = "";
-        pinInput.focus();
+        authTitle.textContent = "Zarejestruj się";
+        authSubmitBtn.textContent = "Zarejestruj się";
+        authToggleBtn.textContent = "Masz już konto? Zaloguj się";
+    }
+    showAuthMessage("");
+}
+
+authToggleBtn.onclick = () => {
+    authMode = authMode === "login" ? "register" : "login";
+    updateAuthModeUI();
+};
+
+authForm.onsubmit = async (event) => {
+    event.preventDefault();
+    showAuthMessage("");
+    authSubmitBtn.disabled = true;
+
+    const email = authEmail.value.trim();
+    const password = authPassword.value;
+
+    const { data, error } = authMode === "login"
+        ? await supabase.auth.signInWithPassword({ email, password })
+        : await supabase.auth.signUp({ email, password });
+
+    authSubmitBtn.disabled = false;
+
+    if (error) {
+        showAuthMessage(error.message, false);
+        return;
+    }
+
+    if (authMode === "register" && !data.session) {
+        showAuthMessage("Konto utworzone. Sprawdź e-mail, żeby potwierdzić rejestrację, a potem się zaloguj.", true);
+        authMode = "login";
+        updateAuthModeUI();
     }
 };
+
+forgotPasswordBtn.onclick = async () => {
+    const email = authEmail.value.trim();
+    if (!email) {
+        showAuthMessage("Najpierw wpisz swój e-mail w polu powyżej.", false);
+        authEmail.focus();
+        return;
+    }
+
+    forgotPasswordBtn.disabled = true;
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin + window.location.pathname
+    });
+    forgotPasswordBtn.disabled = false;
+
+    if (error) {
+        showAuthMessage(error.message, false);
+        return;
+    }
+    showAuthMessage("Jeśli podany e-mail jest zarejestrowany, wysłaliśmy na niego link do resetu hasła.", true);
+};
+
+recoveryForm.onsubmit = async (event) => {
+    event.preventDefault();
+    const submitBtn = recoveryForm.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+
+    const { error } = await supabase.auth.updateUser({ password: recoveryPassword.value });
+
+    submitBtn.disabled = false;
+
+    if (error) {
+        alert(error.message);
+        return;
+    }
+
+    recoveryForm.reset();
+    authRecoverySection.style.display = "none";
+    authNormalSection.style.display = "block";
+    document.documentElement.dataset.authOk = "1";
+    if (!appStarted) {
+        appStarted = true;
+        initApp();
+    }
+};
+
+logoutBtn.onclick = async () => {
+    await supabase.auth.signOut();
+};
+
+changeEmailForm.onsubmit = async (event) => {
+    event.preventDefault();
+    setStatusMessage(changeEmailMessage, "");
+    const submitBtn = changeEmailForm.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+
+    const { error } = await supabase.auth.updateUser({ email: newEmailInput.value.trim() });
+
+    submitBtn.disabled = false;
+
+    if (error) {
+        setStatusMessage(changeEmailMessage, error.message, false);
+        return;
+    }
+    setStatusMessage(changeEmailMessage, "Sprawdź skrzynkę (starą i nową), żeby potwierdzić zmianę e-maila.", true);
+    changeEmailForm.reset();
+};
+
+changePasswordForm.onsubmit = async (event) => {
+    event.preventDefault();
+    setStatusMessage(changePasswordMessage, "");
+    const submitBtn = changePasswordForm.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+
+    const { error } = await supabase.auth.updateUser({ password: newPasswordInput.value });
+
+    submitBtn.disabled = false;
+
+    if (error) {
+        setStatusMessage(changePasswordMessage, error.message, false);
+        return;
+    }
+    setStatusMessage(changePasswordMessage, "Hasło zmienione.", true);
+    changePasswordForm.reset();
+};
+
+deleteAccountBtn.onclick = async () => {
+    if (!confirm("Na pewno chcesz usunąć swoje konto? Skasuje to WSZYSTKIE Twoje dane bezpowrotnie.")) return;
+    if (!confirm("Na 100%? Tej operacji nie da się cofnąć.")) return;
+
+    deleteAccountBtn.disabled = true;
+    const { error } = await supabase.rpc("delete_own_account");
+    deleteAccountBtn.disabled = false;
+
+    if (error) {
+        console.error(error);
+        alert("Nie udało się usunąć konta: " + error.message);
+        return;
+    }
+
+    await supabase.auth.signOut();
+};
+
+supabase.auth.onAuthStateChange((event, session) => {
+    if (event === "PASSWORD_RECOVERY") {
+        currentUserId = session?.user?.id || null;
+        authNormalSection.style.display = "none";
+        authRecoverySection.style.display = "block";
+        return;
+    }
+
+    if (session?.user) {
+        currentUserId = session.user.id;
+        accountEmail.textContent = session.user.email || "—";
+        document.documentElement.dataset.authOk = "1";
+        if (!appStarted) {
+            appStarted = true;
+            initApp();
+        }
+    } else {
+        currentUserId = null;
+        appStarted = false;
+        delete document.documentElement.dataset.authOk;
+        authForm.reset();
+        document.querySelectorAll("dialog").forEach((dialog) => {
+            if (dialog.open) dialog.close();
+        });
+    }
+});
 
 const SHIFT_PRESETS = [
     { label: "6:00–16:45", start: "06:00", end: "16:45" },
@@ -49,6 +233,13 @@ const polandScheduleDialog = document.getElementById("polandScheduleDialog");
 const polandScheduleList = document.getElementById("polandScheduleList");
 const closePolandScheduleBtn = document.getElementById("closePolandScheduleBtn");
 const history = document.getElementById("history");
+const accountBtn = document.getElementById("accountBtn");
+const accountDialog = document.getElementById("accountDialog");
+const accountDialogEmail = document.getElementById("accountDialogEmail");
+const accountLogoutBtn = document.getElementById("accountLogoutBtn");
+const accountManageBtn = document.getElementById("accountManageBtn");
+const closeAccountBtn = document.getElementById("closeAccountBtn");
+
 const settingsBtn = document.getElementById("settingsBtn");
 const settingsDialog = document.getElementById("settingsDialog");
 const closeSettingsBtn = document.getElementById("closeSettingsBtn");
@@ -58,6 +249,7 @@ const monthPicker = document.getElementById("monthPicker");
 const exportMonthBtn = document.getElementById("exportMonthBtn");
 const monthCalendar = document.getElementById("monthCalendar");
 const themeToggleBtn = document.getElementById("themeToggleBtn");
+const authThemeToggleBtn = document.getElementById("authThemeToggleBtn");
 const refreshBtn = document.getElementById("refreshBtn");
 const changelogBtn = document.getElementById("changelogBtn");
 const changelogDialog = document.getElementById("changelogDialog");
@@ -148,16 +340,24 @@ function effectiveTheme() {
 
 function updateThemeToggleButton() {
     const theme = effectiveTheme();
-    themeToggleBtn.textContent = theme === "dark" ? "☀️" : "🌙";
-    themeToggleBtn.setAttribute("aria-label", theme === "dark" ? "Włącz jasny motyw" : "Włącz ciemny motyw");
+    const label = theme === "dark" ? "Włącz jasny motyw" : "Włącz ciemny motyw";
+    const icon = theme === "dark" ? "☀️" : "🌙";
+
+    themeToggleBtn.textContent = icon;
+    themeToggleBtn.setAttribute("aria-label", label);
+    authThemeToggleBtn.textContent = icon;
+    authThemeToggleBtn.setAttribute("aria-label", label);
 }
 
-themeToggleBtn.onclick = () => {
+function toggleTheme() {
     const next = effectiveTheme() === "dark" ? "light" : "dark";
     localStorage.setItem(THEME_KEY, next);
     document.documentElement.dataset.theme = next;
     updateThemeToggleButton();
-};
+}
+
+themeToggleBtn.onclick = toggleTheme;
+authThemeToggleBtn.onclick = toggleTheme;
 
 updateThemeToggleButton();
 
@@ -166,14 +366,18 @@ refreshBtn.onclick = () => {
 };
 
 changelogBtn.onclick = () => changelogDialog.showModal();
+
+const currentYear = String(new Date().getFullYear());
+document.getElementById("year").textContent = currentYear;
+document.getElementById("authYear").textContent = currentYear;
 closeChangelogBtn.onclick = () => changelogDialog.close();
 
 async function refreshActiveShiftCache() {
     const { data, error } = await supabase
         .from("app_settings")
         .select("active_shift")
-        .eq("id", 1)
-        .single();
+        .eq("user_id", currentUserId)
+        .maybeSingle();
 
     if (error) {
         console.error(error);
@@ -185,7 +389,10 @@ async function refreshActiveShiftCache() {
 async function saveActiveShift(shift) {
     const { error } = await supabase
         .from("app_settings")
-        .upsert({ id: 1, active_shift: shift, updated_at: new Date().toISOString() });
+        .upsert(
+            { user_id: currentUserId, active_shift: shift, updated_at: new Date().toISOString() },
+            { onConflict: "user_id" }
+        );
 
     if (error) {
         console.error(error);
@@ -262,7 +469,7 @@ async function loadHistory() {
 }
 
 async function saveEntry(entry) {
-    const { error } = await supabase.from("work_sessions").insert(entry);
+    const { error } = await supabase.from("work_sessions").insert({ ...entry, user_id: currentUserId });
     if (error) {
         console.error(error);
         alert("Nie udało się zapisać wpisu w bazie.");
@@ -960,6 +1167,23 @@ addTodayShiftBtn.onclick = async () => {
 settingsBtn.onclick = () => settingsDialog.showModal();
 closeSettingsBtn.onclick = () => settingsDialog.close();
 
+accountBtn.onclick = () => {
+    accountDialogEmail.textContent = accountEmail.textContent;
+    accountDialog.showModal();
+};
+
+closeAccountBtn.onclick = () => accountDialog.close();
+
+accountManageBtn.onclick = () => {
+    accountDialog.close();
+    settingsDialog.showModal();
+};
+
+accountLogoutBtn.onclick = async () => {
+    accountDialog.close();
+    await supabase.auth.signOut();
+};
+
 // editingDate = data dnia, ktory faktycznie istnieje w bazie (do skasowania/przeniesienia).
 // null oznacza tryb "dodaj nowy dzien" - nic nie trzeba usuwac przed zapisem.
 const editDayPresetOptions = SHIFT_PRESETS
@@ -1473,12 +1697,10 @@ polandStatusCard.onclick = () => {
 
 closePolandScheduleBtn.onclick = () => polandScheduleDialog.close();
 
-(async function init() {
-    document.getElementById("year").textContent = new Date().getFullYear();
-
+async function initApp() {
     renderPolandStatus();
 
     await refreshActiveShiftCache();
     populateActiveShiftSelect();
     refreshHistoryView(await loadHistory());
-})();
+}

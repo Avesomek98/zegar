@@ -205,13 +205,21 @@ body {
     display: none;
 }
 
-:root[data-pin-ok] .container,
-:root[data-pin-ok] .app-footer {
+:root[data-auth-ok] .container,
+:root[data-auth-ok] .app-footer {
     display: block;
 }
 
-:root[data-pin-ok] #pinGate {
+:root[data-auth-ok] #authGate {
     display: none;
+}
+
+#authGate .auth-footer {
+    display: block;
+    max-width: none;
+    margin: 18px 0 0;
+    padding: 14px 0 0;
+    border-top: 1px solid var(--divider);
 }
 
 .pin-gate {
@@ -220,52 +228,108 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--bg);
+    background:
+        radial-gradient(circle at 20% 15%, rgba(79, 140, 255, .16), transparent 55%),
+        radial-gradient(circle at 85% 85%, rgba(45, 55, 150, .14), transparent 55%),
+        var(--bg);
     padding: 20px;
     box-sizing: border-box;
     z-index: 1000;
 }
 
+.auth-theme-toggle {
+    position: absolute;
+    top: 18px;
+    right: 18px;
+    width: auto;
+}
+
 .pin-card {
-    max-width: 320px;
+    max-width: 340px;
     width: 100%;
     background: var(--card-bg);
-    border-radius: 12px;
-    box-shadow: 0 0 10px var(--shadow);
-    padding: 30px 24px;
+    border-radius: 20px;
+    box-shadow: 0 12px 40px var(--shadow);
+    padding: 34px 26px;
     text-align: center;
+    animation: auth-card-in .35s ease;
+}
+
+@keyframes auth-card-in {
+    from { opacity: 0; transform: translateY(8px) scale(.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .pin-logo {
-    width: 48px;
-    height: 48px;
-    border-radius: 12px;
-    margin-bottom: 12px;
-    box-shadow: 0 2px 6px rgba(45, 55, 150, .25);
+    width: 72px;
+    height: 72px;
+    border-radius: 18px;
+    margin-bottom: 16px;
+    box-shadow: 0 8px 24px rgba(45, 55, 150, .35);
+}
+
+.auth-brand-title {
+    margin: 0 0 4px;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: .1px;
+    color: var(--text);
 }
 
 .pin-card h2 {
-    margin: 0 0 16px;
-    font-size: 18px;
-    color: var(--text);
+    margin: 0 0 22px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-muted);
 }
 
-#pinInput {
+.pin-card input {
     width: 100%;
-    padding: 12px;
-    font-size: 22px;
-    text-align: center;
-    letter-spacing: 6px;
+    padding: 13px 14px;
+    font-size: 16px;
     box-sizing: border-box;
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: 10px;
     background: var(--input-bg);
     color: var(--text);
+    margin-bottom: 10px;
+    transition: border-color .15s ease, box-shadow .15s ease;
 }
 
-.pin-error {
+.pin-card input:focus {
+    outline: none;
+    border-color: #4f8cff;
+    box-shadow: 0 0 0 3px rgba(79, 140, 255, .2);
+}
+
+#authSubmitBtn {
+    background: linear-gradient(135deg, #4f8cff, #2d3796);
+    color: #ffffff;
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    box-shadow: 0 6px 16px rgba(45, 55, 150, .35);
+}
+
+.pin-card .link-btn {
+    margin-top: 14px;
+}
+
+.pin-card .link-btn--secondary {
+    display: block;
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid var(--divider);
+    color: var(--text-faint);
+}
+
+.auth-message {
     color: var(--danger-text);
     margin: 12px 0 0;
+}
+
+.auth-message.auth-message--success {
+    color: var(--vacation-accent);
 }
 
 button {
@@ -862,6 +926,12 @@ dialog::backdrop {
     border: 1px solid var(--danger-border);
 }
 
+.divider {
+    border: none;
+    border-top: 1px solid var(--divider);
+    margin: 20px 0;
+}
+
 .field-label {
     display: block;
     font-size: 14px;
@@ -885,7 +955,9 @@ dialog::backdrop {
 #weekHoursForm input[type="date"],
 #weekHoursForm input[type="time"],
 #weekHoursForm input[type="number"],
-#weekHoursForm select {
+#weekHoursForm select,
+#changeEmailForm input,
+#changePasswordForm input {
     width: 100%;
     padding: 10px;
     font-size: 16px;
