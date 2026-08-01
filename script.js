@@ -31,6 +31,7 @@ pinForm.onsubmit = async (event) => {
 
 const SHIFT_PRESETS = [
     { label: "6:00–16:45", start: "06:00", end: "16:45" },
+    { label: "6:00–15:45", start: "06:00", end: "15:45" },
     { label: "19:30–6:00", start: "19:30", end: "06:00" },
     { label: "Sobota 6:00–14:45", start: "06:00", end: "14:45" }
 ];
