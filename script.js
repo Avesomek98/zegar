@@ -234,10 +234,13 @@ const MONTH_NAMES = [
 ];
 
 const addTodayShiftBtn = document.getElementById("addTodayShiftBtn");
+const polandStatusRow = document.getElementById("polandStatusRow");
 const polandStatusCard = document.getElementById("polandStatusCard");
 const polandStatusFlag = document.getElementById("polandStatusFlag");
 const polandStatusText = document.getElementById("polandStatusText");
 const polandCountdownText = document.getElementById("polandCountdownText");
+const polandVacationCard = document.getElementById("polandVacationCard");
+const polandVacationCountdownText = document.getElementById("polandVacationCountdownText");
 const polandScheduleDialog = document.getElementById("polandScheduleDialog");
 const polandScheduleList = document.getElementById("polandScheduleList");
 const closePolandScheduleBtn = document.getElementById("closePolandScheduleBtn");
@@ -379,11 +382,11 @@ const desktopLayoutQuery = window.matchMedia("(min-width: 1024px)");
 
 function placePolandStatusCard(isDesktop) {
     if (isDesktop) {
-        if (polandStatusCard.parentElement !== topBarPolandSlot) {
-            topBarPolandSlot.appendChild(polandStatusCard);
+        if (polandStatusRow.parentElement !== topBarPolandSlot) {
+            topBarPolandSlot.appendChild(polandStatusRow);
         }
-    } else if (polandStatusCard.parentElement !== appSidebar) {
-        appSidebar.insertBefore(polandStatusCard, appSidebar.firstChild);
+    } else if (polandStatusRow.parentElement !== appSidebar) {
+        appSidebar.insertBefore(polandStatusRow, appSidebar.firstChild);
     }
 }
 
@@ -1637,6 +1640,29 @@ function findNearestFutureDate(dateKeySet, fromDate) {
     return nearest;
 }
 
+// Pokazuje osobne okienko z odliczaniem do najblizszego zaplanowanego urlopu,
+// o ile nie jest on juz opisany w glownej karcie statusu (unikamy duplikatu).
+function updateVacationCountdown(todayMidnight, { suppress = false } = {}) {
+    if (suppress) {
+        polandVacationCard.style.display = "none";
+        return;
+    }
+
+    const nearestVacationStart = findNearestFutureDate(vacationDatesCache, todayMidnight);
+    if (!nearestVacationStart) {
+        polandVacationCard.style.display = "none";
+        return;
+    }
+
+    const daysUntilVacation = daysBetween(todayMidnight, nearestVacationStart);
+    const label = nearestVacationStart.toLocaleDateString("pl-PL", { day: "numeric", month: "long", year: "numeric" });
+
+    polandVacationCountdownText.textContent = daysUntilVacation === 0
+        ? "Zaczyna się dziś!"
+        : `Za ${daysUntilVacation} ${daysUntilVacation === 1 ? "dzień" : "dni"} (${label})`;
+    polandVacationCard.style.display = "";
+}
+
 function renderPolandStatus() {
     const today = new Date();
     const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
@@ -1656,6 +1682,7 @@ function renderPolandStatus() {
         polandCountdownText.textContent = daysUntilReturn === 0
             ? "Dziś wracasz do Niemiec"
             : `Wracasz do Niemiec za ${daysUntilReturn} ${daysUntilReturn === 1 ? "dzień" : "dni"} (urlop)`;
+        updateVacationCountdown(todayMidnight, { suppress: true });
         return;
     }
 
@@ -1670,6 +1697,7 @@ function renderPolandStatus() {
         polandCountdownText.textContent = daysUntilReturn === 0
             ? "Dziś wracasz do Niemiec"
             : `Wracasz do Niemiec za ${daysUntilReturn} ${daysUntilReturn === 1 ? "dzień" : "dni"}`;
+        updateVacationCountdown(todayMidnight);
         return;
     }
 
@@ -1695,6 +1723,8 @@ function renderPolandStatus() {
     polandCountdownText.textContent = daysUntilNextTrip === 0
         ? (isVacationTrip ? "Dziś zaczyna się Twój urlop w Polsce!" : "Dziś jedziesz do Polski!")
         : `Zjazd do Polski za ${daysUntilNextTrip} ${daysUntilNextTrip === 1 ? "dzień" : "dni"} (${nextTripLabel}${isVacationTrip ? " — urlop" : ""})`;
+    // Jesli najblizszy urlop to ten sam wyjazd co wyzej (isVacationTrip), nie duplikujemy informacji.
+    updateVacationCountdown(todayMidnight, { suppress: isVacationTrip });
 }
 
 function nextPolandTripDates(count) {

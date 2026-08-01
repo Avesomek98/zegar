@@ -56,7 +56,7 @@
         <p id="authMessage" class="hint auth-message" style="display:none;"></p>
 
         <footer class="app-footer auth-footer">
-            <p>Created by Arek &middot; v1.0 &middot; &copy; <span id="authYear"></span></p>
+            <p>Created by Arek &middot; v1.1 &middot; &copy; <span id="authYear"></span></p>
             <p class="version-badge">prototype, not yet released for public use</p>
         </footer>
     </div>
@@ -78,11 +78,20 @@
     </div>
 
     <div class="app-sidebar">
-        <div id="polandStatusCard" class="poland-status-card">
-            <div class="poland-status-flag" id="polandStatusFlag">🇩🇪</div>
-            <div class="poland-status-body">
-                <strong id="polandStatusText">—</strong>
-                <span id="polandCountdownText" class="hint">—</span>
+        <div class="poland-status-row" id="polandStatusRow">
+            <div id="polandStatusCard" class="poland-status-card">
+                <div class="poland-status-flag" id="polandStatusFlag">🇩🇪</div>
+                <div class="poland-status-body">
+                    <strong id="polandStatusText">—</strong>
+                    <span id="polandCountdownText" class="hint">—</span>
+                </div>
+            </div>
+            <div id="polandVacationCard" class="poland-status-card poland-status-card--vacation" style="display:none;">
+                <div class="poland-status-flag">🌴</div>
+                <div class="poland-status-body">
+                    <strong>Urlop</strong>
+                    <span id="polandVacationCountdownText" class="hint">—</span>
+                </div>
             </div>
         </div>
 
@@ -122,7 +131,7 @@
 </div>
 
 <footer class="app-footer">
-    <p>Created by Arek &middot; v1.0 &middot; &copy; <span id="year"></span></p>
+    <p>Created by Arek &middot; v1.1 &middot; &copy; <span id="year"></span></p>
     <p class="version-badge">prototype, not yet released for public use</p>
     <button type="button" id="changelogBtn" class="link-btn">Co nowego? (changelog)</button>
 </footer>
@@ -301,6 +310,12 @@
 
 <dialog id="changelogDialog">
     <h2>Co nowego</h2>
+
+    <h3>v1.1 &middot; 2026-08-01</h3>
+    <ul class="changelog-list">
+        <li>Nowe okienko z odliczaniem do najbliższego zaplanowanego urlopu, obok karty statusu Polska/Niemcy — pojawia się, gdy w kalendarzu jest wpisany nadchodzący urlop.</li>
+        <li>Ujednolicono wygląd przycisków szybkich akcji ("Dodaj dzisiejszy dzień", "Dodaj cały tydzień" itd.) na telefonie — teraz wyglądają tak samo jak na komputerze, płasko i bez ramek zamiast domyślnego stylu przycisków.</li>
+    </ul>
 
     <h3>v1.0 &middot; 2026-08-01</h3>
     <ul class="changelog-list">

@@ -742,6 +742,31 @@ dialog::backdrop {
     margin: 0;
 }
 
+.poland-status-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.poland-status-row .poland-status-card {
+    margin-top: 0;
+    flex: 1 1 150px;
+}
+
+.poland-status-card--vacation {
+    cursor: default;
+    background: var(--vacation-bg);
+}
+
+.poland-status-card--vacation .poland-status-body strong {
+    color: var(--vacation-text);
+}
+
+.poland-status-card--vacation .poland-status-body .hint {
+    color: var(--vacation-text);
+}
+
 .active-shift-row {
     margin-top: 10px;
 }
@@ -780,6 +805,37 @@ dialog::backdrop {
     width: auto;
     margin-top: 0;
     padding: 10px 14px;
+}
+
+/* Lista akcji jak nawigacja w X: plaska, bez ramki-pudelka, pigulkowe podswietlenie na hover */
+.sidebar-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 15px;
+}
+
+.sidebar-actions button {
+    width: 100%;
+    margin-top: 0;
+    padding: 12px 14px;
+    font-size: 15px;
+    text-align: left;
+    background: none;
+    border: none;
+    border-radius: 999px;
+    color: var(--text);
+    cursor: pointer;
+    transition: background .12s ease;
+}
+
+.sidebar-actions button:hover {
+    background: var(--day-card-bg);
+}
+
+#addTodayShiftBtn {
+    font-weight: 700;
+    color: var(--worked-bg);
 }
 
 .session-note {
@@ -1035,6 +1091,11 @@ dialog::backdrop {
         margin-right: 18px;
     }
 
+    .top-bar-poland-slot .poland-status-row {
+        margin-top: 0;
+        flex-wrap: nowrap;
+    }
+
     .top-bar-poland-slot .poland-status-card {
         margin-top: 0;
         padding: 8px 16px;
@@ -1102,36 +1163,6 @@ dialog::backdrop {
         margin-top: 18px;
         padding-top: 18px;
         border-top: 1px solid var(--divider);
-    }
-
-    /* Lista akcji jak nawigacja w X: plaska, bez ramki-pudelka, pigulkowe podswietlenie na hover */
-    .sidebar-actions {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-    }
-
-    .sidebar-actions button {
-        width: 100%;
-        margin-top: 0;
-        padding: 12px 14px;
-        font-size: 15px;
-        text-align: left;
-        background: none;
-        border: none;
-        border-radius: 999px;
-        color: var(--text);
-        cursor: pointer;
-        transition: background .12s ease;
-    }
-
-    .sidebar-actions button:hover {
-        background: var(--day-card-bg);
-    }
-
-    #addTodayShiftBtn {
-        font-weight: 700;
-        color: var(--worked-bg);
     }
 
     .active-shift-row .field-label {
