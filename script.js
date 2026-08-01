@@ -1,27 +1,45 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./config.js";
+import { SUPABASE_URL, SUPABASE_ANON_KEY, PIN_HASH } from "./config.js";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-const ACTIVE_START_KEY = "activeStartTime";
+const PIN_VERIFIED_KEY = "pinVerified";
+
+async function sha256Hex(text) {
+    const data = new TextEncoder().encode(text);
+    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+    return [...new Uint8Array(hashBuffer)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+const pinForm = document.getElementById("pinForm");
+const pinInput = document.getElementById("pinInput");
+const pinError = document.getElementById("pinError");
+
+pinForm.onsubmit = async (event) => {
+    event.preventDefault();
+    const hash = await sha256Hex(pinInput.value.trim());
+
+    if (hash === PIN_HASH) {
+        localStorage.setItem(PIN_VERIFIED_KEY, "1");
+        document.documentElement.dataset.pinOk = "1";
+        pinError.style.display = "none";
+    } else {
+        pinError.style.display = "block";
+        pinInput.value = "";
+        pinInput.focus();
+    }
+};
 
 const SHIFT_PRESETS = [
     { label: "6:00–16:45", start: "06:00", end: "16:45" },
-    { label: "6:00–15:45", start: "06:00", end: "15:45" },
-    { label: "11:30–22:15", start: "11:30", end: "22:15" },
-    { label: "14:00–22:15", start: "14:00", end: "22:15" },
     { label: "19:30–6:00", start: "19:30", end: "06:00" },
-    { label: "21:45–8:30", start: "21:45", end: "08:30" }
+    { label: "Sobota 6:00–14:45", start: "06:00", end: "14:45" }
 ];
 const MONTH_NAMES = [
     "Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec",
     "Lipiec", "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień"
 ];
 
-let startTime = null;
-
-const startBtn = document.getElementById("startBtn");
-const stopBtn = document.getElementById("stopBtn");
-const status = document.getElementById("status");
+const addTodayShiftBtn = document.getElementById("addTodayShiftBtn");
 const history = document.getElementById("history");
 const settingsBtn = document.getElementById("settingsBtn");
 const settingsDialog = document.getElementById("settingsDialog");
@@ -45,6 +63,10 @@ const deleteDayBtn = document.getElementById("deleteDayBtn");
 const closeEditDayBtn = document.getElementById("closeEditDayBtn");
 const addDayBtn = document.getElementById("addDayBtn");
 const activeShiftSelect = document.getElementById("activeShiftSelect");
+const customShiftFields = document.getElementById("customShiftFields");
+const activeShiftCustomStart = document.getElementById("activeShiftCustomStart");
+const activeShiftCustomEnd = document.getElementById("activeShiftCustomEnd");
+const applyCustomShiftBtn = document.getElementById("applyCustomShiftBtn");
 
 const customStatsDialog = document.getElementById("customStatsDialog");
 const customStatsForm = document.getElementById("customStatsForm");
@@ -126,43 +148,53 @@ function populateActiveShiftSelect() {
     const presetOptions = SHIFT_PRESETS
         .map((p, i) => `<option value="${i}">${p.label}</option>`)
         .join("");
-    activeShiftSelect.innerHTML = `<option value="">Brak (nie przycinaj godzin)</option>${presetOptions}`;
+    activeShiftSelect.innerHTML = `${presetOptions}<option value="custom">Własne godziny na ten tydzień…</option>`;
 
-    const idx = activeShiftCache
-        ? SHIFT_PRESETS.findIndex((p) => p.start === activeShiftCache.start && p.end === activeShiftCache.end)
-        : -1;
-    activeShiftSelect.value = idx >= 0 ? String(idx) : "";
+    if (!activeShiftCache) {
+        activeShiftSelect.value = "0";
+        customShiftFields.style.display = "none";
+        return;
+    }
+
+    const idx = SHIFT_PRESETS.findIndex((p) => p.start === activeShiftCache.start && p.end === activeShiftCache.end);
+
+    if (idx >= 0) {
+        activeShiftSelect.value = String(idx);
+        customShiftFields.style.display = "none";
+    } else {
+        activeShiftSelect.value = "custom";
+        activeShiftCustomStart.value = activeShiftCache.start;
+        activeShiftCustomEnd.value = activeShiftCache.end;
+        customShiftFields.style.display = "flex";
+    }
 }
 
 activeShiftSelect.onchange = async () => {
+    if (activeShiftSelect.value === "custom") {
+        customShiftFields.style.display = "flex";
+        return;
+    }
+
+    customShiftFields.style.display = "none";
     const preset = SHIFT_PRESETS[activeShiftSelect.value];
     activeShiftSelect.disabled = true;
     await saveActiveShift(preset ? { start: preset.start, end: preset.end, label: preset.label } : null);
     activeShiftSelect.disabled = false;
 };
 
-function clampToSchedule(start, end) {
-    const rule = activeShiftCache;
-    if (!rule) {
-        return { start, end };
-    }
+applyCustomShiftBtn.onclick = async () => {
+    if (!activeShiftCustomStart.value || !activeShiftCustomEnd.value) return;
 
-    const [sh, sm] = rule.start.split(":").map(Number);
-    const schedStart = new Date(start);
-    schedStart.setHours(sh, sm, 0, 0);
-
-    const [eh, em] = rule.end.split(":").map(Number);
-    const schedEnd = new Date(start);
-    schedEnd.setHours(eh, em, 0, 0);
-    if (schedEnd <= schedStart) {
-        schedEnd.setDate(schedEnd.getDate() + 1);
-    }
-
-    return {
-        start: start < schedStart ? schedStart : start,
-        end: end > schedEnd ? schedEnd : end
+    const shift = {
+        start: activeShiftCustomStart.value,
+        end: activeShiftCustomEnd.value,
+        label: `${activeShiftCustomStart.value}–${activeShiftCustomEnd.value}`
     };
-}
+
+    applyCustomShiftBtn.disabled = true;
+    await saveActiveShift(shift);
+    applyCustomShiftBtn.disabled = false;
+};
 
 async function loadHistory() {
     const { data, error } = await supabase
@@ -172,7 +204,7 @@ async function loadHistory() {
 
     if (error) {
         console.error(error);
-        status.textContent = "Błąd wczytywania historii z bazy.";
+        alert("Błąd wczytywania historii z bazy.");
         return [];
     }
     return data;
@@ -576,47 +608,26 @@ function refreshHistoryView(entries) {
 
 monthPicker.onchange = () => renderMonth(monthPicker.value);
 
-function setActive(time) {
-    status.textContent = "Praca rozpoczęta o " + time.toLocaleTimeString();
-    startBtn.disabled = true;
-    stopBtn.disabled = false;
-}
-
-function setIdle() {
-    status.textContent = "Nie pracujesz.";
-    startBtn.disabled = false;
-    stopBtn.disabled = true;
-}
-
-startBtn.onclick = () => {
-    startTime = new Date();
-    localStorage.setItem(ACTIVE_START_KEY, startTime.toISOString());
-    setActive(startTime);
-};
-
-stopBtn.onclick = async () => {
-    if (!startTime) {
-        alert("Najpierw rozpocznij pracę.");
+addTodayShiftBtn.onclick = async () => {
+    if (!activeShiftCache) {
+        alert("Najpierw wybierz zmianę w tym tygodniu.");
         return;
     }
 
-    const endTime = new Date();
-    const { start: effStart, end: effEnd } = clampToSchedule(startTime, endTime);
-    const diffMs = Math.max(0, effEnd - effStart);
-    const diff = diffMs / 1000 / 60 / 60;
+    const today = new Date();
+    const [sh, sm] = activeShiftCache.start.split(":").map(Number);
+    const start = new Date(today.getFullYear(), today.getMonth(), today.getDate(), sh, sm, 0, 0);
 
-    stopBtn.disabled = true;
-    await saveEntry({
-        start_time: startTime.toISOString(),
-        end_time: endTime.toISOString(),
-        hours: Number(diff.toFixed(2)),
-        break_minutes: DEFAULT_BREAK_MINUTES
-    });
+    const [eh, em] = activeShiftCache.end.split(":").map(Number);
+    const end = new Date(today.getFullYear(), today.getMonth(), today.getDate(), eh, em, 0, 0);
+    if (end <= start) {
+        end.setDate(end.getDate() + 1);
+    }
+
+    addTodayShiftBtn.disabled = true;
+    await replaceDaySession(today, start, end, DEFAULT_BREAK_MINUTES);
     refreshHistoryView(await loadHistory());
-
-    localStorage.removeItem(ACTIVE_START_KEY);
-    startTime = null;
-    setIdle();
+    addTodayShiftBtn.disabled = false;
 };
 
 settingsBtn.onclick = () => settingsDialog.showModal();
@@ -786,12 +797,4 @@ polandTripForm.onsubmit = async (event) => {
     await refreshActiveShiftCache();
     populateActiveShiftSelect();
     refreshHistoryView(await loadHistory());
-
-    const savedStart = localStorage.getItem(ACTIVE_START_KEY);
-    if (savedStart) {
-        startTime = new Date(savedStart);
-        setActive(startTime);
-    } else {
-        setIdle();
-    }
 })();

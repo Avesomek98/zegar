@@ -23,10 +23,25 @@
             if (theme === "light" || theme === "dark") {
                 document.documentElement.dataset.theme = theme;
             }
+            if (localStorage.getItem("pinVerified") === "1") {
+                document.documentElement.dataset.pinOk = "1";
+            }
         })();
     </script>
 </head>
 <body>
+
+<div id="pinGate" class="pin-gate">
+    <div class="pin-card">
+        <img src="icons/icon-192.png" alt="" class="pin-logo">
+        <h2>Podaj PIN</h2>
+        <form id="pinForm">
+            <input type="password" inputmode="numeric" pattern="[0-9]*" id="pinInput" maxlength="8" autocomplete="off" autofocus>
+            <button type="submit">Odblokuj</button>
+        </form>
+        <p id="pinError" class="hint pin-error" style="display:none;">Zły PIN, spróbuj ponownie.</p>
+    </div>
+</div>
 
 <div class="container">
     <div class="top-bar">
@@ -40,15 +55,17 @@
         </div>
     </div>
 
-    <button id="startBtn">▶ Rozpocznij pracę</button>
-    <button id="stopBtn">■ Zakończ pracę</button>
-
     <div class="active-shift-row">
         <label class="field-label" for="activeShiftSelect">Zmiana w tym tygodniu</label>
         <select id="activeShiftSelect"></select>
+        <div id="customShiftFields" class="custom-shift-fields" style="display:none;">
+            <input type="time" id="activeShiftCustomStart">
+            <input type="time" id="activeShiftCustomEnd">
+            <button type="button" id="applyCustomShiftBtn" class="secondary-btn">Zastosuj</button>
+        </div>
     </div>
 
-    <p id="status">Nie pracujesz.</p>
+    <button type="button" id="addTodayShiftBtn">✓ Dodaj dzisiejsze godziny</button>
 
     <div id="quickStats" class="quick-stats"></div>
 
@@ -61,8 +78,8 @@
 </div>
 
 <footer class="app-footer">
-    <p>Created by Arek &middot; v0.4 &middot; &copy; <span id="year"></span></p>
-    <p class="version-badge">v0.4 &middot; prototype, not yet released for public use</p>
+    <p>Created by Arek &middot; v0.5 &middot; &copy; <span id="year"></span></p>
+    <p class="version-badge">v0.5 &middot; prototype, not yet released for public use</p>
     <button type="button" id="changelogBtn" class="link-btn">Co nowego? (changelog)</button>
 </footer>
 
@@ -131,6 +148,13 @@
 
 <dialog id="changelogDialog">
     <h2>Co nowego</h2>
+
+    <h3>v0.5 &middot; 2026-08-01</h3>
+    <ul class="changelog-list">
+        <li>Ekran z PIN-em przed wejściem do apki — zabezpieczenie przed przypadkowymi odwiedzającymi.</li>
+        <li>Uproszczony wybór zmiany: 3 gotowe szablony (6:00–16:45, 19:30–6:00, sobota 6:00–14:45) + możliwość wpisania własnych godzin na dany tydzień.</li>
+        <li>Usunięto ręczne "Rozpocznij pracę" / "Zakończ pracę" — zastąpione jednym przyciskiem "✓ Dodaj dzisiejsze godziny", który od razu loguje dzisiejszy dzień wg wybranej zmiany.</li>
+    </ul>
 
     <h3>v0.4 &middot; 2026-08-01</h3>
     <ul class="changelog-list">
