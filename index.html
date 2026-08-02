@@ -56,7 +56,7 @@
         <p id="authMessage" class="hint auth-message" style="display:none;"></p>
 
         <footer class="app-footer auth-footer">
-            <p>Created by Arek &middot; v1.3 &middot; &copy; <span id="authYear"></span></p>
+            <p>Created by Arek &middot; v1.5 &middot; &copy; <span id="authYear"></span></p>
             <p class="version-badge">prototype, not yet released for public use</p>
         </footer>
     </div>
@@ -133,7 +133,7 @@
 </div>
 
 <footer class="app-footer">
-    <p>Created by Arek &middot; v1.3 &middot; &copy; <span id="year"></span></p>
+    <p>Created by Arek &middot; v1.5 &middot; &copy; <span id="year"></span></p>
     <p class="version-badge">prototype, not yet released for public use</p>
     <button type="button" id="changelogBtn" class="link-btn">Co nowego? (changelog)</button>
 </footer>
@@ -338,6 +338,17 @@
 
 <dialog id="changelogDialog">
     <h2>Co nowego</h2>
+
+    <h3>v1.5 &middot; 2026-08-02</h3>
+    <ul class="changelog-list">
+        <li>Poprawka: godziny nocne i niedzielne liczyły się z surowego zakresu "od–do", więc mogły pokazywać więcej niż realne godziny netto (np. 8.25 godz. nocnych przy 8 godz. netto). Przerwa jest niepłatna, więc teraz nocne/niedzielne są proporcjonalnie przycinane do godzin netto — nigdy nie przekroczą tego, co faktycznie przepracowane.</li>
+    </ul>
+
+    <h3>v1.4 &middot; 2026-08-02</h3>
+    <ul class="changelog-list">
+        <li>Poprawka: na telefonie z wyspą powiadomień/notchem górne ikony (konto, odśwież, motyw, ustawienia) wchodziły pod nią — nagłówek ma teraz odstęp uwzględniający tę wyspę.</li>
+        <li>Poprawka: nazwa aplikacji obok logo obcinała się do jednej litery na wąskich telefonach — ikonki w nagłówku są teraz bardziej kompaktowe, a pusta "wysepka" statusu PL/DE (widoczna tylko na komputerze) nie zajmuje już miejsca na telefonie.</li>
+    </ul>
 
     <h3>v1.3 &middot; 2026-08-02</h3>
     <ul class="changelog-list">

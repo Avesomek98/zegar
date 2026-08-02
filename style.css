@@ -188,6 +188,7 @@ body {
     color: var(--text);
     margin: 0;
     padding: 20px;
+    padding-top: calc(20px + env(safe-area-inset-top, 0px));
     transition: background .2s ease, color .2s ease;
 }
 
@@ -355,7 +356,13 @@ li {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 10px;
+    gap: 8px;
+}
+
+/* Na telefonie ta "wysepka" jest i tak pusta (JS przenosi ja tu dopiero na desktopie) -
+   ukryta, zeby nie zjadac miejsca na nazwe apki obok logo. */
+.top-bar-poland-slot {
+    display: none;
 }
 
 .brand {
@@ -375,7 +382,7 @@ li {
 
 .top-bar h1 {
     margin: 0;
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 600;
     letter-spacing: .1px;
     color: var(--text);
@@ -387,8 +394,15 @@ li {
 .top-actions {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     flex-shrink: 0;
+}
+
+/* Kompaktowe ikony w naglowku na telefonie - cztery przyciski + logo + nazwa apki
+   musza sie zmiescic na waskim ekranie. Na desktopie i tak nadpisane wiekszym rozmiarem. */
+.top-actions .icon-btn {
+    padding: 6px 8px;
+    font-size: 18px;
 }
 
 .icon-btn {

@@ -646,6 +646,14 @@ function netHours(session) {
     return Math.max(0, session.hours - session.breakMinutes / 60);
 }
 
+// Godziny nocne/niedzielne licza sie z surowego zakresu [start, end] (przed odjeciem przerwy),
+// wiec bez korekty moglyby przekroczyc rzeczywiste godziny netto - przerwa nie ma zapisanej
+// dokladnej pory, wiec przycinamy proporcjonalnie do jej udzialu w calej (brutto) zmianie.
+function scaleToNet(session, grossOverlapHours) {
+    if (session.hours <= 0) return 0;
+    return grossOverlapHours * (netHours(session) / session.hours);
+}
+
 async function resetAllData() {
     const { error } = await supabase
         .from("work_sessions")
@@ -1008,8 +1016,8 @@ function buildDaySessionsHtml(day) {
         .sort((a, b) => a.start - b.start)
         .map((session) => {
             const net = netHours(session);
-            const night = nightOverlapHours(session.start, session.end);
-            const sunday = sundayOverlapHours(session.start, session.end);
+            const night = scaleToNet(session, nightOverlapHours(session.start, session.end));
+            const sunday = scaleToNet(session, sundayOverlapHours(session.start, session.end));
             dayHours += net;
             dayNight += night;
             daySunday += sunday;
@@ -1180,8 +1188,8 @@ function buildMonthCsv(key) {
             .sort((a, b) => a.start - b.start)
             .forEach((session) => {
                 const net = netHours(session);
-                const night = nightOverlapHours(session.start, session.end);
-                const sunday = sundayOverlapHours(session.start, session.end);
+                const night = scaleToNet(session, nightOverlapHours(session.start, session.end));
+                const sunday = scaleToNet(session, sundayOverlapHours(session.start, session.end));
                 totalNet += net;
                 totalNight += night;
                 totalSunday += sunday;
