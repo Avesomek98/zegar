@@ -313,12 +313,6 @@ const dayDetailsEditBtn = document.getElementById("dayDetailsEditBtn");
 const closeDayDetailsBtn = document.getElementById("closeDayDetailsBtn");
 let dayDetailsCurrentKey = null;
 
-const customStatsDialog = document.getElementById("customStatsDialog");
-const customStatsForm = document.getElementById("customStatsForm");
-const customStatsDate = document.getElementById("customStatsDate");
-const customStatsMonth = document.getElementById("customStatsMonth");
-const closeCustomStatsBtn = document.getElementById("closeCustomStatsBtn");
-
 const polandTripBtn = document.getElementById("polandTripBtn");
 const polandTripDialog = document.getElementById("polandTripDialog");
 const polandTripForm = document.getElementById("polandTripForm");
@@ -356,7 +350,6 @@ let dayTotalsCache = new Map();
 let monthsIndexCache = new Map();
 let selectedMonthKey = null;
 let activeShiftCache = null; // { start, end, label } | null
-let customStat = null; // { mode: "day" | "month", key: "YYYY-MM-DD" | "YYYY-MM" }
 let vacationDatesCache = new Set(); // Set<"YYYY-MM-DD"> dni oznaczonych jako Urlop
 let polandCycleCache = null; // { anchor: Date, cycleDays: number, homeDays: number } | null
 
@@ -464,7 +457,7 @@ function populateActiveShiftSelect() {
     const presetOptions = SHIFT_PRESETS
         .map((p, i) => `<option value="${i}">${p.label}</option>`)
         .join("");
-    activeShiftSelect.innerHTML = `${presetOptions}<option value="custom">Własne godziny na ten tydzień…</option>`;
+    activeShiftSelect.innerHTML = `${presetOptions}<option value="custom">Własne godziny</option>`;
 
     if (!activeShiftCache) {
         activeShiftSelect.value = "0";
@@ -825,44 +818,17 @@ function buildMonthsIndex(entries) {
     return months;
 }
 
-function monthNetTotal(key) {
-    const month = monthsIndexCache.get(key);
-    if (!month) return 0;
-
-    let total = 0;
-    month.days.forEach((day) => {
-        day.sessions.forEach((session) => {
-            total += netHours(session);
-        });
-    });
-    return total;
-}
-
 function renderQuickStats() {
     const now = new Date();
-    const yesterday = new Date(now);
-    yesterday.setDate(yesterday.getDate() - 1);
-
     const todayHours = dayTotalsCache.get(dateKey(now))?.hours || 0;
-    const yesterdayHours = dayTotalsCache.get(dateKey(yesterday))?.hours || 0;
 
-    let customLabel = "Inny dzień";
-    let customValue = "Wybierz ▸";
-
-    if (customStat) {
-        if (customStat.mode === "day") {
-            const [y, m, d] = customStat.key.split("-").map(Number);
-            const date = new Date(y, m - 1, d);
-            const hours = dayTotalsCache.get(customStat.key)?.hours || 0;
-            customLabel = date.toLocaleDateString("pl-PL", { day: "numeric", month: "short" });
-            customValue = `${hours.toFixed(2)} godz.`;
-        } else {
-            const [y, m] = customStat.key.split("-").map(Number);
-            const hours = monthNetTotal(customStat.key);
-            customLabel = `${MONTH_NAMES[m - 1]} ${y}`;
-            customValue = `${hours.toFixed(2)} godz.`;
+    const currentMonthPrefix = monthKey(now);
+    let monthHours = 0;
+    dayTotalsCache.forEach((day, key) => {
+        if (key.startsWith(currentMonthPrefix)) {
+            monthHours += day.hours;
         }
-    }
+    });
 
     quickStats.innerHTML = `
         <div class="stat-card">
@@ -870,49 +836,11 @@ function renderQuickStats() {
             <span class="stat-value">${todayHours.toFixed(2)} godz.</span>
         </div>
         <div class="stat-card">
-            <span class="stat-label">Wczoraj</span>
-            <span class="stat-value">${yesterdayHours.toFixed(2)} godz.</span>
+            <span class="stat-label">W tym miesiącu</span>
+            <span class="stat-value">${monthHours.toFixed(2)} godz.</span>
         </div>
-        <button type="button" class="stat-card stat-card--action" id="customStatBtn">
-            <span class="stat-label">${customLabel}</span>
-            <span class="stat-value">${customValue}</span>
-        </button>
     `;
 }
-
-quickStats.addEventListener("click", (event) => {
-    if (event.target.closest("#customStatBtn")) {
-        if (!customStatsDate.value) customStatsDate.value = dateKey(new Date());
-        if (!customStatsMonth.value) customStatsMonth.value = monthKey(new Date());
-        customStatsDialog.showModal();
-    }
-});
-
-customStatsForm.querySelectorAll('input[name="statMode"]').forEach((radio) => {
-    radio.onchange = () => {
-        const mode = customStatsForm.querySelector('input[name="statMode"]:checked').value;
-        customStatsDate.style.display = mode === "day" ? "" : "none";
-        customStatsMonth.style.display = mode === "month" ? "" : "none";
-    };
-});
-
-closeCustomStatsBtn.onclick = () => customStatsDialog.close();
-
-customStatsForm.onsubmit = (event) => {
-    event.preventDefault();
-    const mode = customStatsForm.querySelector('input[name="statMode"]:checked').value;
-
-    if (mode === "day") {
-        if (!customStatsDate.value) return;
-        customStat = { mode: "day", key: customStatsDate.value };
-    } else {
-        if (!customStatsMonth.value) return;
-        customStat = { mode: "month", key: customStatsMonth.value };
-    }
-
-    renderQuickStats();
-    customStatsDialog.close();
-};
 
 function populateMonthPicker(months) {
     const sortedKeys = [...months.keys()].sort().reverse();

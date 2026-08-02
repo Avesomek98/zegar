@@ -29,8 +29,8 @@
 <body>
 
 <div id="authGate" class="pin-gate">
-    <button type="button" id="authThemeToggleBtn" class="icon-btn auth-theme-toggle" aria-label="Przełącz motyw">🌙</button>
     <div class="pin-card">
+        <button type="button" id="authThemeToggleBtn" class="icon-btn auth-theme-toggle" aria-label="Przełącz motyw">🌙</button>
         <img src="icons/icon-192.png" alt="" class="pin-logo">
         <h1 class="auth-brand-title">Kalendarz Pracy</h1>
 
@@ -97,13 +97,14 @@
         </div>
 
         <div class="active-shift-row">
-            <label class="field-label" for="activeShiftSelect">Zmiana w tym tygodniu</label>
+            <label class="field-label" for="activeShiftSelect">Dzisiejsza zmiana</label>
             <select id="activeShiftSelect"></select>
             <div id="customShiftFields" class="custom-shift-fields" style="display:none;">
                 <input type="time" id="activeShiftCustomStart">
                 <input type="time" id="activeShiftCustomEnd">
                 <button type="button" id="applyCustomShiftBtn" class="secondary-btn">Zastosuj</button>
             </div>
+            <button type="button" id="addTodayShiftBtn">✓ Dodaj dzień</button>
         </div>
 
         <div id="quickStats" class="quick-stats"></div>
@@ -111,8 +112,8 @@
 
     <div class="app-main">
         <div class="quick-actions">
-            <button type="button" id="addTodayShiftBtn">✓ Dodaj dzisiejszy dzień</button>
             <button type="button" id="weekHoursBtn" class="secondary-btn">📅 Dodaj cały tydzień</button>
+            <button type="button" id="addDayBtn" class="secondary-btn">+ Dodaj dzień ręcznie</button>
             <button type="button" id="vacationBtn" class="secondary-btn">🏖️ Ustaw urlop</button>
             <button type="button" id="polandTripBtn" class="secondary-btn">🛫 Wyjazd do Polski</button>
             <button type="button" id="exportMonthBtn" class="secondary-btn">⬇️ Eksportuj miesiąc (CSV)</button>
@@ -125,7 +126,6 @@
         </div>
         <div class="history-section">
             <div class="history-section-header">
-                <button type="button" id="addDayBtn" class="secondary-btn">+ Dodaj dzień ręcznie</button>
                 <p id="monthTotal" class="month-total"></p>
             </div>
             <div id="history"></div>
@@ -325,21 +325,6 @@
     </div>
 </dialog>
 
-<dialog id="customStatsDialog">
-    <h2>Podgląd innego okresu</h2>
-    <form id="customStatsForm">
-        <div class="stat-mode-toggle">
-            <label><input type="radio" name="statMode" value="day" checked> Dzień</label>
-            <label><input type="radio" name="statMode" value="month"> Cały miesiąc</label>
-        </div>
-        <input type="date" id="customStatsDate">
-        <input type="month" id="customStatsMonth" style="display:none">
-        <div class="dialog-actions">
-            <button type="button" id="closeCustomStatsBtn">Anuluj</button>
-            <button type="submit">Pokaż</button>
-        </div>
-    </form>
-</dialog>
 
 <dialog id="helpDialog">
     <h2>Jak to działa</h2>
@@ -351,10 +336,9 @@
 
     <h3>Dodawanie godzin</h3>
     <ul class="changelog-list">
-        <li><strong>Zmiana w tym tygodniu</strong> (panel boczny) — wybierasz szablon godzin, który ma być domyślny na ten tydzień. To on jest używany przez "✓ Dodaj dzisiejszy dzień".</li>
-        <li><strong>✓ Dodaj dzisiejszy dzień</strong> — jednym kliknięciem loguje dziś godziny wg wybranej wyżej zmiany.</li>
+        <li><strong>Dzisiejsza zmiana</strong> (panel boczny) — wybierasz szablon godzin na dziś. Tuż pod nim przycisk <strong>✓ Dodaj dzień</strong> jednym kliknięciem loguje dziś godziny wg wybranej zmiany.</li>
         <li><strong>📅 Dodaj cały tydzień</strong> — te same godziny "od–do" dla całego zakresu dni naraz (np. uzupełnienie zeszłego tygodnia); nadpisuje istniejące wpisy w tym zakresie.</li>
-        <li><strong>+ Dodaj dzień ręcznie</strong> (przy Historii) — pojedynczy dzień z dowolną datą, godzinami i przerwą.</li>
+        <li><strong>+ Dodaj dzień ręcznie</strong> — pojedynczy dzień z dowolną datą, godzinami i przerwą.</li>
         <li>Kliknięcie ✏️ przy dniu w Historii albo w kalendarzu pozwala poprawić lub usunąć wpis.</li>
     </ul>
 
@@ -410,6 +394,12 @@
     <ul class="changelog-list">
         <li>Nowe logo aplikacji — kalendarz z pinezką zamiast stopera, bardziej pasujący do tego, czym apka dziś faktycznie jest (kalendarz godzin + rotacja Polska/Niemcy), w tych samych barwach co dotychczas.</li>
         <li>Poprawka: kliknięcie dnia w kalendarzu (na telefonie i komputerze) nie pozwala już zmieniać daty w okienku dodawania/edycji — data jest już wybrana kliknięciem, więc widoczna jest tylko w tytule okienka, a do ustawienia zostają same godziny. Data zostaje edytowalna tam, gdzie nie wybierało się dnia z kalendarza (Dodaj dzień ręcznie, edycja ✏️ z listy w Historii).</li>
+        <li>Poprawka: nakładająca się ikonka zmiany trybu na ekranie logowania na iPhonie — przypięta teraz do rogu karty logowania, nie całego ekranu.</li>
+        <li>"Zmiana w tym tygodniu" → "Dzisiejsza zmiana"; "Własne godziny na ten tydzień…" → "Własne godziny".</li>
+        <li>Przycisk "Dodaj dzisiejszy dzień" przemianowany na "Dodaj dzień" i przeniesiony wyżej, tuż pod wyborem dzisiejszej zmiany.</li>
+        <li>Usunięta karta "Inny dzień" i okienko "Podgląd innego okresu" — druga karta statystyk to teraz "W tym miesiącu" (suma godzin netto bieżącego miesiąca).</li>
+        <li>"Dodaj dzień ręcznie" przeniesiony z Historii do modułu szybkich akcji.</li>
+        <li>Powiększony moduł szybkich akcji na komputerze.</li>
     </ul>
 
     <h3>v1.3.1a &middot; 2026-08-02</h3>
