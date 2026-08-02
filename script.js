@@ -245,6 +245,7 @@ const polandScheduleDialog = document.getElementById("polandScheduleDialog");
 const polandScheduleList = document.getElementById("polandScheduleList");
 const closePolandScheduleBtn = document.getElementById("closePolandScheduleBtn");
 const history = document.getElementById("history");
+const monthTotalEl = document.getElementById("monthTotal");
 const accountBtn = document.getElementById("accountBtn");
 const accountDialog = document.getElementById("accountDialog");
 const accountDialogEmail = document.getElementById("accountDialogEmail");
@@ -256,6 +257,22 @@ const settingsBtn = document.getElementById("settingsBtn");
 const settingsDialog = document.getElementById("settingsDialog");
 const closeSettingsBtn = document.getElementById("closeSettingsBtn");
 const resetAllBtn = document.getElementById("resetAllBtn");
+const settingsTabs = [...document.querySelectorAll(".dialog-tab")];
+const settingsPanels = [...document.querySelectorAll(".dialog-tab-panel")];
+const polandCycleForm = document.getElementById("polandCycleForm");
+const polandCycleAnchorInput = document.getElementById("polandCycleAnchorInput");
+const polandCycleWeeksInput = document.getElementById("polandCycleWeeksInput");
+const polandCycleHomeDaysInput = document.getElementById("polandCycleHomeDaysInput");
+const polandCycleMessage = document.getElementById("polandCycleMessage");
+
+// Dotkniecie/klikniecie gdziekolwiek w polu daty ma od razu otwierac kalendarz,
+// nie tylko klikniecie w ikonke po prawej stronie.
+polandCycleAnchorInput.addEventListener("click", () => {
+    if (typeof polandCycleAnchorInput.showPicker === "function") {
+        polandCycleAnchorInput.showPicker();
+    }
+});
+
 const quickStats = document.getElementById("quickStats");
 const monthPicker = document.getElementById("monthPicker");
 const exportMonthBtn = document.getElementById("exportMonthBtn");
@@ -337,6 +354,7 @@ let selectedMonthKey = null;
 let activeShiftCache = null; // { start, end, label } | null
 let customStat = null; // { mode: "day" | "month", key: "YYYY-MM-DD" | "YYYY-MM" }
 let vacationDatesCache = new Set(); // Set<"YYYY-MM-DD"> dni oznaczonych jako Urlop
+let polandCycleCache = null; // { anchor: Date, cycleDays: number, homeDays: number } | null
 
 const NIGHT_START_HOUR = 20;
 const NIGHT_END_HOUR = 6;
@@ -484,6 +502,84 @@ applyCustomShiftBtn.onclick = async () => {
     applyCustomShiftBtn.disabled = true;
     await saveActiveShift(shift);
     applyCustomShiftBtn.disabled = false;
+};
+
+// Kazdy uzytkownik moze miec inny rytm zjazdow do Polski (np. co tydzien zamiast co dwa
+// tygodnie), wiec cykl jest wyliczany na podstawie wlasnych ustawien z app_settings, a nie
+// na sztywno wpisanych stalych.
+async function refreshPolandCycleCache() {
+    const { data, error } = await supabase
+        .from("app_settings")
+        .select("poland_trip_anchor, poland_trip_cycle_weeks, poland_trip_home_days")
+        .eq("user_id", currentUserId)
+        .maybeSingle();
+
+    if (error) {
+        console.error(error);
+        return;
+    }
+
+    if (data?.poland_trip_anchor && data?.poland_trip_cycle_weeks && data?.poland_trip_home_days) {
+        const [y, m, d] = data.poland_trip_anchor.split("-").map(Number);
+        polandCycleCache = {
+            anchor: new Date(y, m - 1, d),
+            cycleDays: data.poland_trip_cycle_weeks * 7,
+            homeDays: data.poland_trip_home_days
+        };
+    } else {
+        polandCycleCache = null;
+    }
+}
+
+function populatePolandCycleForm() {
+    setStatusMessage(polandCycleMessage, "");
+    if (!polandCycleCache) {
+        polandCycleForm.reset();
+        return;
+    }
+    polandCycleAnchorInput.value = dateKey(polandCycleCache.anchor);
+    polandCycleWeeksInput.value = String(polandCycleCache.cycleDays / 7);
+    polandCycleHomeDaysInput.value = String(polandCycleCache.homeDays);
+}
+
+polandCycleForm.onsubmit = async (event) => {
+    event.preventDefault();
+    const weeks = Number(polandCycleWeeksInput.value);
+    const homeDays = Number(polandCycleHomeDaysInput.value);
+
+    if (weeks < 1 || homeDays < 1 || homeDays > weeks * 7) {
+        setStatusMessage(polandCycleMessage, "Dni w Polsce nie mogą przekraczać długości całego cyklu.", false);
+        return;
+    }
+
+    const submitBtn = polandCycleForm.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+
+    const { error } = await supabase
+        .from("app_settings")
+        .upsert(
+            {
+                user_id: currentUserId,
+                poland_trip_anchor: polandCycleAnchorInput.value,
+                poland_trip_cycle_weeks: weeks,
+                poland_trip_home_days: homeDays,
+                updated_at: new Date().toISOString()
+            },
+            { onConflict: "user_id" }
+        );
+
+    submitBtn.disabled = false;
+
+    if (error) {
+        console.error(error);
+        setStatusMessage(polandCycleMessage, "Nie udało się zapisać ustawień.", false);
+        return;
+    }
+
+    const [y, m, d] = polandCycleAnchorInput.value.split("-").map(Number);
+    polandCycleCache = { anchor: new Date(y, m - 1, d), cycleDays: weeks * 7, homeDays };
+    setStatusMessage(polandCycleMessage, "Zapisano.", true);
+    renderPolandStatus();
 };
 
 async function loadHistory() {
@@ -1003,6 +1099,7 @@ function renderMonth(key) {
         const empty = document.createElement("p");
         empty.textContent = "Brak zapisanych godzin w tym miesiącu.";
         history.appendChild(empty);
+        monthTotalEl.textContent = "";
         return;
     }
 
@@ -1052,10 +1149,7 @@ function renderMonth(key) {
         totalParts.push(`🌴 ${monthVacationDays} ${monthVacationDays === 1 ? "dzień" : "dni"} urlopu (${monthVacationChargeableDays} z puli, bez sob/nd)`);
     }
 
-    const total = document.createElement("p");
-    total.className = "month-total";
-    total.textContent = totalParts.join(" · ");
-    history.appendChild(total);
+    monthTotalEl.textContent = totalParts.join(" · ");
 }
 
 function csvEscape(value) {
@@ -1196,7 +1290,15 @@ addTodayShiftBtn.onclick = async () => {
     addTodayShiftBtn.disabled = false;
 };
 
-settingsBtn.onclick = () => settingsDialog.showModal();
+function openSettingsDialog(tab = "account") {
+    settingsTabs.forEach((t) => t.classList.toggle("is-active", t.dataset.tab === tab));
+    settingsPanels.forEach((p) => { p.hidden = p.dataset.tabPanel !== tab; });
+    populatePolandCycleForm();
+    settingsDialog.showModal();
+}
+settingsTabs.forEach((t) => { t.onclick = () => openSettingsDialog(t.dataset.tab); });
+
+settingsBtn.onclick = () => openSettingsDialog("account");
 closeSettingsBtn.onclick = () => settingsDialog.close();
 
 accountBtn.onclick = () => {
@@ -1208,7 +1310,7 @@ closeAccountBtn.onclick = () => accountDialog.close();
 
 accountManageBtn.onclick = () => {
     accountDialog.close();
-    settingsDialog.showModal();
+    openSettingsDialog("account");
 };
 
 accountLogoutBtn.onclick = async () => {
@@ -1618,15 +1720,14 @@ weekHoursForm.onsubmit = async (event) => {
     weekHoursDialog.close();
 };
 
-// Cykl wyjazdow do Polski: co 14 dni, poczawszy od czwartku 30.07.2026.
-// W Polsce: czwartek-niedziela (4 dni), reszta cyklu (10 dni) - w Niemczech.
-const POLAND_TRIP_ANCHOR = new Date(2026, 6, 30);
-const POLAND_CYCLE_DAYS = 14;
-const POLAND_HOME_DAYS = 4;
-
 function daysBetween(a, b) {
     return Math.round((b - a) / (1000 * 60 * 60 * 24));
 }
+
+// Faktyczne przekroczenie granicy nie wypada o polnocy, tylko wieczorem - w dniu zjazdu
+// koniec pracy + dojazd, w dniu powrotu wyjazd z Polski + dojazd. Ta godzina przesuwa
+// oba brzegi pobytu w Polsce (przyjazd i wyjazd), zamiast liczyc pelnymi dobami od polnocy.
+const POLAND_TRIP_TRANSITION_HOUR = 20;
 
 function findNearestFutureDate(dateKeySet, fromDate) {
     let nearest = null;
@@ -1686,12 +1787,26 @@ function renderPolandStatus() {
         return;
     }
 
-    const daysSinceAnchor = daysBetween(POLAND_TRIP_ANCHOR, todayMidnight);
-    const cyclePos = ((daysSinceAnchor % POLAND_CYCLE_DAYS) + POLAND_CYCLE_DAYS) % POLAND_CYCLE_DAYS;
-    const inPolandByCycle = cyclePos < POLAND_HOME_DAYS;
+    if (!polandCycleCache) {
+        polandStatusFlag.textContent = "🧭";
+        polandStatusText.textContent = "Cykl zjazdów nieskonfigurowany";
+        polandCountdownText.textContent = "Kliknij, żeby go ustawić";
+        updateVacationCountdown(todayMidnight);
+        return;
+    }
+
+    const { anchor, cycleDays, homeDays } = polandCycleCache;
+    const anchorArrival = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate(), POLAND_TRIP_TRANSITION_HOUR, 0, 0);
+    const cycleDurationMs = cycleDays * 24 * 60 * 60 * 1000;
+    const homeDurationMs = Math.max(0, homeDays - 1) * 24 * 60 * 60 * 1000;
+    const msSinceAnchorArrival = today.getTime() - anchorArrival.getTime();
+    const cyclePosMs = ((msSinceAnchorArrival % cycleDurationMs) + cycleDurationMs) % cycleDurationMs;
+    const inPolandByCycle = cyclePosMs < homeDurationMs;
 
     if (inPolandByCycle) {
-        const daysUntilReturn = POLAND_HOME_DAYS - cyclePos;
+        const returnMoment = new Date(today.getTime() + (homeDurationMs - cyclePosMs));
+        const returnMidnight = new Date(returnMoment.getFullYear(), returnMoment.getMonth(), returnMoment.getDate());
+        const daysUntilReturn = daysBetween(todayMidnight, returnMidnight);
         polandStatusFlag.textContent = "🇵🇱";
         polandStatusText.textContent = "Jesteś w Polsce";
         polandCountdownText.textContent = daysUntilReturn === 0
@@ -1702,9 +1817,8 @@ function renderPolandStatus() {
     }
 
     // W Niemczech - sprawdz, czy zaplanowany urlop wypada wczesniej niz normalny zjazd.
-    const daysUntilCycleTrip = cyclePos === 0 ? 0 : POLAND_CYCLE_DAYS - cyclePos;
-    const cycleTripDate = new Date(todayMidnight);
-    cycleTripDate.setDate(cycleTripDate.getDate() + daysUntilCycleTrip);
+    const nextArrivalMoment = new Date(today.getTime() + (cycleDurationMs - cyclePosMs));
+    const cycleTripDate = new Date(nextArrivalMoment.getFullYear(), nextArrivalMoment.getMonth(), nextArrivalMoment.getDate());
 
     const nearestVacationStart = findNearestFutureDate(vacationDatesCache, todayMidnight);
 
@@ -1728,22 +1842,29 @@ function renderPolandStatus() {
 }
 
 function nextPolandTripDates(count) {
+    if (!polandCycleCache) return [];
+
+    const { anchor, cycleDays } = polandCycleCache;
     const today = new Date();
     const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const daysSinceAnchor = daysBetween(POLAND_TRIP_ANCHOR, todayMidnight);
-    const cyclePos = ((daysSinceAnchor % POLAND_CYCLE_DAYS) + POLAND_CYCLE_DAYS) % POLAND_CYCLE_DAYS;
-    const daysUntilNextTrip = cyclePos === 0 ? 0 : POLAND_CYCLE_DAYS - cyclePos;
+    const daysSinceAnchor = daysBetween(anchor, todayMidnight);
+    const cyclePos = ((daysSinceAnchor % cycleDays) + cycleDays) % cycleDays;
+    const daysUntilNextTrip = cyclePos === 0 ? 0 : cycleDays - cyclePos;
 
     const dates = [];
     for (let i = 0; i < count; i++) {
         const d = new Date(todayMidnight);
-        d.setDate(d.getDate() + daysUntilNextTrip + i * POLAND_CYCLE_DAYS);
+        d.setDate(d.getDate() + daysUntilNextTrip + i * cycleDays);
         dates.push(d);
     }
     return dates;
 }
 
 polandStatusCard.onclick = () => {
+    if (!polandCycleCache) {
+        openSettingsDialog("poland");
+        return;
+    }
     const dates = nextPolandTripDates(10);
     polandScheduleList.innerHTML = dates
         .map((d, i) => {
@@ -1757,6 +1878,7 @@ polandStatusCard.onclick = () => {
 closePolandScheduleBtn.onclick = () => polandScheduleDialog.close();
 
 async function initApp() {
+    await refreshPolandCycleCache();
     renderPolandStatus();
 
     await refreshActiveShiftCache();

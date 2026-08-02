@@ -426,7 +426,7 @@ li {
     grid-auto-rows: 1fr;
     align-items: stretch;
     gap: 4px;
-    margin-top: 12px;
+    margin-top: 20px;
     margin-bottom: 14px;
 }
 
@@ -571,6 +571,23 @@ li {
     font-size: 18px;
 }
 
+.calendar-section {
+    background: var(--stat-bg);
+    border-radius: 12px;
+    padding: 16px;
+}
+
+.calendar-section h2 {
+    margin-top: 0;
+}
+
+/* Kalendarz i historia to teraz dwa osobne "okna" (karty) z odstepem miedzy soba, zamiast jednego ciagu tresci */
+.history-section {
+    margin-top: 20px;
+    background: var(--stat-bg);
+    border-radius: 12px;
+    padding: 16px;
+}
 
 #history {
     max-height: 55vh;
@@ -675,9 +692,16 @@ li {
     border-radius: 999px;
 }
 
+.history-section-header {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+}
+
 .month-total {
     font-weight: bold;
-    margin: 14px 0 0;
+    margin: 0;
 }
 
 dialog {
@@ -767,8 +791,15 @@ dialog::backdrop {
     color: var(--vacation-text);
 }
 
+/* Kazdy modul panelu bocznego (status, zmiana, statystyki) to osobne "okno" oddzielone samym odstepem, bez linii */
+.app-sidebar > * + * {
+    margin-top: 20px;
+}
+
 .active-shift-row {
-    margin-top: 10px;
+    background: var(--stat-bg);
+    border-radius: 12px;
+    padding: 12px 14px;
 }
 
 .active-shift-row .field-label {
@@ -807,15 +838,19 @@ dialog::backdrop {
     padding: 10px 14px;
 }
 
-/* Lista akcji jak nawigacja w X: plaska, bez ramki-pudelka, pigulkowe podswietlenie na hover */
-.sidebar-actions {
+/* Szybkie akcje jako osobny modul (karta) nad kalendarzem - lista przyciskow plaska w srodku,
+   jak nawigacja w X, ale caly modul ma wlasne tlo i zaokraglenie, zeby wyrozniac sie jako "okno" */
+.quick-actions {
     display: flex;
     flex-direction: column;
     gap: 4px;
-    margin-top: 15px;
+    background: var(--stat-bg);
+    border-radius: 12px;
+    padding: 8px;
+    margin-bottom: 20px;
 }
 
-.sidebar-actions button {
+.quick-actions button {
     width: 100%;
     margin-top: 0;
     padding: 12px 14px;
@@ -829,7 +864,7 @@ dialog::backdrop {
     transition: background .12s ease;
 }
 
-.sidebar-actions button:hover {
+.quick-actions button:hover {
     background: var(--day-card-bg);
 }
 
@@ -913,7 +948,6 @@ dialog::backdrop {
 .quick-stats {
     display: flex;
     gap: 10px;
-    margin-top: 15px;
 }
 
 .stat-card {
@@ -984,10 +1018,43 @@ dialog::backdrop {
     border: 1px solid var(--danger-border);
 }
 
-.divider {
+.dialog-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin: 16px 0;
+    border-bottom: 1px solid var(--divider);
+}
+
+.dialog-tab {
+    width: auto;
+    margin-top: 0;
+    padding: 8px 12px;
+    font-size: 14px;
+    background: none;
     border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+}
+
+.dialog-tab.is-active {
+    color: var(--worked-bg);
+    border-bottom-color: var(--worked-bg);
+    font-weight: 600;
+}
+
+.dialog-tab-panel[hidden] {
+    display: none;
+}
+
+/* W okienku Konto kazdy formularz (e-mail, haslo, strefa niebezpieczna) to osobny modul oddzielony linia */
+#changeEmailForm,
+#changePasswordForm,
+#changePasswordMessage + .hint {
+    margin-top: 20px;
+    padding-top: 20px;
     border-top: 1px solid var(--divider);
-    margin: 20px 0;
 }
 
 .field-label {
@@ -1015,7 +1082,8 @@ dialog::backdrop {
 #weekHoursForm input[type="number"],
 #weekHoursForm select,
 #changeEmailForm input,
-#changePasswordForm input {
+#changePasswordForm input,
+#polandCycleForm input {
     width: 100%;
     padding: 10px;
     font-size: 16px;
@@ -1027,7 +1095,22 @@ dialog::backdrop {
     border-radius: 6px;
 }
 
-/* ===== Uklad pod desktop/laptop. Telefon (ponizej progu) zostaje bez zmian. ===== */
+/* Na telefonie caly ekran to jedna karta (.container) - ponizsze reguly dziela ja na wyrazne "moduly":
+   naglowek/panel akcji oddzielony linia, dalsze moduly (szybkie akcje, kalendarz, historia) maja
+   wlasne tlo i sam odstep, bez linii - jak osobne okna */
+@media (max-width: 1023px) {
+    .app-sidebar {
+        margin-top: 32px;
+        padding-top: 32px;
+        border-top: 1px solid var(--divider);
+    }
+
+    .app-main {
+        margin-top: 32px;
+    }
+}
+
+/* ===== Uklad pod desktop/laptop. ===== */
 @media (min-width: 1024px) {
     body {
         padding: 32px;
@@ -1045,8 +1128,8 @@ dialog::backdrop {
         grid-template-areas:
             "topbar  topbar"
             "sidebar main";
-        column-gap: 24px;
-        row-gap: 28px;
+        column-gap: 36px;
+        row-gap: 36px;
         align-items: start;
         background: none;
         box-shadow: none;
@@ -1064,21 +1147,20 @@ dialog::backdrop {
         box-shadow: none;
     }
 
-    /* Naglowek wyraznie oddzielony od reszty: wlasny akcent na dole + wiekszy odstep do tresci ponizej */
+    /* Naglowek wyraznie oddzielony od reszty: wiekszy odstep do tresci ponizej */
     .top-bar {
         grid-area: topbar;
-        padding: 18px 26px;
+        padding: 22px 30px;
         justify-content: flex-start;
-        border-bottom: 3px solid var(--worked-bg);
     }
 
     .brand-logo {
-        width: 42px;
-        height: 42px;
+        width: 52px;
+        height: 52px;
     }
 
     .top-bar h1 {
-        font-size: 21px;
+        font-size: 26px;
         font-weight: 800;
         letter-spacing: -.2px;
     }
@@ -1098,27 +1180,26 @@ dialog::backdrop {
 
     .top-bar-poland-slot .poland-status-card {
         margin-top: 0;
-        padding: 8px 16px;
-        gap: 10px;
+        padding: 12px 20px;
+        gap: 12px;
         border: 1px solid var(--border);
-        transition: transform .12s ease, box-shadow .12s ease;
+        transition: background .12s ease;
     }
 
     .top-bar-poland-slot .poland-status-card:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px var(--shadow);
+        background: var(--day-card-bg);
     }
 
     .top-bar-poland-slot .poland-status-flag {
-        font-size: 20px;
+        font-size: 26px;
     }
 
     .top-bar-poland-slot .poland-status-body strong {
-        font-size: 13px;
+        font-size: 16px;
     }
 
     .top-bar-poland-slot .poland-status-body .hint {
-        font-size: 12px;
+        font-size: 14px;
     }
 
     .app-main h2 {
@@ -1127,20 +1208,19 @@ dialog::backdrop {
     }
 
     .top-actions .icon-btn {
-        width: 38px;
-        height: 38px;
+        width: 46px;
+        height: 46px;
         padding: 0;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        font-size: 17px;
+        font-size: 21px;
         border-radius: 999px;
-        transition: background .12s ease, border-color .12s ease;
+        transition: background .12s ease;
     }
 
     .top-actions .icon-btn:hover {
         background: var(--day-card-bg);
-        border-color: var(--worked-bg);
     }
 
     .app-sidebar {
@@ -1158,13 +1238,6 @@ dialog::backdrop {
         padding: 26px 28px;
     }
 
-    /* Kazda sekcja panelu bocznego to osobny "modul" oddzielony linia - jak w X, nie jeden ciagly strumien */
-    .app-sidebar > * + * {
-        margin-top: 18px;
-        padding-top: 18px;
-        border-top: 1px solid var(--divider);
-    }
-
     .active-shift-row .field-label {
         text-transform: uppercase;
         font-size: 11px;
@@ -1177,10 +1250,6 @@ dialog::backdrop {
         outline: none;
         border-color: var(--worked-bg);
         box-shadow: 0 0 0 3px rgba(79, 140, 255, .15);
-    }
-
-    .quick-stats {
-        margin-top: 0;
     }
 
     .stat-card {
@@ -1219,10 +1288,6 @@ dialog::backdrop {
         z-index: 1;
     }
 
-    #history {
-        max-height: none;
-    }
-
     .day-card {
         transition: box-shadow .12s ease;
     }
@@ -1231,25 +1296,15 @@ dialog::backdrop {
         box-shadow: 0 3px 10px var(--shadow);
     }
 
-    /* Kalendarz i lista dni to dwa osobne moduly oddzielone linia, zamiast jednego ciagu tresci */
-    .history-section {
-        margin-top: 24px;
-        padding-top: 24px;
-        border-top: 1px solid var(--divider);
-    }
-
-    #exportMonthBtn,
     #addDayBtn {
         display: inline-block;
         width: auto;
-        margin-right: 10px;
         padding: 10px 18px;
         border-style: solid;
         border-radius: 999px;
         transition: border-color .12s ease, color .12s ease;
     }
 
-    #exportMonthBtn:hover,
     #addDayBtn:hover {
         border-color: var(--worked-bg);
         color: var(--worked-bg);

@@ -56,7 +56,7 @@
         <p id="authMessage" class="hint auth-message" style="display:none;"></p>
 
         <footer class="app-footer auth-footer">
-            <p>Created by Arek &middot; v1.1 &middot; &copy; <span id="authYear"></span></p>
+            <p>Created by Arek &middot; v1.3 &middot; &copy; <span id="authYear"></span></p>
             <p class="version-badge">prototype, not yet released for public use</p>
         </footer>
     </div>
@@ -105,17 +105,17 @@
             </div>
         </div>
 
-        <div class="sidebar-actions">
-            <button type="button" id="addTodayShiftBtn">✓ Dodaj dzisiejszy dzień</button>
-            <button type="button" id="weekHoursBtn" class="secondary-btn">📅 Dodaj cały tydzień</button>
-            <button type="button" id="vacationBtn" class="secondary-btn">🏖️ Ustaw urlop</button>
-            <button type="button" id="polandTripBtn" class="secondary-btn">🛫 Wyjazd do Polski</button>
-        </div>
-
         <div id="quickStats" class="quick-stats"></div>
     </div>
 
     <div class="app-main">
+        <div class="quick-actions">
+            <button type="button" id="addTodayShiftBtn">✓ Dodaj dzisiejszy dzień</button>
+            <button type="button" id="weekHoursBtn" class="secondary-btn">📅 Dodaj cały tydzień</button>
+            <button type="button" id="vacationBtn" class="secondary-btn">🏖️ Ustaw urlop</button>
+            <button type="button" id="polandTripBtn" class="secondary-btn">🛫 Wyjazd do Polski</button>
+            <button type="button" id="exportMonthBtn" class="secondary-btn">⬇️ Eksportuj miesiąc (CSV)</button>
+        </div>
         <div class="calendar-section">
             <h2>Historia</h2>
             <p class="hint">Wybierz miesiąc i kliknij ✏️ przy dniu, żeby poprawić godziny albo go usunąć.</p>
@@ -123,15 +123,17 @@
             <div id="monthCalendar" class="month-calendar"></div>
         </div>
         <div class="history-section">
-            <button type="button" id="exportMonthBtn" class="secondary-btn">⬇️ Eksportuj miesiąc (CSV)</button>
-            <button type="button" id="addDayBtn" class="secondary-btn">+ Dodaj dzień ręcznie</button>
+            <div class="history-section-header">
+                <button type="button" id="addDayBtn" class="secondary-btn">+ Dodaj dzień ręcznie</button>
+                <p id="monthTotal" class="month-total"></p>
+            </div>
             <div id="history"></div>
         </div>
     </div>
 </div>
 
 <footer class="app-footer">
-    <p>Created by Arek &middot; v1.1 &middot; &copy; <span id="year"></span></p>
+    <p>Created by Arek &middot; v1.3 &middot; &copy; <span id="year"></span></p>
     <p class="version-badge">prototype, not yet released for public use</p>
     <button type="button" id="changelogBtn" class="link-btn">Co nowego? (changelog)</button>
 </footer>
@@ -147,32 +149,58 @@
 </dialog>
 
 <dialog id="settingsDialog">
-    <h2>Konto</h2>
+    <h2>Ustawienia</h2>
     <p class="hint">Zalogowano jako <strong id="accountEmail">—</strong></p>
-    <button type="button" id="logoutBtn" class="secondary-btn">Wyloguj się</button>
 
-    <form id="changeEmailForm">
-        <label class="field-label" for="newEmailInput">Zmień e-mail</label>
-        <input type="email" id="newEmailInput" placeholder="nowy@email.com" required>
-        <button type="submit">Zmień e-mail</button>
-    </form>
-    <p id="changeEmailMessage" class="hint auth-message" style="display:none;"></p>
+    <div class="dialog-tabs">
+        <button type="button" class="dialog-tab is-active" data-tab="account">Konto</button>
+        <button type="button" class="dialog-tab" data-tab="poland">Zjazdy do Polski</button>
+        <button type="button" class="dialog-tab" data-tab="data">Dane</button>
+    </div>
 
-    <form id="changePasswordForm">
-        <label class="field-label" for="newPasswordInput">Zmień hasło</label>
-        <input type="password" id="newPasswordInput" minlength="6" placeholder="Nowe hasło (min. 6 znaków)" required>
-        <button type="submit">Zmień hasło</button>
-    </form>
-    <p id="changePasswordMessage" class="hint auth-message" style="display:none;"></p>
+    <div class="dialog-tab-panel" data-tab-panel="account">
+        <button type="button" id="logoutBtn" class="secondary-btn">Wyloguj się</button>
 
-    <p class="hint">Usunięcie konta kasuje bezpowrotnie Twoje konto i WSZYSTKIE Twoje dane.</p>
-    <button type="button" id="deleteAccountBtn" class="danger-btn">Usuń konto na zawsze</button>
+        <form id="changeEmailForm">
+            <label class="field-label" for="newEmailInput">Zmień e-mail</label>
+            <input type="email" id="newEmailInput" placeholder="nowy@email.com" required>
+            <button type="submit">Zmień e-mail</button>
+        </form>
+        <p id="changeEmailMessage" class="hint auth-message" style="display:none;"></p>
 
-    <hr class="divider">
+        <form id="changePasswordForm">
+            <label class="field-label" for="newPasswordInput">Zmień hasło</label>
+            <input type="password" id="newPasswordInput" minlength="6" placeholder="Nowe hasło (min. 6 znaków)" required>
+            <button type="submit">Zmień hasło</button>
+        </form>
+        <p id="changePasswordMessage" class="hint auth-message" style="display:none;"></p>
 
-    <h2>Zarządzanie danymi</h2>
-    <p class="hint">Usuwa WSZYSTKIE zapisane godziny pracy z bazy. Tej operacji nie da się cofnąć.</p>
-    <button type="button" id="resetAllBtn" class="danger-btn">Wykasuj wszystkie dane</button>
+        <p class="hint">Usunięcie konta kasuje bezpowrotnie Twoje konto i WSZYSTKIE Twoje dane.</p>
+        <button type="button" id="deleteAccountBtn" class="danger-btn">Usuń konto na zawsze</button>
+    </div>
+
+    <div class="dialog-tab-panel" data-tab-panel="poland" hidden>
+        <p class="hint">
+            Ustaw, kiedy i jak często jeździsz do Polski — na tej podstawie policzymy Twój status
+            i kolejne zjazdy.
+        </p>
+        <form id="polandCycleForm">
+            <label class="field-label" for="polandCycleAnchorInput">Data jednego z Twoich wyjazdów do Polski (dowolna z cyklu — przeszła albo przyszła)</label>
+            <input type="date" id="polandCycleAnchorInput" required>
+            <label class="field-label" for="polandCycleWeeksInput">Co ile tygodni jedziesz do Polski</label>
+            <input type="number" id="polandCycleWeeksInput" min="1" step="1" required>
+            <label class="field-label" for="polandCycleHomeDaysInput">Ile dni z rzędu jesteś wtedy w Polsce</label>
+            <input type="number" id="polandCycleHomeDaysInput" min="1" step="1" required>
+            <button type="submit">Zapisz</button>
+        </form>
+        <p id="polandCycleMessage" class="hint auth-message" style="display:none;"></p>
+    </div>
+
+    <div class="dialog-tab-panel" data-tab-panel="data" hidden>
+        <h2>Zarządzanie danymi</h2>
+        <p class="hint">Usuwa WSZYSTKIE zapisane godziny pracy z bazy. Tej operacji nie da się cofnąć.</p>
+        <button type="button" id="resetAllBtn" class="danger-btn">Wykasuj wszystkie dane</button>
+    </div>
 
     <div class="dialog-actions">
         <button type="button" id="closeSettingsBtn">Zamknij</button>
@@ -310,6 +338,28 @@
 
 <dialog id="changelogDialog">
     <h2>Co nowego</h2>
+
+    <h3>v1.3 &middot; 2026-08-02</h3>
+    <ul class="changelog-list">
+        <li>Ustawienia (⚙) przebudowane na zakładki: Konto (e-mail, hasło, usunięcie konta), Zjazdy do Polski (nowość — patrz niżej) i Dane (reset wszystkich godzin pracy) — zamiast jednego długiego okna.</li>
+        <li>Nowość: własny, konfigurowalny cykl zjazdów do Polski. Każde konto ustawia teraz samodzielnie datę jednego ze swoich wyjazdów, co ile tygodni jeździ do Polski i ile dni tam zostaje — status Polska/Niemcy i lista kolejnych zjazdów liczą się na tej podstawie, zamiast na sztywno wpisanym w kod grafiku jednej osoby.</li>
+        <li>Dopóki cykl nie jest ustawiony, karta statusu pokazuje "Cykl zjazdów nieskonfigurowany" — kliknięcie od razu otwiera odpowiednią zakładkę w Ustawieniach.</li>
+        <li>Poprawka: status Polska/Niemcy przełączał się o północy, a nie w momencie faktycznego przekroczenia granicy — w dniu zjazdu od rana pokazywał "Polska", mimo że jeszcze trwała praca. Teraz granica dnia zjazdu i dnia powrotu liczona jest od godziny 20:00 (koniec pracy + dojazd), zamiast od północy.</li>
+    </ul>
+
+    <h3>v1.2 &middot; 2026-08-02</h3>
+    <ul class="changelog-list">
+        <li>Szybkie akcje ("Dodaj dzisiejszy dzień", "Dodaj cały tydzień", "Ustaw urlop", "Wyjazd do Polski") i eksport miesiąca (CSV) połączone w jeden osobny moduł z własnym tłem, umieszczony nad kalendarzem — zamiast rozrzucone w dwóch różnych miejscach ekranu.</li>
+        <li>Kalendarz i lista dni (Historia) to teraz dwa osobne "okna" z własnym tłem i odstępem między sobą, zamiast jednego ciągu treści oddzielonego cienką linią.</li>
+        <li>Poprawka: sekcje panelu bocznego (status, zmiana, statystyki) miały niespójne, "sklejone" odstępy wokół linii oddzielających je od siebie — teraz odstępy są równe i spójne, na telefonie i na komputerze.</li>
+        <li>Panel boczny na telefonie oddzielony teraz wyraźną linią od nagłówka, podobnie jak na komputerze.</li>
+        <li>Odstęp między panelem bocznym a modułem szybkich akcji na telefonie to teraz sam odstęp i tło karty, bez cienkiej linii — spójnie z resztą modułów.</li>
+        <li>Sekcje panelu bocznego (status, zmiana w tym tygodniu, statystyki) oddzielone teraz samym odstępem i własnym tłem zamiast cienkiej linii — spójnie z resztą ekranu.</li>
+        <li>Większy odstęp między wyborem miesiąca a siatką kalendarza w widoku Historia.</li>
+        <li>Poprawka: lista dni w Historii na komputerze rozciągała stronę w nieskończoność — teraz, tak jak na telefonie, ma ograniczoną wysokość i przewija się osobno.</li>
+        <li>Podsumowanie miesiąca (suma godzin, urlop itd.) przeniesione znad dołu listy dni na górę, obok przycisku "Dodaj dzień ręcznie" — widoczne od razu, bez przewijania.</li>
+        <li>Powiększony nagłówek na komputerze: logo, nazwa apki, ikony (konto, odśwież, motyw, ustawienia) i karta statusu PL/DE z odliczaniem do wyjazdu/urlopu.</li>
+    </ul>
 
     <h3>v1.1 &middot; 2026-08-01</h3>
     <ul class="changelog-list">
