@@ -56,7 +56,7 @@
         <p id="authMessage" class="hint auth-message" style="display:none;"></p>
 
         <footer class="app-footer auth-footer">
-            <p>Created by Arek &middot; v1.3.1a &middot; &copy; <span id="authYear"></span></p>
+            <p>Created by Arek &middot; v1.3.2 &middot; &copy; <span id="authYear"></span></p>
             <p class="version-badge">prototype, not yet released for public use</p>
             <p class="hint">Funkcje i wygląd mogą się zmieniać w trakcie rozwoju.</p>
         </footer>
@@ -134,7 +134,7 @@
 </div>
 
 <footer class="app-footer">
-    <p>Created by Arek &middot; v1.3.1a &middot; &copy; <span id="year"></span></p>
+    <p>Created by Arek &middot; v1.3.2 &middot; &copy; <span id="year"></span></p>
     <p class="version-badge">prototype, not yet released for public use</p>
     <p class="hint">Funkcje i wygląd mogą się zmieniać w trakcie rozwoju.</p>
     <button type="button" id="helpBtn" class="link-btn">❓ Jak to działa?</button>
@@ -213,8 +213,10 @@
 <dialog id="editDayDialog">
     <h2 id="editDayTitle">Edytuj dzień</h2>
     <form id="editDayForm">
-        <label class="field-label" for="editDayDateInput">Data</label>
-        <input type="date" id="editDayDateInput" required>
+        <div id="editDayDateField">
+            <label class="field-label" for="editDayDateInput">Data</label>
+            <input type="date" id="editDayDateInput" required>
+        </div>
         <label class="field-label" for="editDayPreset">Szablon (opcjonalnie)</label>
         <select id="editDayPreset"></select>
         <label class="field-label" for="editDayStart">Od</label>
@@ -403,6 +405,12 @@
 
 <dialog id="changelogDialog">
     <h2>Co nowego</h2>
+
+    <h3>v1.3.2 &middot; 2026-08-02</h3>
+    <ul class="changelog-list">
+        <li>Nowe logo aplikacji — kalendarz z pinezką zamiast stopera, bardziej pasujący do tego, czym apka dziś faktycznie jest (kalendarz godzin + rotacja Polska/Niemcy), w tych samych barwach co dotychczas.</li>
+        <li>Poprawka: kliknięcie dnia w kalendarzu (na telefonie i komputerze) nie pozwala już zmieniać daty w okienku dodawania/edycji — data jest już wybrana kliknięciem, więc widoczna jest tylko w tytule okienka, a do ustawienia zostają same godziny. Data zostaje edytowalna tam, gdzie nie wybierało się dnia z kalendarza (Dodaj dzień ręcznie, edycja ✏️ z listy w Historii).</li>
+    </ul>
 
     <h3>v1.3.1a &middot; 2026-08-02</h3>
     <ul class="changelog-list">

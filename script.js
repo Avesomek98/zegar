@@ -291,6 +291,7 @@ const editDayDialog = document.getElementById("editDayDialog");
 const editDayTitle = document.getElementById("editDayTitle");
 const editDayForm = document.getElementById("editDayForm");
 const editDayDateInput = document.getElementById("editDayDateInput");
+const editDayDateField = document.getElementById("editDayDateField");
 const editDayPreset = document.getElementById("editDayPreset");
 const editDayStart = document.getElementById("editDayStart");
 const editDayEnd = document.getElementById("editDayEnd");
@@ -1042,7 +1043,8 @@ monthCalendar.addEventListener("click", (event) => {
         date: clickedDate,
         start: null,
         end: null,
-        breakMinutes: DEFAULT_BREAK_MINUTES
+        breakMinutes: DEFAULT_BREAK_MINUTES,
+        dateEditable: false
     });
 });
 
@@ -1095,7 +1097,7 @@ function buildDaySessionsHtml(day) {
     return { sessionsHtml, dayHours, dayNight, daySunday };
 }
 
-function openEditDialogForDay(dayKey) {
+function openEditDialogForDay(dayKey, dateEditable = true) {
     const day = monthsIndexCache.get(selectedMonthKey)?.days.get(dayKey);
     if (!day || day.sessions.length === 0) return;
 
@@ -1108,7 +1110,8 @@ function openEditDialogForDay(dayKey) {
         date: earliestStart,
         start: earliestStart,
         end: latestEnd,
-        breakMinutes: primarySession.breakMinutes
+        breakMinutes: primarySession.breakMinutes,
+        dateEditable
     });
 }
 
@@ -1131,7 +1134,7 @@ function openDayDetails(dKey) {
 
 dayDetailsEditBtn.onclick = () => {
     dayDetailsDialog.close();
-    openEditDialogForDay(dayDetailsCurrentKey);
+    openEditDialogForDay(dayDetailsCurrentKey, false);
 };
 
 closeDayDetailsBtn.onclick = () => dayDetailsDialog.close();
@@ -1379,9 +1382,13 @@ editDayPreset.onchange = () => {
     editDayPreset.value = "";
 };
 
-function openEditDialog({ original, date, start, end, breakMinutes }) {
+function openEditDialog({ original, date, start, end, breakMinutes, dateEditable = true }) {
     editingDate = original;
-    editDayTitle.textContent = original ? "Edytuj dzień" : "Dodaj dzień";
+    const dateLabel = date.toLocaleDateString("pl-PL", { day: "numeric", month: "long", year: "numeric" });
+    editDayTitle.textContent = dateEditable
+        ? (original ? "Edytuj dzień" : "Dodaj dzień")
+        : `${original ? "Edytuj dzień" : "Dodaj dzień"} — ${dateLabel}`;
+    editDayDateField.style.display = dateEditable ? "" : "none";
     deleteDayBtn.style.display = original ? "" : "none";
     editDayDateInput.value = dateKey(date);
     editDayDateInput.max = dateKey(new Date());
