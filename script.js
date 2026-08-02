@@ -225,7 +225,7 @@ document.querySelectorAll("dialog").forEach((dialog) => {
 const SHIFT_PRESETS = [
     { label: "6:00–16:45", start: "06:00", end: "16:45" },
     { label: "6:00–15:45", start: "06:00", end: "15:45" },
-    { label: "19:30–6:00", start: "19:30", end: "06:00" },
+    { label: "19:30–6:15", start: "19:30", end: "06:15" },
     { label: "Sobota 6:00–14:45", start: "06:00", end: "14:45" }
 ];
 const MONTH_NAMES = [
@@ -283,6 +283,9 @@ const refreshBtn = document.getElementById("refreshBtn");
 const changelogBtn = document.getElementById("changelogBtn");
 const changelogDialog = document.getElementById("changelogDialog");
 const closeChangelogBtn = document.getElementById("closeChangelogBtn");
+const helpBtn = document.getElementById("helpBtn");
+const helpDialog = document.getElementById("helpDialog");
+const closeHelpBtn = document.getElementById("closeHelpBtn");
 
 const editDayDialog = document.getElementById("editDayDialog");
 const editDayTitle = document.getElementById("editDayTitle");
@@ -359,6 +362,7 @@ let polandCycleCache = null; // { anchor: Date, cycleDays: number, homeDays: num
 const NIGHT_START_HOUR = 20;
 const NIGHT_END_HOUR = 6;
 const DEFAULT_BREAK_MINUTES = 45;
+const BREAK_HOUR = 2; // przerwa jest realnie brana o 2:00 w nocy, gdy zmiana obejmuje te pore
 
 const THEME_KEY = "theme";
 
@@ -416,6 +420,9 @@ refreshBtn.onclick = () => {
 };
 
 changelogBtn.onclick = () => changelogDialog.showModal();
+
+helpBtn.onclick = () => helpDialog.showModal();
+closeHelpBtn.onclick = () => helpDialog.close();
 
 const currentYear = String(new Date().getFullYear());
 document.getElementById("year").textContent = currentYear;
@@ -646,12 +653,34 @@ function netHours(session) {
     return Math.max(0, session.hours - session.breakMinutes / 60);
 }
 
-// Godziny nocne/niedzielne licza sie z surowego zakresu [start, end] (przed odjeciem przerwy),
-// wiec bez korekty moglyby przekroczyc rzeczywiste godziny netto - przerwa nie ma zapisanej
-// dokladnej pory, wiec przycinamy proporcjonalnie do jej udzialu w calej (brutto) zmianie.
-function scaleToNet(session, grossOverlapHours) {
+// Przerwa jest realnie brana o 2:00 w nocy - jesli zmiana obejmuje te godzine, zwraca
+// dwa przepracowane odcinki [start,end] z wycieta dokladnie ta przerwa. W przeciwnym razie
+// (zmiana nie siega 2:00, np. dzienna) zwraca null - nie da sie dokladnie umiejscowic przerwy.
+function netWorkedIntervals(session) {
+    const { start, end, breakMinutes } = session;
+    if (breakMinutes <= 0) return [[start, end]];
+
+    const breakStart = new Date(start.getFullYear(), start.getMonth(), start.getDate(), BREAK_HOUR, 0, 0, 0);
+    if (breakStart <= start) breakStart.setDate(breakStart.getDate() + 1);
+    const breakEnd = new Date(breakStart.getTime() + breakMinutes * 60 * 1000);
+
+    if (breakStart >= start && breakEnd <= end) {
+        return [[start, breakStart], [breakEnd, end]];
+    }
+    return null;
+}
+
+// Godziny nocne/niedzielne licza sie normalnie z surowego zakresu [start, end], ale z wycieta
+// przerwa (patrz netWorkedIntervals) - inaczej moglyby przekroczyc rzeczywiste godziny netto.
+// Gdy nie da sie dokladnie umiejscowic przerwy w zmianie (np. zmiana dzienna), przycinamy
+// proporcjonalnie do udzialu przerwy w calej (brutto) zmianie - to i tak wtedy zwykle 0.
+function overlapNetHours(session, overlapFn) {
+    const intervals = netWorkedIntervals(session);
+    if (intervals) {
+        return intervals.reduce((sum, [s, e]) => sum + (e > s ? overlapFn(s, e) : 0), 0);
+    }
     if (session.hours <= 0) return 0;
-    return grossOverlapHours * (netHours(session) / session.hours);
+    return overlapFn(session.start, session.end) * (netHours(session) / session.hours);
 }
 
 async function resetAllData() {
@@ -785,6 +814,13 @@ function buildMonthsIndex(entries) {
             note: entry.note || null
         });
     });
+
+    // Biezacy miesiac ma byc zawsze wybieralny (i domyslny) w historii, nawet bez wpisow.
+    const currentKey = monthKey(new Date());
+    if (!months.has(currentKey)) {
+        months.set(currentKey, { date: new Date(), days: new Map() });
+    }
+
     return months;
 }
 
@@ -899,7 +935,10 @@ function populateMonthPicker(months) {
         monthPicker.appendChild(option);
     });
 
-    const keep = sortedKeys.includes(selectedMonthKey) ? selectedMonthKey : sortedKeys[0];
+    const currentMonthKey = monthKey(new Date());
+    const keep = sortedKeys.includes(selectedMonthKey)
+        ? selectedMonthKey
+        : (sortedKeys.includes(currentMonthKey) ? currentMonthKey : sortedKeys[0]);
     monthPicker.value = keep;
     return keep;
 }
@@ -1016,8 +1055,8 @@ function buildDaySessionsHtml(day) {
         .sort((a, b) => a.start - b.start)
         .map((session) => {
             const net = netHours(session);
-            const night = scaleToNet(session, nightOverlapHours(session.start, session.end));
-            const sunday = scaleToNet(session, sundayOverlapHours(session.start, session.end));
+            const night = overlapNetHours(session, nightOverlapHours);
+            const sunday = overlapNetHours(session, sundayOverlapHours);
             dayHours += net;
             dayNight += night;
             daySunday += sunday;
@@ -1188,8 +1227,8 @@ function buildMonthCsv(key) {
             .sort((a, b) => a.start - b.start)
             .forEach((session) => {
                 const net = netHours(session);
-                const night = scaleToNet(session, nightOverlapHours(session.start, session.end));
-                const sunday = scaleToNet(session, sundayOverlapHours(session.start, session.end));
+                const night = overlapNetHours(session, nightOverlapHours);
+                const sunday = overlapNetHours(session, sundayOverlapHours);
                 totalNet += net;
                 totalNight += night;
                 totalSunday += sunday;

@@ -56,8 +56,9 @@
         <p id="authMessage" class="hint auth-message" style="display:none;"></p>
 
         <footer class="app-footer auth-footer">
-            <p>Created by Arek &middot; v1.5 &middot; &copy; <span id="authYear"></span></p>
+            <p>Created by Arek &middot; v1.3.1a &middot; &copy; <span id="authYear"></span></p>
             <p class="version-badge">prototype, not yet released for public use</p>
+            <p class="hint">Funkcje i wygląd mogą się zmieniać w trakcie rozwoju.</p>
         </footer>
     </div>
 </div>
@@ -133,8 +134,10 @@
 </div>
 
 <footer class="app-footer">
-    <p>Created by Arek &middot; v1.5 &middot; &copy; <span id="year"></span></p>
+    <p>Created by Arek &middot; v1.3.1a &middot; &copy; <span id="year"></span></p>
     <p class="version-badge">prototype, not yet released for public use</p>
+    <p class="hint">Funkcje i wygląd mogą się zmieniać w trakcie rozwoju.</p>
+    <button type="button" id="helpBtn" class="link-btn">❓ Jak to działa?</button>
     <button type="button" id="changelogBtn" class="link-btn">Co nowego? (changelog)</button>
 </footer>
 
@@ -336,26 +339,86 @@
     </form>
 </dialog>
 
+<dialog id="helpDialog">
+    <h2>Jak to działa</h2>
+    <p class="hint">
+        Kalendarz Pracy to prywatny tracker godzin pracy — logujesz przepracowane godziny,
+        a aplikacja sama liczy netto, godziny nocne/niedzielne, urlop i status Polska/Niemcy.
+        Każde konto widzi tylko swoje dane.
+    </p>
+
+    <h3>Dodawanie godzin</h3>
+    <ul class="changelog-list">
+        <li><strong>Zmiana w tym tygodniu</strong> (panel boczny) — wybierasz szablon godzin, który ma być domyślny na ten tydzień. To on jest używany przez "✓ Dodaj dzisiejszy dzień".</li>
+        <li><strong>✓ Dodaj dzisiejszy dzień</strong> — jednym kliknięciem loguje dziś godziny wg wybranej wyżej zmiany.</li>
+        <li><strong>📅 Dodaj cały tydzień</strong> — te same godziny "od–do" dla całego zakresu dni naraz (np. uzupełnienie zeszłego tygodnia); nadpisuje istniejące wpisy w tym zakresie.</li>
+        <li><strong>+ Dodaj dzień ręcznie</strong> (przy Historii) — pojedynczy dzień z dowolną datą, godzinami i przerwą.</li>
+        <li>Kliknięcie ✏️ przy dniu w Historii albo w kalendarzu pozwala poprawić lub usunąć wpis.</li>
+    </ul>
+
+    <h3>Netto, przerwa, godziny nocne i niedzielne</h3>
+    <ul class="changelog-list">
+        <li><strong>Brutto</strong> = "do" minus "od". <strong>Netto</strong> = brutto minus przerwa (przerwa jest niepłatna).</li>
+        <li>Domyślna przerwa to 45 minut, edytowalna przy każdym wpisie.</li>
+        <li><strong>Godziny nocne</strong> to część zmiany wypadająca między 20:00 a 6:00. Jeśli zmiana obejmuje godzinę 2:00 w nocy, aplikacja zakłada, że wtedy właśnie jest przerwa, i wycina ją dokładnie z tego miejsca — dzięki temu godziny nocne nigdy nie przekraczają godzin netto.</li>
+        <li><strong>Godziny niedzielne</strong> to część zmiany wypadająca kalendarzowo w niedzielę (00:00–24:00), liczone tą samą zasadą.</li>
+    </ul>
+
+    <h3>Kalendarz i Historia</h3>
+    <ul class="changelog-list">
+        <li>Siatka kalendarza koloruje dni wg tego, co się w nich działo: konkretny szablon zmiany (własny kolor), godziny niedzielne, weekend, urlop, dzień wolny.</li>
+        <li>Kliknięcie wypełnionego dnia pokazuje szczegóły; kliknięcie pustego — dodawanie.</li>
+        <li>Pod kalendarzem: lista dni tego miesiąca oraz podsumowanie (suma godzin, nocne, niedzielne, urlop).</li>
+        <li>⬇️ Eksportuj miesiąc (CSV) — pobiera zestawienie wybranego miesiąca do pliku (na iPhonie od razu przez "Udostępnij").</li>
+    </ul>
+
+    <h3>Status Polska ⇄ Niemcy</h3>
+    <ul class="changelog-list">
+        <li>Karta w nagłówku pokazuje, czy jesteś aktualnie w Polsce czy w Niemczech, i odliczanie do najbliższej zmiany.</li>
+        <li>Liczony jest na podstawie własnego cyklu zjazdów — ustawiasz go w Ustawienia → Zjazdy do Polski (data jednego z wyjazdów, co ile tygodni, ile dni w Polsce). Dopóki nie ustawisz, karta pokazuje "nieskonfigurowany" — kliknięcie od razu otwiera tę zakładkę.</li>
+        <li>Przełączenie statusu następuje o godzinie faktycznego przekroczenia granicy (20:00), a nie o północy.</li>
+        <li>Kliknięcie skonfigurowanej karty pokazuje listę najbliższych zaplanowanych wyjazdów.</li>
+    </ul>
+
+    <h3>Urlop</h3>
+    <ul class="changelog-list">
+        <li>🏖️ Ustaw urlop — zakres dni oznaczony jako wolne (0h) z notatką "Urlop", wyróżniony na zielono.</li>
+        <li>Podsumowanie miesiąca liczy dni urlopu i ile z nich zabiera pulę urlopową w pracy (bez sobót/niedziel).</li>
+        <li>W trakcie urlopu status w nagłówku zawsze pokazuje "Polska", niezależnie od zwykłego cyklu zjazdów.</li>
+    </ul>
+
+    <h3>Konto i ustawienia</h3>
+    <ul class="changelog-list">
+        <li>Zakładka <strong>Konto</strong> — zmiana e-maila/hasła, usunięcie konta.</li>
+        <li>Zakładka <strong>Zjazdy do Polski</strong> — konfiguracja cyklu opisana wyżej.</li>
+        <li>Zakładka <strong>Dane</strong> — kasowanie wszystkich zapisanych godzin (nieodwracalne).</li>
+        <li>🌙/☀️ w nagłówku przełącza tryb ciemny/jasny (albo automatycznie wg systemu).</li>
+        <li>Apkę da się zainstalować jako PWA (ikona na ekranie głównym). Bez internetu da się ją otworzyć i przeglądać ostatnio wczytane dane, ale dodawanie i edycja godzin wymaga połączenia — dane trzymane są w Supabase, nie lokalnie.</li>
+    </ul>
+
+    <div class="dialog-actions">
+        <button type="button" id="closeHelpBtn">Zamknij</button>
+    </div>
+</dialog>
+
 <dialog id="changelogDialog">
     <h2>Co nowego</h2>
 
-    <h3>v1.5 &middot; 2026-08-02</h3>
+    <h3>v1.3.1a &middot; 2026-08-02</h3>
     <ul class="changelog-list">
-        <li>Poprawka: godziny nocne i niedzielne liczyły się z surowego zakresu "od–do", więc mogły pokazywać więcej niż realne godziny netto (np. 8.25 godz. nocnych przy 8 godz. netto). Przerwa jest niepłatna, więc teraz nocne/niedzielne są proporcjonalnie przycinane do godzin netto — nigdy nie przekroczą tego, co faktycznie przepracowane.</li>
-    </ul>
-
-    <h3>v1.4 &middot; 2026-08-02</h3>
-    <ul class="changelog-list">
-        <li>Poprawka: na telefonie z wyspą powiadomień/notchem górne ikony (konto, odśwież, motyw, ustawienia) wchodziły pod nią — nagłówek ma teraz odstęp uwzględniający tę wyspę.</li>
-        <li>Poprawka: nazwa aplikacji obok logo obcinała się do jednej litery na wąskich telefonach — ikonki w nagłówku są teraz bardziej kompaktowe, a pusta "wysepka" statusu PL/DE (widoczna tylko na komputerze) nie zajmuje już miejsca na telefonie.</li>
+        <li>Nowy przycisk "❓ Jak to działa?" obok changelogu — okienko pomocy tłumaczące krótko wszystkie funkcje i zasady apki (dodawanie godzin, netto/przerwa/nocne/niedzielne, kalendarz, status Polska/Niemcy, urlop, konto).</li>
     </ul>
 
     <h3>v1.3 &middot; 2026-08-02</h3>
     <ul class="changelog-list">
-        <li>Ustawienia (⚙) przebudowane na zakładki: Konto (e-mail, hasło, usunięcie konta), Zjazdy do Polski (nowość — patrz niżej) i Dane (reset wszystkich godzin pracy) — zamiast jednego długiego okna.</li>
-        <li>Nowość: własny, konfigurowalny cykl zjazdów do Polski. Każde konto ustawia teraz samodzielnie datę jednego ze swoich wyjazdów, co ile tygodni jeździ do Polski i ile dni tam zostaje — status Polska/Niemcy i lista kolejnych zjazdów liczą się na tej podstawie, zamiast na sztywno wpisanym w kod grafiku jednej osoby.</li>
-        <li>Dopóki cykl nie jest ustawiony, karta statusu pokazuje "Cykl zjazdów nieskonfigurowany" — kliknięcie od razu otwiera odpowiednią zakładkę w Ustawieniach.</li>
-        <li>Poprawka: status Polska/Niemcy przełączał się o północy, a nie w momencie faktycznego przekroczenia granicy — w dniu zjazdu od rana pokazywał "Polska", mimo że jeszcze trwała praca. Teraz granica dnia zjazdu i dnia powrotu liczona jest od godziny 20:00 (koniec pracy + dojazd), zamiast od północy.</li>
+        <li>Ustawienia (⚙) przebudowane na zakładki: Konto, Zjazdy do Polski (nowość) i Dane.</li>
+        <li>Nowość: własny, konfigurowalny cykl zjazdów do Polski per konto (data, częstotliwość, długość pobytu) — status PL/DE i lista kolejnych zjazdów liczą się teraz na tej podstawie, zamiast na sztywno wpisanym w kod grafiku jednej osoby. Dopóki cykl nie jest ustawiony, karta statusu pokazuje "Cykl zjazdów nieskonfigurowany" i kliknięcie od razu otwiera odpowiednią zakładkę w Ustawieniach.</li>
+        <li>Status PL/DE przełącza się o godzinie faktycznego przekroczenia granicy (20:00), a nie o północy.</li>
+        <li>Poprawka: godziny nocne i niedzielne mogły pokazywać więcej niż realne godziny netto. Teraz poprawnie uwzględniają porę przerwy (2:00 w nocy) i nigdy nie przekraczają tego, co faktycznie przepracowane.</li>
+        <li>Modularny redesign interfejsu: szybkie akcje, kalendarz i historia jako osobne "okna" z własnym tłem i odstępami; spójne odstępy w panelu bocznym; większe elementy nagłówka na komputerze.</li>
+        <li>Poprawki na telefonie: nagłówek nie wchodzi już pod wyspę powiadomień/notch, nazwa aplikacji obok logo się nie ucina, lista dni w Historii ma ograniczoną wysokość zamiast rozciągać całą stronę.</li>
+        <li>Historia domyślnie pokazuje bieżący miesiąc, zamiast ostatniego miesiąca z jakimikolwiek zapisanymi danymi.</li>
+        <li>Poprawiony szablon zmiany nocnej: 19:30–6:15 (było błędnie 19:30–6:00).</li>
     </ul>
 
     <h3>v1.2 &middot; 2026-08-02</h3>
