@@ -618,15 +618,18 @@ li {
     margin-top: 4px;
 }
 
-#history::-webkit-scrollbar {
+#history::-webkit-scrollbar,
+dialog::-webkit-scrollbar {
     width: 6px;
 }
 
-#history::-webkit-scrollbar-track {
+#history::-webkit-scrollbar-track,
+dialog::-webkit-scrollbar-track {
     background: transparent;
 }
 
-#history::-webkit-scrollbar-thumb {
+#history::-webkit-scrollbar-thumb,
+dialog::-webkit-scrollbar-thumb {
     background: var(--border);
     border-radius: 999px;
 }
@@ -726,6 +729,8 @@ li {
 
 dialog {
     width: min(420px, 90vw);
+    max-height: 85vh;
+    overflow-y: auto;
     border: none;
     border-radius: 12px;
     padding: 20px;
