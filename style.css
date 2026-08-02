@@ -1081,7 +1081,8 @@ dialog::backdrop {
 #weekHoursForm select,
 #changeEmailForm input,
 #changePasswordForm input,
-#polandCycleForm input {
+#polandCycleForm input,
+#exportPolandScheduleForm select {
     width: 100%;
     padding: 10px;
     font-size: 16px;

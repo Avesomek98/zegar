@@ -102,6 +102,7 @@
             <button type="button" id="vacationBtn" class="secondary-btn">🏖️ Ustaw urlop</button>
             <button type="button" id="polandTripBtn" class="secondary-btn">🛫 Wyjazd do Polski</button>
             <button type="button" id="exportMonthBtn" class="secondary-btn">⬇️ Eksportuj miesiąc (CSV)</button>
+            <button type="button" id="exportPolandScheduleBtn" class="secondary-btn">🗓️ Eksportuj zjazdy do Polski</button>
         </div>
     </div>
 
@@ -196,7 +197,10 @@
             <input type="number" id="polandCycleWeeksInput" min="1" step="1" required>
             <label class="field-label" for="polandCycleHomeDaysInput">Ile dni z rzędu jesteś wtedy w Polsce</label>
             <input type="number" id="polandCycleHomeDaysInput" min="1" step="1" required>
-            <button type="submit">Zapisz</button>
+            <div class="dialog-actions">
+                <button type="button" id="clearPolandCycleBtn" class="danger-btn">Usuń ustawienia cyklu</button>
+                <button type="submit">Zapisz</button>
+            </div>
         </form>
         <p id="polandCycleMessage" class="hint auth-message" style="display:none;"></p>
     </div>
@@ -301,6 +305,27 @@
     </div>
 </dialog>
 
+<dialog id="exportPolandScheduleDialog">
+    <h2>Eksportuj zjazdy do Polski</h2>
+    <p class="hint">
+        Wygeneruje plik z listą Twoich pobytów w Polsce na wybrany okres, na podstawie
+        cyklu ustawionego w Ustawieniach → Zjazdy do Polski — możesz go komuś wysłać,
+        żeby wiedział, kiedy będziesz w domu.
+    </p>
+    <form id="exportPolandScheduleForm">
+        <label class="field-label" for="exportPolandScheduleRange">Okres</label>
+        <select id="exportPolandScheduleRange">
+            <option value="90">Najbliższe 3 miesiące</option>
+            <option value="180">Najbliższe 6 miesięcy</option>
+            <option value="365">Najbliższy rok</option>
+        </select>
+        <div class="dialog-actions">
+            <button type="button" id="closeExportPolandScheduleBtn">Anuluj</button>
+            <button type="submit">Pobierz</button>
+        </div>
+    </form>
+</dialog>
+
 <dialog id="polandTripDialog">
     <h2>Wyjazd do Polski</h2>
     <p class="hint">
@@ -366,6 +391,7 @@
         <li>Liczony jest na podstawie własnego cyklu zjazdów — ustawiasz go w Ustawienia → Zjazdy do Polski (data jednego z wyjazdów, co ile tygodni, ile dni w Polsce). Dopóki nie ustawisz, karta pokazuje "nieskonfigurowany" — kliknięcie od razu otwiera tę zakładkę.</li>
         <li>Przełączenie statusu następuje o godzinie faktycznego przekroczenia granicy (20:00), a nie o północy.</li>
         <li>Kliknięcie skonfigurowanej karty pokazuje listę najbliższych zaplanowanych wyjazdów.</li>
+        <li>🗓️ Eksportuj zjazdy do Polski (szybkie akcje) — plik z listą Twoich pobytów w Polsce na najbliższe 3/6/12 miesięcy, np. żeby komuś pokazać, kiedy będziesz w domu. Liczony z tego samego cyklu, bez urlopów.</li>
     </ul>
 
     <h3>Urlop</h3>
@@ -397,6 +423,9 @@
         <li>Poprawka: na komputerze panel boczny i główny zawsze renderowały się jedno pod drugim (jak na telefonie), zamiast obok siebie w dwóch kolumnach — winna była reguła CSS z wyższym priorytetem, która po zalogowaniu nadpisywała układ z powrotem na jednokolumnowy. Widok dwukolumnowy na komputerze działa teraz poprawnie.</li>
         <li>Zamienione miejscami: moduł szybkich akcji jest teraz w panelu bocznym, a "Dzisiejsza zmiana", statystyki, kalendarz i historia w głównej kolumnie.</li>
         <li>Kalendarz i historia połączone w jedno wspólne okno (zamiast dwóch osobnych), węższe i wyśrodkowane na komputerze.</li>
+        <li>Nowość: "🗓️ Eksportuj zjazdy do Polski" w szybkich akcjach — plik z listą pobytów w Polsce na najbliższe 3/6/12 miesięcy (np. żeby komuś pokazać, kiedy będziesz w domu), liczony z ustawionego cyklu zjazdów.</li>
+        <li>Poprawka: eksport plików (godzin i zjazdów) na komputerze czasem otwierał okno "Udostępnij" zamiast normalnie zapisać plik na dysk — na desktopie zawsze pobiera teraz bezpośrednio.</li>
+        <li>Nowość: w Ustawienia → Zjazdy do Polski można teraz usunąć zapisany cykl (status wraca do "nieskonfigurowany").</li>
     </ul>
 
     <h3>v1.3.2 &middot; 2026-08-02</h3>

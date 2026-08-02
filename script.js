@@ -244,6 +244,11 @@ const polandVacationCountdownText = document.getElementById("polandVacationCount
 const polandScheduleDialog = document.getElementById("polandScheduleDialog");
 const polandScheduleList = document.getElementById("polandScheduleList");
 const closePolandScheduleBtn = document.getElementById("closePolandScheduleBtn");
+const exportPolandScheduleBtn = document.getElementById("exportPolandScheduleBtn");
+const exportPolandScheduleDialog = document.getElementById("exportPolandScheduleDialog");
+const exportPolandScheduleForm = document.getElementById("exportPolandScheduleForm");
+const exportPolandScheduleRange = document.getElementById("exportPolandScheduleRange");
+const closeExportPolandScheduleBtn = document.getElementById("closeExportPolandScheduleBtn");
 const history = document.getElementById("history");
 const monthTotalEl = document.getElementById("monthTotal");
 const accountBtn = document.getElementById("accountBtn");
@@ -264,6 +269,7 @@ const polandCycleAnchorInput = document.getElementById("polandCycleAnchorInput")
 const polandCycleWeeksInput = document.getElementById("polandCycleWeeksInput");
 const polandCycleHomeDaysInput = document.getElementById("polandCycleHomeDaysInput");
 const polandCycleMessage = document.getElementById("polandCycleMessage");
+const clearPolandCycleBtn = document.getElementById("clearPolandCycleBtn");
 
 // Dotkniecie/klikniecie gdziekolwiek w polu daty ma od razu otwierac kalendarz,
 // nie tylko klikniecie w ikonke po prawej stronie.
@@ -580,6 +586,33 @@ polandCycleForm.onsubmit = async (event) => {
     const [y, m, d] = polandCycleAnchorInput.value.split("-").map(Number);
     polandCycleCache = { anchor: new Date(y, m - 1, d), cycleDays: weeks * 7, homeDays };
     setStatusMessage(polandCycleMessage, "Zapisano.", true);
+    renderPolandStatus();
+};
+
+clearPolandCycleBtn.onclick = async () => {
+    if (!confirm("Na pewno usunąć ustawienia cyklu zjazdów? Status Polska/Niemcy pokaże się jako nieskonfigurowany, dopóki nie ustawisz go ponownie.")) return;
+
+    clearPolandCycleBtn.disabled = true;
+    const { error } = await supabase
+        .from("app_settings")
+        .update({
+            poland_trip_anchor: null,
+            poland_trip_cycle_weeks: null,
+            poland_trip_home_days: null,
+            updated_at: new Date().toISOString()
+        })
+        .eq("user_id", currentUserId);
+    clearPolandCycleBtn.disabled = false;
+
+    if (error) {
+        console.error(error);
+        setStatusMessage(polandCycleMessage, "Nie udało się usunąć ustawień.", false);
+        return;
+    }
+
+    polandCycleCache = null;
+    populatePolandCycleForm();
+    setStatusMessage(polandCycleMessage, "Ustawienia cyklu usunięte.", true);
     renderPolandStatus();
 };
 
@@ -1204,7 +1237,7 @@ exportMonthBtn.onclick = async () => {
     const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
     const file = new File([blob], filename, { type: "text/csv" });
 
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    if (!desktopLayoutQuery.matches && navigator.canShare && navigator.canShare({ files: [file] })) {
         try {
             await navigator.share({ files: [file], title: `Godziny pracy — ${monthLabel}` });
             return;
@@ -1841,6 +1874,97 @@ function nextPolandTripDates(count) {
     }
     return dates;
 }
+
+// Lista pobytow w Polsce (od-do, kalendarzowo) w najblizszych `daysAhead` dniach - do eksportu,
+// np. zeby pokazac komus kiedy bedziemy w domu. Nie uwzglednia urlopow, tylko sam cykl zjazdow.
+function polandStayRanges(daysAhead) {
+    if (!polandCycleCache) return [];
+
+    const { anchor, cycleDays, homeDays } = polandCycleCache;
+    const today = new Date();
+    const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const anchorMidnight = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate());
+
+    const daysSinceAnchor = daysBetween(anchorMidnight, todayMidnight);
+    const cyclePos = ((daysSinceAnchor % cycleDays) + cycleDays) % cycleDays;
+
+    const firstStayStart = new Date(todayMidnight);
+    if (cyclePos < homeDays) {
+        firstStayStart.setDate(firstStayStart.getDate() - cyclePos);
+    } else {
+        firstStayStart.setDate(firstStayStart.getDate() + (cycleDays - cyclePos));
+    }
+
+    const rangeEnd = new Date(todayMidnight);
+    rangeEnd.setDate(rangeEnd.getDate() + daysAhead);
+
+    const ranges = [];
+    const cursor = new Date(firstStayStart);
+    while (cursor < rangeEnd) {
+        const stayEnd = new Date(cursor);
+        stayEnd.setDate(stayEnd.getDate() + homeDays - 1);
+        ranges.push({ start: new Date(cursor), end: stayEnd });
+        cursor.setDate(cursor.getDate() + cycleDays);
+    }
+    return ranges;
+}
+
+exportPolandScheduleBtn.onclick = () => {
+    if (!polandCycleCache) {
+        alert("Najpierw skonfiguruj cykl zjazdów w Ustawieniach → Zjazdy do Polski.");
+        return;
+    }
+    exportPolandScheduleDialog.showModal();
+};
+
+closeExportPolandScheduleBtn.onclick = () => exportPolandScheduleDialog.close();
+
+exportPolandScheduleForm.onsubmit = async (event) => {
+    event.preventDefault();
+
+    const daysAhead = Number(exportPolandScheduleRange.value);
+    const ranges = polandStayRanges(daysAhead);
+    if (ranges.length === 0) {
+        alert("Brak zjazdów w wybranym okresie.");
+        return;
+    }
+
+    const rows = [["Od", "Do", "Dni w Polsce"]];
+    ranges.forEach(({ start, end }) => {
+        rows.push([
+            start.toLocaleDateString("pl-PL"),
+            end.toLocaleDateString("pl-PL"),
+            String(daysBetween(start, end) + 1)
+        ]);
+    });
+    const csv = rows.map((row) => row.map(csvEscape).join(",")).join("\r\n");
+
+    const rangeLabel = exportPolandScheduleRange.options[exportPolandScheduleRange.selectedIndex].textContent;
+    const filename = `zjazdy-do-polski-${dateKey(new Date())}.csv`;
+    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
+    const file = new File([blob], filename, { type: "text/csv" });
+
+    if (!desktopLayoutQuery.matches && navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+            await navigator.share({ files: [file], title: `Zjazdy do Polski — ${rangeLabel}` });
+            exportPolandScheduleDialog.close();
+            return;
+        } catch (err) {
+            if (err.name === "AbortError") return;
+            console.error(err);
+        }
+    }
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    exportPolandScheduleDialog.close();
+};
 
 polandStatusCard.onclick = () => {
     if (!polandCycleCache) {
