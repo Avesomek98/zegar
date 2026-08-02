@@ -56,7 +56,7 @@
         <p id="authMessage" class="hint auth-message" style="display:none;"></p>
 
         <footer class="app-footer auth-footer">
-            <p>Created by Arek &middot; v1.3.2 &middot; &copy; <span id="authYear"></span></p>
+            <p>Created by Arek &middot; v1.4 &middot; &copy; <span id="authYear"></span></p>
             <p class="version-badge">prototype, not yet released for public use</p>
             <p class="hint">Funkcje i wygląd mogą się zmieniać w trakcie rozwoju.</p>
         </footer>
@@ -96,6 +96,16 @@
             </div>
         </div>
 
+        <div class="quick-actions">
+            <button type="button" id="weekHoursBtn" class="secondary-btn">📅 Dodaj cały tydzień</button>
+            <button type="button" id="addDayBtn" class="secondary-btn">+ Dodaj dzień ręcznie</button>
+            <button type="button" id="vacationBtn" class="secondary-btn">🏖️ Ustaw urlop</button>
+            <button type="button" id="polandTripBtn" class="secondary-btn">🛫 Wyjazd do Polski</button>
+            <button type="button" id="exportMonthBtn" class="secondary-btn">⬇️ Eksportuj miesiąc (CSV)</button>
+        </div>
+    </div>
+
+    <div class="app-main">
         <div class="active-shift-row">
             <label class="field-label" for="activeShiftSelect">Dzisiejsza zmiana</label>
             <select id="activeShiftSelect"></select>
@@ -108,33 +118,25 @@
         </div>
 
         <div id="quickStats" class="quick-stats"></div>
-    </div>
-
-    <div class="app-main">
-        <div class="quick-actions">
-            <button type="button" id="weekHoursBtn" class="secondary-btn">📅 Dodaj cały tydzień</button>
-            <button type="button" id="addDayBtn" class="secondary-btn">+ Dodaj dzień ręcznie</button>
-            <button type="button" id="vacationBtn" class="secondary-btn">🏖️ Ustaw urlop</button>
-            <button type="button" id="polandTripBtn" class="secondary-btn">🛫 Wyjazd do Polski</button>
-            <button type="button" id="exportMonthBtn" class="secondary-btn">⬇️ Eksportuj miesiąc (CSV)</button>
-        </div>
-        <div class="calendar-section">
-            <h2>Historia</h2>
-            <p class="hint">Wybierz miesiąc i kliknij ✏️ przy dniu, żeby poprawić godziny albo go usunąć.</p>
-            <select id="monthPicker" class="month-picker"></select>
-            <div id="monthCalendar" class="month-calendar"></div>
-        </div>
-        <div class="history-section">
-            <div class="history-section-header">
-                <p id="monthTotal" class="month-total"></p>
+        <div class="history-window">
+            <div class="calendar-section">
+                <h2>Historia</h2>
+                <p class="hint">Wybierz miesiąc i kliknij ✏️ przy dniu, żeby poprawić godziny albo go usunąć.</p>
+                <select id="monthPicker" class="month-picker"></select>
+                <div id="monthCalendar" class="month-calendar"></div>
             </div>
-            <div id="history"></div>
+            <div class="history-section">
+                <div class="history-section-header">
+                    <p id="monthTotal" class="month-total"></p>
+                </div>
+                <div id="history"></div>
+            </div>
         </div>
     </div>
 </div>
 
 <footer class="app-footer">
-    <p>Created by Arek &middot; v1.3.2 &middot; &copy; <span id="year"></span></p>
+    <p>Created by Arek &middot; v1.4 &middot; &copy; <span id="year"></span></p>
     <p class="version-badge">prototype, not yet released for public use</p>
     <p class="hint">Funkcje i wygląd mogą się zmieniać w trakcie rozwoju.</p>
     <button type="button" id="helpBtn" class="link-btn">❓ Jak to działa?</button>
@@ -389,6 +391,13 @@
 
 <dialog id="changelogDialog">
     <h2>Co nowego</h2>
+
+    <h3>v1.4 &middot; 2026-08-02</h3>
+    <ul class="changelog-list">
+        <li>Poprawka: na komputerze panel boczny i główny zawsze renderowały się jedno pod drugim (jak na telefonie), zamiast obok siebie w dwóch kolumnach — winna była reguła CSS z wyższym priorytetem, która po zalogowaniu nadpisywała układ z powrotem na jednokolumnowy. Widok dwukolumnowy na komputerze działa teraz poprawnie.</li>
+        <li>Zamienione miejscami: moduł szybkich akcji jest teraz w panelu bocznym, a "Dzisiejsza zmiana", statystyki, kalendarz i historia w głównej kolumnie.</li>
+        <li>Kalendarz i historia połączone w jedno wspólne okno (zamiast dwóch osobnych), węższe i wyśrodkowane na komputerze.</li>
+    </ul>
 
     <h3>v1.3.2 &middot; 2026-08-02</h3>
     <ul class="changelog-list">
