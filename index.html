@@ -56,7 +56,7 @@
         <p id="authMessage" class="hint auth-message" style="display:none;"></p>
 
         <footer class="app-footer auth-footer">
-            <p>Created by Arek &middot; v1.4 &middot; &copy; <span id="authYear"></span></p>
+            <p>Created by Arek &middot; v1.5 &middot; &copy; <span id="authYear"></span></p>
             <p class="version-badge">prototype, not yet released for public use</p>
             <p class="hint">Funkcje i wygląd mogą się zmieniać w trakcie rozwoju.</p>
         </footer>
@@ -67,7 +67,10 @@
     <div class="top-bar">
         <div class="brand">
             <img src="icons/icon-192.png" alt="" class="brand-logo">
-            <h1>Kalendarz Pracy</h1>
+            <div class="brand-text">
+                <h1>Kalendarz Pracy</h1>
+                <p class="brand-subtitle">Wszystko o Twoim czasie pracy w jednym miejscu</p>
+            </div>
         </div>
         <div class="top-bar-poland-slot" id="topBarPolandSlot"></div>
         <div class="top-actions">
@@ -81,7 +84,7 @@
     <div class="app-sidebar">
         <div class="poland-status-row" id="polandStatusRow">
             <div id="polandStatusCard" class="poland-status-card">
-                <div class="poland-status-flag" id="polandStatusFlag">🇩🇪</div>
+                <div class="poland-status-flag" id="polandStatusFlag"></div>
                 <div class="poland-status-body">
                     <strong id="polandStatusText">—</strong>
                     <span id="polandCountdownText" class="hint">—</span>
@@ -98,11 +101,12 @@
 
         <div class="quick-actions">
             <button type="button" id="weekHoursBtn" class="secondary-btn">📅 Dodaj cały tydzień</button>
-            <button type="button" id="addDayBtn" class="secondary-btn">+ Dodaj dzień ręcznie</button>
-            <button type="button" id="vacationBtn" class="secondary-btn">🏖️ Ustaw urlop</button>
-            <button type="button" id="polandTripBtn" class="secondary-btn">🛫 Wyjazd do Polski</button>
-            <button type="button" id="exportMonthBtn" class="secondary-btn">⬇️ Eksportuj miesiąc (CSV)</button>
+            <button type="button" id="vacationBtn" class="secondary-btn">🏖️ Urlop</button>
+            <button type="button" id="sickLeaveBtn" class="secondary-btn">🤒 Zwolnienie lekarskie</button>
+            <button type="button" id="exportMonthBtn" class="secondary-btn">⬇️ Eksportuj miesiąc</button>
             <button type="button" id="exportPolandScheduleBtn" class="secondary-btn">🗓️ Eksportuj zjazdy do Polski</button>
+            <button type="button" id="configBtn" class="secondary-btn">🛠️ Konfiguracja</button>
+            <p id="employeeNumberFooter" class="quick-actions-footer" style="display:none;"></p>
         </div>
     </div>
 
@@ -137,7 +141,7 @@
 </div>
 
 <footer class="app-footer">
-    <p>Created by Arek &middot; v1.4 &middot; &copy; <span id="year"></span></p>
+    <p>Created by Arek &middot; v1.5 &middot; &copy; <span id="year"></span></p>
     <p class="version-badge">prototype, not yet released for public use</p>
     <p class="hint">Funkcje i wygląd mogą się zmieniać w trakcie rozwoju.</p>
     <button type="button" id="helpBtn" class="link-btn">❓ Jak to działa?</button>
@@ -147,6 +151,7 @@
 <dialog id="accountDialog">
     <h2>Konto</h2>
     <p class="hint">Zalogowano jako <strong id="accountDialogEmail">—</strong></p>
+    <p id="accountDialogEmployeeNumber" class="hint" style="display:none;"></p>
     <div class="dialog-actions">
         <button type="button" id="accountLogoutBtn" class="danger-btn">Wyloguj się</button>
         <button type="button" id="accountManageBtn">Zarządzaj kontem</button>
@@ -160,7 +165,6 @@
 
     <div class="dialog-tabs">
         <button type="button" class="dialog-tab is-active" data-tab="account">Konto</button>
-        <button type="button" class="dialog-tab" data-tab="poland">Zjazdy do Polski</button>
         <button type="button" class="dialog-tab" data-tab="data">Dane</button>
     </div>
 
@@ -185,26 +189,6 @@
         <button type="button" id="deleteAccountBtn" class="danger-btn">Usuń konto na zawsze</button>
     </div>
 
-    <div class="dialog-tab-panel" data-tab-panel="poland" hidden>
-        <p class="hint">
-            Ustaw, kiedy i jak często jeździsz do Polski — na tej podstawie policzymy Twój status
-            i kolejne zjazdy.
-        </p>
-        <form id="polandCycleForm">
-            <label class="field-label" for="polandCycleAnchorInput">Data jednego z Twoich wyjazdów do Polski (dowolna z cyklu — przeszła albo przyszła)</label>
-            <input type="date" id="polandCycleAnchorInput" required>
-            <label class="field-label" for="polandCycleWeeksInput">Co ile tygodni jedziesz do Polski</label>
-            <input type="number" id="polandCycleWeeksInput" min="1" step="1" required>
-            <label class="field-label" for="polandCycleHomeDaysInput">Ile dni z rzędu jesteś wtedy w Polsce</label>
-            <input type="number" id="polandCycleHomeDaysInput" min="1" step="1" required>
-            <div class="dialog-actions">
-                <button type="button" id="clearPolandCycleBtn" class="danger-btn">Usuń ustawienia cyklu</button>
-                <button type="submit">Zapisz</button>
-            </div>
-        </form>
-        <p id="polandCycleMessage" class="hint auth-message" style="display:none;"></p>
-    </div>
-
     <div class="dialog-tab-panel" data-tab-panel="data" hidden>
         <h2>Zarządzanie danymi</h2>
         <p class="hint">Usuwa WSZYSTKIE zapisane godziny pracy z bazy. Tej operacji nie da się cofnąć.</p>
@@ -213,6 +197,62 @@
 
     <div class="dialog-actions">
         <button type="button" id="closeSettingsBtn">Zamknij</button>
+    </div>
+</dialog>
+
+<dialog id="configDialog">
+    <h2>Konfiguracja</h2>
+
+    <div class="dialog-tabs">
+        <button type="button" class="config-tab is-active" data-config-tab="employee">👤 Numer</button>
+        <button type="button" class="config-tab" data-config-tab="poland">🇵🇱 Zjazdy</button>
+        <button type="button" class="config-tab" data-config-tab="vacation">🏖️ Urlop</button>
+    </div>
+
+    <div class="config-tab-panel" data-config-tab-panel="employee">
+        <p class="hint">Pojawi się w nagłówku eksportowanych raportów (PDF, CSV, Excel).</p>
+        <form id="employeeNumberForm">
+            <label class="field-label" for="employeeNumberInput">Numer pracownika</label>
+            <input type="text" id="employeeNumberInput" maxlength="50" placeholder="Wpisz swój numer">
+            <div class="dialog-actions">
+                <button type="button" id="clearEmployeeNumberBtn" class="danger-btn">Usuń numer</button>
+                <button type="submit">Zapisz</button>
+            </div>
+        </form>
+        <p id="employeeNumberMessage" class="hint auth-message" style="display:none;"></p>
+    </div>
+
+    <div class="config-tab-panel" data-config-tab-panel="poland" hidden>
+        <p class="hint">Kiedy i jak często jeździsz do Polski — na tej podstawie liczymy status i kolejne zjazdy.</p>
+        <form id="polandCycleForm">
+            <label class="field-label" for="polandCycleAnchorInput">Data jednego z wyjazdów (dowolna z cyklu)</label>
+            <input type="date" id="polandCycleAnchorInput" required>
+            <label class="field-label" for="polandCycleWeeksInput">Co ile tygodni jedziesz do Polski</label>
+            <input type="number" id="polandCycleWeeksInput" min="1" step="1" required>
+            <label class="field-label" for="polandCycleHomeDaysInput">Ile dni z rzędu jesteś wtedy w Polsce</label>
+            <input type="number" id="polandCycleHomeDaysInput" min="1" step="1" required>
+            <div class="dialog-actions">
+                <button type="button" id="clearPolandCycleBtn" class="danger-btn">Usuń cykl</button>
+                <button type="submit">Zapisz</button>
+            </div>
+        </form>
+        <p id="polandCycleMessage" class="hint auth-message" style="display:none;"></p>
+    </div>
+
+    <div class="config-tab-panel" data-config-tab-panel="vacation" hidden>
+        <p class="hint">Ile dni urlopu masz do wykorzystania w tym roku — bez sobót/niedziel i dni, które i tak wypadają w Polsce wg cyklu zjazdów.</p>
+        <form id="vacationAllowanceForm">
+            <label class="field-label" for="vacationAllowanceInput">Dni urlopu w <span id="vacationAllowanceYear"></span> roku</label>
+            <input type="number" id="vacationAllowanceInput" min="0" step="1" required>
+            <div class="dialog-actions">
+                <button type="submit">Zapisz</button>
+            </div>
+        </form>
+        <p id="vacationAllowanceMessage" class="hint auth-message" style="display:none;"></p>
+    </div>
+
+    <div class="dialog-actions">
+        <button type="button" id="closeConfigBtn">Zamknij</button>
     </div>
 </dialog>
 
@@ -240,6 +280,26 @@
             <button type="button" id="deleteDayBtn" class="danger-btn">Usuń dzień</button>
             <button type="button" id="closeEditDayBtn">Anuluj</button>
             <button type="submit">Zapisz</button>
+        </div>
+    </form>
+</dialog>
+
+<dialog id="exportMonthDialog">
+    <h2>Eksportuj miesiąc</h2>
+    <p class="hint">Wybierz miesiąc i format pliku (godziny, urlop, zwolnienia lekarskie).</p>
+    <form id="exportMonthForm">
+        <label class="field-label" for="exportMonthSelect">Miesiąc</label>
+        <select id="exportMonthSelect"></select>
+        <label class="field-label" for="exportMonthFormat">Format pliku</label>
+        <select id="exportMonthFormat">
+            <option value="csv">CSV</option>
+            <option value="xlsx">Excel (.xlsx)</option>
+            <option value="pdf">PDF</option>
+        </select>
+        <p id="exportMonthMessage" class="hint auth-message" style="display:none;"></p>
+        <div class="dialog-actions">
+            <button type="button" id="closeExportMonthBtn">Anuluj</button>
+            <button type="submit">Pobierz</button>
         </div>
     </form>
 </dialog>
@@ -280,21 +340,58 @@
 </dialog>
 
 <dialog id="vacationDialog">
-    <h2>Ustaw urlop</h2>
+    <h2>Urlop</h2>
     <p class="hint">
         Oznaczy każdy dzień w zakresie jako dzień wolny (0h) z notatką
         "Urlop". Nadpisze istniejące wpisy w tym zakresie.
     </p>
     <form id="vacationForm">
-        <label class="field-label" for="vacationStartDate">Od</label>
-        <input type="date" id="vacationStartDate" required>
-        <label class="field-label" for="vacationEndDate">Do</label>
-        <input type="date" id="vacationEndDate" required>
+        <label class="field-label">Zakres dni</label>
+        <p class="hint">Stuknij dzień początkowy, potem dzień końcowy — oba w tym samym kalendarzu.</p>
+        <div class="week-range-header">
+            <button type="button" id="vacationRangePrevBtn" class="icon-btn" aria-label="Poprzedni miesiąc">‹</button>
+            <span id="vacationRangeMonthLabel"></span>
+            <button type="button" id="vacationRangeNextBtn" class="icon-btn" aria-label="Następny miesiąc">›</button>
+        </div>
+        <div id="vacationRangeCalendar" class="month-calendar"></div>
+        <p id="vacationRangeSummary" class="hint"></p>
         <div class="dialog-actions">
             <button type="button" id="closeVacationBtn">Anuluj</button>
             <button type="submit">Zapisz</button>
         </div>
     </form>
+</dialog>
+
+<dialog id="sickLeaveDialog">
+    <h2>Zwolnienie lekarskie</h2>
+    <p class="hint">Oznacza dzień jako niedyspozycję (0h), bez wpływu na godziny pracy.</p>
+    <p class="hint sick-leave-summary-row">
+        <span id="sickLeaveSummary"></span>
+        <button type="button" id="openSickLeaveHistoryBtn" class="link-btn">📋 Historia</button>
+    </p>
+    <form id="sickLeaveForm">
+        <p class="hint">Stuknij dzień początkowy, potem końcowy (ten sam dzień 2× dla jednego dnia).</p>
+        <div class="week-range-header">
+            <button type="button" id="sickLeaveRangePrevBtn" class="icon-btn" aria-label="Poprzedni miesiąc">‹</button>
+            <span id="sickLeaveRangeMonthLabel"></span>
+            <button type="button" id="sickLeaveRangeNextBtn" class="icon-btn" aria-label="Następny miesiąc">›</button>
+        </div>
+        <div id="sickLeaveRangeCalendar" class="month-calendar"></div>
+        <p id="sickLeaveRangeSummary" class="hint"></p>
+        <input type="text" id="sickLeaveNoteInput" maxlength="200" placeholder="Notatka (opcjonalnie) — np. powód nieobecności">
+        <div class="dialog-actions">
+            <button type="button" id="closeSickLeaveBtn">Anuluj</button>
+            <button type="submit">Zapisz</button>
+        </div>
+    </form>
+</dialog>
+
+<dialog id="sickLeaveHistoryDialog">
+    <h2>Historia zwolnień</h2>
+    <div id="sickLeaveHistoryBody"></div>
+    <div class="dialog-actions">
+        <button type="button" id="closeSickLeaveHistoryBtn">Zamknij</button>
+    </div>
 </dialog>
 
 <dialog id="polandScheduleDialog">
@@ -309,16 +406,24 @@
     <h2>Eksportuj zjazdy do Polski</h2>
     <p class="hint">
         Wygeneruje plik z listą Twoich pobytów w Polsce na wybrany okres, na podstawie
-        cyklu ustawionego w Ustawieniach → Zjazdy do Polski — możesz go komuś wysłać,
-        żeby wiedział, kiedy będziesz w domu.
+        cyklu ustawionego w szybkich akcjach → 🛠️ Konfiguracja oraz zaplanowanych urlopów —
+        możesz go komuś wysłać, żeby wiedział, kiedy będziesz w domu.
     </p>
     <form id="exportPolandScheduleForm">
         <label class="field-label" for="exportPolandScheduleRange">Okres</label>
         <select id="exportPolandScheduleRange">
+            <option value="30">Najbliższy miesiąc</option>
             <option value="90">Najbliższe 3 miesiące</option>
             <option value="180">Najbliższe 6 miesięcy</option>
             <option value="365">Najbliższy rok</option>
         </select>
+        <label class="field-label" for="exportPolandScheduleFormat">Format pliku</label>
+        <select id="exportPolandScheduleFormat">
+            <option value="csv">CSV</option>
+            <option value="xlsx">Excel (.xlsx)</option>
+            <option value="pdf">PDF</option>
+        </select>
+        <p id="exportPolandScheduleMessage" class="hint auth-message" style="display:none;"></p>
         <div class="dialog-actions">
             <button type="button" id="closeExportPolandScheduleBtn">Anuluj</button>
             <button type="submit">Pobierz</button>
@@ -352,6 +457,20 @@
     </div>
 </dialog>
 
+<dialog id="dayActionDialog">
+    <h2 id="dayActionTitle">Co chcesz zrobić?</h2>
+    <div class="quick-actions">
+        <button type="button" id="dayActionHoursBtn" class="secondary-btn">⏰ Godziny pracy</button>
+        <button type="button" id="dayActionVacationBtn" class="secondary-btn">🏖️ Urlop</button>
+        <button type="button" id="dayActionSickLeaveBtn" class="secondary-btn">🤒 Zwolnienie lekarskie</button>
+        <button type="button" id="dayActionPolandTripBtn" class="secondary-btn">🛫 Wyjazd do Polski</button>
+    </div>
+    <p id="dayActionHint" class="hint" style="display:none;">Dla przyszłego dnia nie można dodać przepracowanych godzin — jeszcze się nie odbył.</p>
+    <div class="dialog-actions">
+        <button type="button" id="closeDayActionBtn">Anuluj</button>
+    </div>
+</dialog>
+
 
 <dialog id="helpDialog">
     <h2>Jak to działa</h2>
@@ -365,7 +484,7 @@
     <ul class="changelog-list">
         <li><strong>Dzisiejsza zmiana</strong> — wybierasz szablon godzin na dziś. Tuż pod nim przycisk <strong>✓ Dodaj dzień</strong> jednym kliknięciem loguje dziś godziny wg wybranej zmiany.</li>
         <li><strong>📅 Dodaj cały tydzień</strong> (szybkie akcje) — te same godziny "od–do" dla całego zakresu dni naraz (np. uzupełnienie zeszłego tygodnia); nadpisuje istniejące wpisy w tym zakresie.</li>
-        <li><strong>+ Dodaj dzień ręcznie</strong> (szybkie akcje) — pojedynczy dzień z dowolną datą, godzinami i przerwą.</li>
+        <li>Kliknięcie pustego dnia w kalendarzu otwiera menu wyboru akcji dla tego dnia (godziny pracy, urlop, zwolnienie lekarskie, wyjazd do Polski) — patrz sekcja "Kalendarz i Historia" niżej.</li>
         <li>Kliknięcie ✏️ przy dniu w Historii albo w kalendarzu pozwala poprawić lub usunąć wpis.</li>
     </ul>
 
@@ -379,33 +498,41 @@
 
     <h3>Kalendarz i Historia</h3>
     <ul class="changelog-list">
-        <li>Siatka kalendarza koloruje dni wg tego, co się w nich działo: konkretny szablon zmiany (własny kolor), godziny niedzielne, weekend, urlop, dzień wolny.</li>
-        <li>Kliknięcie wypełnionego dnia pokazuje szczegóły; kliknięcie pustego — dodawanie.</li>
+        <li>Siatka kalendarza koloruje dni wg tego, co się w nich działo: konkretny szablon zmiany (własny kolor), godziny niedzielne, weekend, urlop, zwolnienie lekarskie, dzień wolny. Mała flaga w rogu dnia oznacza, że ten dzień wypada "w Polsce" wg cyklu zjazdów — niezależnie od tego, czy jest w nim zapisany wpis.</li>
+        <li>Kliknięcie wypełnionego dnia pokazuje szczegóły; kliknięcie pustego dnia otwiera menu: ⏰ godziny pracy (zablokowane dla przyszłych dni), 🏖️ urlop, 🤒 zwolnienie lekarskie, 🛫 wyjazd do Polski — trzy ostatnie można zaplanować też na przyszłość.</li>
         <li>Pod kalendarzem: lista dni tego miesiąca oraz podsumowanie (suma godzin, nocne, niedzielne, urlop).</li>
-        <li>⬇️ Eksportuj miesiąc (CSV) (szybkie akcje) — pobiera zestawienie wybranego miesiąca do pliku (na telefonie przez "Udostępnij", na komputerze zwykłe pobranie).</li>
+        <li>⬇️ Eksportuj miesiąc (szybkie akcje) — okienko z własnym wyborem miesiąca (niezależnym od Historii) i formatu pliku: CSV, Excel (.xlsx) albo PDF; w pliku oprócz godzin jest też liczba dni urlopu i zwolnienia lekarskiego w tym miesiącu. Na telefonie przez "Udostępnij", na komputerze zwykłe pobranie. Excel i PDF wymagają połączenia z internetem przy pierwszym takim eksporcie (CSV działa offline).</li>
     </ul>
 
     <h3>Status Polska ⇄ Niemcy</h3>
     <ul class="changelog-list">
         <li>Karta w nagłówku pokazuje, czy jesteś aktualnie w Polsce czy w Niemczech, i odliczanie do najbliższej zmiany.</li>
-        <li>Liczony jest na podstawie własnego cyklu zjazdów — ustawiasz go w Ustawienia → Zjazdy do Polski (data jednego z wyjazdów, co ile tygodni, ile dni w Polsce). Dopóki nie ustawisz, karta pokazuje "nieskonfigurowany" — kliknięcie od razu otwiera tę zakładkę.</li>
+        <li>Liczony jest na podstawie własnego cyklu zjazdów — ustawiasz go w szybkich akcjach → 🛠️ Konfiguracja (data jednego z wyjazdów, co ile tygodni, ile dni w Polsce). Dopóki nie ustawisz, karta pokazuje "nieskonfigurowany" — kliknięcie od razu otwiera to okienko.</li>
         <li>Przełączenie statusu następuje o godzinie faktycznego przekroczenia granicy (20:00), a nie o północy.</li>
         <li>Kliknięcie skonfigurowanej karty pokazuje listę najbliższych zaplanowanych wyjazdów.</li>
-        <li>🗓️ Eksportuj zjazdy do Polski (szybkie akcje) — plik z listą Twoich pobytów w Polsce na najbliższe 3/6/12 miesięcy, np. żeby komuś pokazać, kiedy będziesz w domu. Liczony z tego samego cyklu, bez urlopów.</li>
+        <li>🗓️ Eksportuj zjazdy do Polski (szybkie akcje) — plik (CSV, Excel albo PDF) z listą Twoich pobytów w Polsce na najbliższy miesiąc/3/6/12 miesięcy, np. żeby komuś pokazać, kiedy będziesz w domu. Liczony z cyklu zjazdów, z uwzględnieniem zaplanowanych urlopów — jeśli urlop wydłuża albo powoduje dany pobyt, kolumna "Powód" pokazuje np. "Urlop — dlatego 9 dni w Polsce".</li>
     </ul>
 
     <h3>Urlop</h3>
     <ul class="changelog-list">
-        <li>🏖️ Ustaw urlop — zakres dni oznaczony jako wolne (0h) z notatką "Urlop", wyróżniony na zielono.</li>
-        <li>Podsumowanie miesiąca liczy dni urlopu i ile z nich zabiera pulę urlopową w pracy (bez sobót/niedziel).</li>
+        <li>🏖️ Urlop — zakres dni wybierasz stukając w kalendarzu (dzień początkowy, potem końcowy; ten sam dzień dwukrotnie dla urlopu jednodniowego). Podsumowanie od razu pokazuje, ile dni z puli urlopowej zajmie zakres i ile zostanie po zapisaniu. Zaznaczone dni oznaczane są jako wolne (0h) z notatką "Urlop", wyróżnione na zielono.</li>
+        <li>Podsumowanie miesiąca liczy dni urlopu i ile z nich zabiera pulę urlopową w pracy (bez sobót/niedziel i bez dni, które i tak wypadają w Polsce wg cyklu zjazdów — te przysługują jako wolne niezależnie od urlopu).</li>
         <li>W trakcie urlopu status w nagłówku zawsze pokazuje "Polska", niezależnie od zwykłego cyklu zjazdów.</li>
+        <li>W szybkich akcjach → 🛠️ Konfiguracja możesz ustawić, ile dni urlopu masz do wykorzystania w danym roku — na głównym ekranie, obok statystyk, pojawi się wtedy kafelek "Pozostały urlop", liczony na bieżąco z dni urlopu wstawionych w kalendarzu (bez sobót/niedziel i dni w Polsce z cyklu zjazdów).</li>
     </ul>
 
-    <h3>Konto i ustawienia</h3>
+    <h3>Zwolnienie lekarskie</h3>
     <ul class="changelog-list">
-        <li>Zakładka <strong>Konto</strong> — zmiana e-maila/hasła, usunięcie konta.</li>
-        <li>Zakładka <strong>Zjazdy do Polski</strong> — konfiguracja cyklu opisana wyżej; przycisk "Usuń ustawienia cyklu" czyści ją i cofa status do stanu nieskonfigurowanego.</li>
-        <li>Zakładka <strong>Dane</strong> — kasowanie wszystkich zapisanych godzin (nieodwracalne).</li>
+        <li>🤒 Zwolnienie lekarskie (szybkie akcje) — pokazuje łączną liczbę zapisanych dni zwolnienia i pozwala zaznaczyć w kalendarzu nowy zakres (jeden dzień albo np. cały tydzień), tak samo jak przy urlopie.</li>
+        <li>Można dodać opcjonalną notatkę z powodem nieobecności — widać ją potem po kliknięciu dnia w kalendarzu.</li>
+        <li>Dni zwolnienia nie liczą się do godzin pracy (0h) i są wyróżnione osobnym, fioletowym kolorem w kalendarzu i na liście dni — odróżnia je to od urlopu i zwykłego dnia wolnego.</li>
+        <li>📋 Historia (w tym samym okienku) — podsumowanie roczne liczby dni zwolnienia oraz szczegóły pogrupowane wg miesiąca (rozwijane po kliknięciu).</li>
+    </ul>
+
+    <h3>Konto i konfiguracja</h3>
+    <ul class="changelog-list">
+        <li>⚙ Ustawienia w nagłówku — zakładka <strong>Konto</strong> (zmiana e-maila/hasła, usunięcie konta) i <strong>Dane</strong> (kasowanie wszystkich zapisanych godzin, nieodwracalne).</li>
+        <li>🛠️ Konfiguracja (szybkie akcje) — trzy zakładki: <strong>Numer</strong> (numer pracownika — pojawia się w nagłówku eksportowanych raportów oraz w stopce szybkich akcji i w oknie Konto), <strong>Zjazdy</strong> (cykl zjazdów do Polski) i <strong>Urlop</strong> (limit dni urlopu na dany rok).</li>
         <li>🌙/☀️ w nagłówku przełącza tryb ciemny/jasny (albo automatycznie wg systemu).</li>
         <li>Apkę da się zainstalować jako PWA (ikona na ekranie głównym). Bez internetu da się ją otworzyć i przeglądać ostatnio wczytane dane, ale dodawanie i edycja godzin wymaga połączenia — dane trzymane są w Supabase, nie lokalnie.</li>
     </ul>
@@ -418,156 +545,145 @@
 <dialog id="changelogDialog">
     <h2>Co nowego</h2>
 
+    <h3>v1.5 &middot; 2026-08-03</h3>
+    <ul class="changelog-list">
+        <li>Nowość: kliknięcie pustego dnia w kalendarzu otwiera menu wyboru akcji — godziny pracy, urlop, zwolnienie lekarskie albo wyjazd do Polski. Urlop, zwolnienie i wyjazd można planować też na przyszłość; godziny pracy nadal tylko dla dni, które już się odbyły.</li>
+        <li>Nowość: zwolnienie lekarskie — nowa opcja w szybkich akcjach, zakres dni z kalendarza (jak urlop), opcjonalna notatka z powodem, osobny fioletowy kolor w kalendarzu, okno "Historia zwolnień" z podsumowaniem rocznym i szczegółami rozwijanymi wg miesiąca.</li>
+        <li>Nowość: okno 🛠️ Konfiguracja (szybkie akcje) z zakładkami Numer / Zjazdy / Urlop — zastąpiło zakładkę "Zjazdy do Polski" w Ustawieniach.</li>
+        <li>Nowość: numer pracownika — widoczny w nagłówku eksportowanych raportów (PDF/CSV/Excel), w stopce szybkich akcji i w oknie Konto.</li>
+        <li>Nowość: limit dni urlopu na rok i kafelek "Pozostały urlop" na głównym ekranie, liczony na bieżąco z dni urlopu wstawionych w kalendarzu.</li>
+        <li>Poprawka: dzień urlopu, który i tak wypada w Polsce wg cyklu zjazdów, nie zabiera już z puli urlopowej.</li>
+        <li>"Ustaw urlop" → "Urlop"; zakres wybiera się teraz w kalendarzu (jak "Dodaj cały tydzień") zamiast w dwóch polach daty, z podglądem na żywo ile dni z puli zajmie wybrany zakres.</li>
+        <li>Usunięte z szybkich akcji: "Dodaj dzień ręcznie" i "Wyjazd do Polski" — dostępne teraz przez menu po kliknięciu dnia w kalendarzu.</li>
+        <li>Eksport miesiąca: własne okno z wyborem miesiąca (niezależnym od Historii) i formatu pliku — CSV, Excel (.xlsx) albo PDF; w pliku dodatkowo liczba dni urlopu i zwolnienia lekarskiego.</li>
+        <li>Eksport zjazdów do Polski: doszła opcja "najbliższy miesiąc"; uwzględnia teraz zaplanowane urlopy (wydłużają pobyt w zestawieniu) i pokazuje w kolumnie "Powód", kiedy dany pobyt wynika z urlopu.</li>
+        <li>PDF: układ A4 pionowo, własny font z pełnym wsparciem polskich znaków, zawijanie tekstu w komórkach, osobna sekcja "Podsumowanie" pod tabelą, automatyczne przechodzenie na kolejne strony.</li>
+        <li>Poprawka: błędny e-mail/hasło i inne komunikaty logowania po polsku zamiast po angielsku.</li>
+        <li>Flagi PL/DE (karta statusu w nagłówku) i mała flaga dni "w Polsce" w kalendarzu rysowane teraz w CSS zamiast emoji — Windows nie renderuje większości flag emoji jako grafiki.</li>
+        <li>Na telefonie: moduł "Dzisiejsza zmiana" przeniesiony wyżej, nad szybkie akcje.</li>
+        <li>Nowy podtytuł "Wszystko o Twoim czasie pracy w jednym miejscu" pod nazwą aplikacji w nagłówku (na komputerze).</li>
+    </ul>
+
     <h3>v1.4 &middot; 2026-08-02</h3>
     <ul class="changelog-list">
-        <li>Poprawka: na komputerze panel boczny i główny zawsze renderowały się jedno pod drugim (jak na telefonie), zamiast obok siebie w dwóch kolumnach — winna była reguła CSS z wyższym priorytetem, która po zalogowaniu nadpisywała układ z powrotem na jednokolumnowy. Widok dwukolumnowy na komputerze działa teraz poprawnie.</li>
-        <li>Zamienione miejscami: moduł szybkich akcji jest teraz w panelu bocznym, a "Dzisiejsza zmiana", statystyki, kalendarz i historia w głównej kolumnie.</li>
-        <li>Kalendarz i historia połączone w jedno wspólne okno (zamiast dwóch osobnych), węższe i wyśrodkowane na komputerze.</li>
-        <li>Nowość: "🗓️ Eksportuj zjazdy do Polski" w szybkich akcjach — plik z listą pobytów w Polsce na najbliższe 3/6/12 miesięcy (np. żeby komuś pokazać, kiedy będziesz w domu), liczony z ustawionego cyklu zjazdów.</li>
-        <li>Poprawka: eksport plików (godzin i zjazdów) na komputerze czasem otwierał okno "Udostępnij" zamiast normalnie zapisać plik na dysk — na desktopie zawsze pobiera teraz bezpośrednio.</li>
-        <li>Nowość: w Ustawienia → Zjazdy do Polski można teraz usunąć zapisany cykl (status wraca do "nieskonfigurowany").</li>
-        <li>Poprawka: długie okienka (np. "Co nowego?") potrafiły rozciągnąć się na całą stronę zamiast przewijać się same w sobie — teraz mają ograniczoną wysokość i własny scrollbar.</li>
-        <li>Zaktualizowane okienko "Jak to działa?" o nowe funkcje.</li>
+        <li>Poprawka: dwukolumnowy układ na komputerze znów działa poprawnie.</li>
+        <li>Szybkie akcje przeniesione do panelu bocznego; kalendarz i historia połączone w jedno, węższe okno na komputerze.</li>
+        <li>Nowość: eksport zjazdów do Polski (CSV) na najbliższe 3/6/12 miesięcy.</li>
+        <li>Poprawka: eksport plików na komputerze zawsze pobiera bezpośrednio, bez okna "Udostępnij".</li>
+        <li>Nowość: można usunąć zapisany cykl zjazdów w Ustawieniach.</li>
+        <li>Poprawka: długie okienka (np. "Co nowego?") przewijają się same, zamiast rozciągać stronę.</li>
     </ul>
 
     <h3>v1.3.2 &middot; 2026-08-02</h3>
     <ul class="changelog-list">
-        <li>Nowe logo aplikacji — kalendarz z pinezką zamiast stopera, bardziej pasujący do tego, czym apka dziś faktycznie jest (kalendarz godzin + rotacja Polska/Niemcy), w tych samych barwach co dotychczas.</li>
-        <li>Poprawka: kliknięcie dnia w kalendarzu (na telefonie i komputerze) nie pozwala już zmieniać daty w okienku dodawania/edycji — data jest już wybrana kliknięciem, więc widoczna jest tylko w tytule okienka, a do ustawienia zostają same godziny. Data zostaje edytowalna tam, gdzie nie wybierało się dnia z kalendarza (Dodaj dzień ręcznie, edycja ✏️ z listy w Historii).</li>
-        <li>Poprawka: nakładająca się ikonka zmiany trybu na ekranie logowania na iPhonie — przypięta teraz do rogu karty logowania, nie całego ekranu.</li>
-        <li>"Zmiana w tym tygodniu" → "Dzisiejsza zmiana"; "Własne godziny na ten tydzień…" → "Własne godziny".</li>
-        <li>Przycisk "Dodaj dzisiejszy dzień" przemianowany na "Dodaj dzień" i przeniesiony wyżej, tuż pod wyborem dzisiejszej zmiany.</li>
-        <li>Usunięta karta "Inny dzień" i okienko "Podgląd innego okresu" — druga karta statystyk to teraz "W tym miesiącu" (suma godzin netto bieżącego miesiąca).</li>
-        <li>"Dodaj dzień ręcznie" przeniesiony z Historii do modułu szybkich akcji.</li>
-        <li>Powiększony moduł szybkich akcji na komputerze.</li>
+        <li>Nowe logo aplikacji.</li>
+        <li>Poprawka: data dnia wybranego z kalendarza nie jest już edytowalna przez pomyłkę.</li>
+        <li>Poprawka: ikonka zmiany motywu nie nachodzi już na ekran logowania na iPhonie.</li>
+        <li>Zmiany nazw: "Dzisiejsza zmiana", "Dodaj dzień".</li>
+        <li>Usunięta karta "Inny dzień" — zastąpiona kartą "W tym miesiącu".</li>
+        <li>"Dodaj dzień ręcznie" przeniesiony do szybkich akcji.</li>
     </ul>
 
     <h3>v1.3.1a &middot; 2026-08-02</h3>
     <ul class="changelog-list">
-        <li>Nowy przycisk "❓ Jak to działa?" obok changelogu — okienko pomocy tłumaczące krótko wszystkie funkcje i zasady apki (dodawanie godzin, netto/przerwa/nocne/niedzielne, kalendarz, status Polska/Niemcy, urlop, konto).</li>
+        <li>Nowość: okienko "❓ Jak to działa?" z krótkim opisem wszystkich funkcji.</li>
     </ul>
 
     <h3>v1.3 &middot; 2026-08-02</h3>
     <ul class="changelog-list">
-        <li>Ustawienia (⚙) przebudowane na zakładki: Konto, Zjazdy do Polski (nowość) i Dane.</li>
-        <li>Nowość: własny, konfigurowalny cykl zjazdów do Polski per konto (data, częstotliwość, długość pobytu) — status PL/DE i lista kolejnych zjazdów liczą się teraz na tej podstawie, zamiast na sztywno wpisanym w kod grafiku jednej osoby. Dopóki cykl nie jest ustawiony, karta statusu pokazuje "Cykl zjazdów nieskonfigurowany" i kliknięcie od razu otwiera odpowiednią zakładkę w Ustawieniach.</li>
-        <li>Status PL/DE przełącza się o godzinie faktycznego przekroczenia granicy (20:00), a nie o północy.</li>
-        <li>Poprawka: godziny nocne i niedzielne mogły pokazywać więcej niż realne godziny netto. Teraz poprawnie uwzględniają porę przerwy (2:00 w nocy) i nigdy nie przekraczają tego, co faktycznie przepracowane.</li>
-        <li>Modularny redesign interfejsu: szybkie akcje, kalendarz i historia jako osobne "okna" z własnym tłem i odstępami; spójne odstępy w panelu bocznym; większe elementy nagłówka na komputerze.</li>
-        <li>Poprawki na telefonie: nagłówek nie wchodzi już pod wyspę powiadomień/notch, nazwa aplikacji obok logo się nie ucina, lista dni w Historii ma ograniczoną wysokość zamiast rozciągać całą stronę.</li>
-        <li>Historia domyślnie pokazuje bieżący miesiąc, zamiast ostatniego miesiąca z jakimikolwiek zapisanymi danymi.</li>
-        <li>Poprawiony szablon zmiany nocnej: 19:30–6:15 (było błędnie 19:30–6:00).</li>
+        <li>Ustawienia przebudowane na zakładki: Konto, Zjazdy do Polski, Dane.</li>
+        <li>Nowość: własny, konfigurowalny cykl zjazdów do Polski per konto (zamiast sztywnego grafiku).</li>
+        <li>Status PL/DE przełącza się o 20:00 (godzina przekroczenia granicy), nie o północy.</li>
+        <li>Poprawka: godziny nocne/niedzielne nie mogą już przekroczyć realnych godzin netto.</li>
+        <li>Modularny redesign interfejsu (szybkie akcje, kalendarz, historia jako osobne karty).</li>
+        <li>Poprawki na telefonie: nagłówek, notch, wysokość listy w Historii.</li>
+        <li>Historia domyślnie pokazuje bieżący miesiąc.</li>
+        <li>Poprawiony szablon zmiany nocnej: 19:30–6:15.</li>
     </ul>
 
     <h3>v1.2 &middot; 2026-08-02</h3>
     <ul class="changelog-list">
-        <li>Szybkie akcje ("Dodaj dzisiejszy dzień", "Dodaj cały tydzień", "Ustaw urlop", "Wyjazd do Polski") i eksport miesiąca (CSV) połączone w jeden osobny moduł z własnym tłem, umieszczony nad kalendarzem — zamiast rozrzucone w dwóch różnych miejscach ekranu.</li>
-        <li>Kalendarz i lista dni (Historia) to teraz dwa osobne "okna" z własnym tłem i odstępem między sobą, zamiast jednego ciągu treści oddzielonego cienką linią.</li>
-        <li>Poprawka: sekcje panelu bocznego (status, zmiana, statystyki) miały niespójne, "sklejone" odstępy wokół linii oddzielających je od siebie — teraz odstępy są równe i spójne, na telefonie i na komputerze.</li>
-        <li>Panel boczny na telefonie oddzielony teraz wyraźną linią od nagłówka, podobnie jak na komputerze.</li>
-        <li>Odstęp między panelem bocznym a modułem szybkich akcji na telefonie to teraz sam odstęp i tło karty, bez cienkiej linii — spójnie z resztą modułów.</li>
-        <li>Sekcje panelu bocznego (status, zmiana w tym tygodniu, statystyki) oddzielone teraz samym odstępem i własnym tłem zamiast cienkiej linii — spójnie z resztą ekranu.</li>
-        <li>Większy odstęp między wyborem miesiąca a siatką kalendarza w widoku Historia.</li>
-        <li>Poprawka: lista dni w Historii na komputerze rozciągała stronę w nieskończoność — teraz, tak jak na telefonie, ma ograniczoną wysokość i przewija się osobno.</li>
-        <li>Podsumowanie miesiąca (suma godzin, urlop itd.) przeniesione znad dołu listy dni na górę, obok przycisku "Dodaj dzień ręcznie" — widoczne od razu, bez przewijania.</li>
-        <li>Powiększony nagłówek na komputerze: logo, nazwa apki, ikony (konto, odśwież, motyw, ustawienia) i karta statusu PL/DE z odliczaniem do wyjazdu/urlopu.</li>
+        <li>Szybkie akcje i eksport miesiąca połączone w jeden moduł nad kalendarzem.</li>
+        <li>Kalendarz i Historia jako osobne karty z własnym tłem.</li>
+        <li>Ujednolicone odstępy w panelu bocznym (telefon i komputer).</li>
+        <li>Poprawka: lista dni w Historii na komputerze nie rozciąga już strony w nieskończoność.</li>
+        <li>Podsumowanie miesiąca przeniesione na górę, widoczne bez przewijania.</li>
+        <li>Powiększony nagłówek na komputerze.</li>
     </ul>
 
     <h3>v1.1 &middot; 2026-08-01</h3>
     <ul class="changelog-list">
-        <li>Nowe okienko z odliczaniem do najbliższego zaplanowanego urlopu, obok karty statusu Polska/Niemcy — pojawia się, gdy w kalendarzu jest wpisany nadchodzący urlop.</li>
-        <li>Ujednolicono wygląd przycisków szybkich akcji ("Dodaj dzisiejszy dzień", "Dodaj cały tydzień" itd.) na telefonie — teraz wyglądają tak samo jak na komputerze, płasko i bez ramek zamiast domyślnego stylu przycisków.</li>
+        <li>Nowość: odliczanie do najbliższego zaplanowanego urlopu obok statusu Polska/Niemcy.</li>
+        <li>Ujednolicony wygląd przycisków szybkich akcji na telefonie i komputerze.</li>
     </ul>
 
     <h3>v1.0 &middot; 2026-08-01</h3>
     <ul class="changelog-list">
-        <li>Nowy układ interfejsu na komputerze/laptopie (od szerokości ok. 1024px) — telefon wygląda dokładnie tak jak wcześniej, bez zmian.</li>
-        <li>Ekran podzielony na dwa panele: boczny z akcjami w stylu listy zakładek przeglądarki i główny z kalendarzem oraz historią.</li>
-        <li>Logo i nazwa aplikacji w lewym górnym rogu nagłówka; ikony konta, odświeżania, motywu i ustawień w prawym.</li>
-        <li>Karta statusu Polska/Niemcy z odliczaniem do zjazdu przeniesiona na komputerze do nagłówka jako kompaktowa "wysepka".</li>
-        <li>Większy, czytelniejszy kalendarz miesięczny na szerokich ekranach.</li>
-        <li>Płaski układ oddzielony cienkimi liniami zamiast cieni, inspirowany serwisem X/Twitter — sekcje panelu bocznego i głównego są teraz wyraźnie odseparowane, zamiast jednego ciągu treści.</li>
-        <li>Poprawka: przełącznik trybu ciemnego na ekranie logowania na iPhonie nie zasłania już wyspy powiadomień (Dynamic Island) / notcha.</li>
+        <li>Nowy dwupanelowy układ interfejsu na komputerze/laptopie (telefon bez zmian).</li>
+        <li>Logo i nazwa apki w nagłówku po lewej; ikony konta/odświeżania/motywu/ustawień po prawej.</li>
+        <li>Karta statusu Polska/Niemcy przeniesiona na komputerze do nagłówka.</li>
+        <li>Większy kalendarz miesięczny na szerokich ekranach.</li>
+        <li>Poprawka: przełącznik trybu ciemnego nie zasłania już notcha na iPhonie.</li>
     </ul>
 
     <h3>v0.8 &middot; 2026-08-01</h3>
     <ul class="changelog-list">
-        <li>Usunięto PIN — zastąpiony prawdziwym logowaniem przez Supabase Auth (e-mail + hasło), z rejestracją i wylogowaniem.</li>
-        <li>Każdy użytkownik ma teraz własne, w pełni odizolowane dane (wymuszone na poziomie bazy danych, nie tylko w kodzie apki).</li>
-        <li>Sesja utrzymuje się po odświeżeniu strony — nie trzeba logować się za każdym razem.</li>
-        <li>Nowy wskaźnik konta (👤) w rogu ekranu — szybki podgląd zalogowanego e-maila, wylogowanie i dostęp do zarządzania kontem.</li>
-        <li>Zarządzanie kontem: zmiana e-maila, zmiana hasła, usunięcie konta wraz ze wszystkimi danymi.</li>
-        <li>Reset zapomnianego hasła przez link wysyłany na e-mail.</li>
-        <li>Nowoczesny redesign ekranu logowania — nazwa i logo apki, gradientowe tło, przełącznik trybu ciemnego dostępny już na ekranie logowania.</li>
-        <li>Zmieniono oficjalną nazwę aplikacji na "Kalendarz Pracy".</li>
-        <li>Poprawka: otwarte okienka (np. Ustawienia) zamykają się automatycznie po wylogowaniu.</li>
+        <li>Usunięto PIN — zastąpiony logowaniem przez Supabase Auth (e-mail + hasło).</li>
+        <li>Każdy użytkownik ma teraz własne, w pełni odizolowane dane; sesja utrzymuje się po odświeżeniu.</li>
+        <li>Nowość: wskaźnik konta (👤), zarządzanie kontem (zmiana e-maila/hasła, usunięcie konta), reset hasła e-mailem.</li>
+        <li>Redesign ekranu logowania; zmieniono nazwę apki na "Kalendarz Pracy".</li>
     </ul>
 
     <h3>v0.7 &middot; 2026-08-01</h3>
     <ul class="changelog-list">
-        <li>Nowa siatka kalendarza w widoku historii — miesiąc jako 7-kolumnowa siatka dni, kolorowana wg tego, co się danego dnia działo: konkretny szablon zmiany (każdy w innym kolorze), godziny niedzielne osobnym kolorem, weekend, urlop, dzień wolny.</li>
-        <li>Kliknięcie wypełnionego dnia w kalendarzu otwiera okienko ze szczegółami tego dnia (z przyciskiem "Edytuj"); kliknięcie pustego dnia otwiera dodawanie.</li>
-        <li>Eksport miesiąca do pliku CSV — na iPhonie od razu przez natywne okno "Udostępnij" (Numbers, Mail, AirDrop).</li>
-        <li>Szablony zmian dostępne też w dialogach "Dodaj dzień ręcznie" i "Dodaj cały tydzień".</li>
-        <li>"Dodaj cały tydzień": zakres dni wybiera się teraz w jednym kalendarzu (zamiast dwóch osobnych pól daty), z oznaczeniem dni, które już mają zapisane dane.</li>
-        <li>Zablokowano możliwość dodawania/edytowania dni z przyszłości.</li>
-        <li>Usunięto zbędne okno potwierdzenia przy usuwaniu dnia.</li>
-        <li>Poprawki błędów: kalendarz nie czyścił się po skasowaniu wszystkich danych; siatka kalendarza nachodziła na przycisk eksportu.</li>
+        <li>Nowość: siatka kalendarza w Historii, kolorowana wg typu dnia (zmiana, niedziela, weekend, urlop, wolne).</li>
+        <li>Kliknięcie dnia pokazuje szczegóły albo dodawanie godzin.</li>
+        <li>Nowość: eksport miesiąca do CSV.</li>
+        <li>"Dodaj cały tydzień": zakres dni wybierany w jednym kalendarzu zamiast dwóch pól daty.</li>
+        <li>Zablokowano dodawanie/edycję dni z przyszłości.</li>
     </ul>
 
     <h3>v0.6 &middot; 2026-08-01</h3>
     <ul class="changelog-list">
-        <li>Karta statusu 🇵🇱/🇩🇪 na głównym ekranie — pokazuje, czy aktualnie jesteś w Polsce czy w Niemczech, i odliczanie do wyjazdu/powrotu (cykl co 14 dni, czwartek–niedziela w Polsce).</li>
-        <li>Kliknięcie karty statusu pokazuje listę najbliższych terminów wyjazdów do Polski.</li>
-        <li>Status i odliczanie uwzględniają teraz urlop — jeśli jesteś na urlopie, liczy dni do powrotu na jego podstawie; jeśli zaplanowany urlop wypada wcześniej niż zwykły zjazd, pokazuje wcześniejszy termin.</li>
-        <li>Nowa opcja "🏖️ Ustaw urlop" — zakres dat oznaczany jako dni wolne z notatką, wyróżniony na zielono w historii (z pierwszeństwem nad kolorem weekendu).</li>
-        <li>Podsumowanie miesiąca pokazuje teraz liczbę dni urlopu, w tym ile z nich odejmuje się z puli urlopowej w pracy (bez sobót/niedziel).</li>
-        <li>Nowa opcja "📅 Dodaj cały tydzień" — masowe dodawanie tych samych godzin dla zakresu dni (domyślnie poprzedni tydzień), z opcją pominięcia weekendu.</li>
-        <li>Uporządkowano przyciski głównego ekranu — "Wyjazd do Polski" i "Ustaw urlop" przeniesione wyżej, obok "Dodaj dzisiejsze godziny".</li>
+        <li>Nowość: karta statusu 🇵🇱/🇩🇪 z odliczaniem do wyjazdu/powrotu.</li>
+        <li>Status i odliczanie uwzględniają urlop.</li>
+        <li>Nowość: "🏖️ Ustaw urlop" i "📅 Dodaj cały tydzień" (masowe dodawanie godzin).</li>
+        <li>Podsumowanie miesiąca pokazuje liczbę dni urlopu.</li>
     </ul>
 
     <h3>v0.5 &middot; 2026-08-01</h3>
     <ul class="changelog-list">
-        <li>Ekran z PIN-em przed wejściem do apki — zabezpieczenie przed przypadkowymi odwiedzającymi.</li>
-        <li>Uproszczony wybór zmiany: 3 gotowe szablony (6:00–16:45, 19:30–6:00, sobota 6:00–14:45) + możliwość wpisania własnych godzin na dany tydzień.</li>
-        <li>Usunięto ręczne "Rozpocznij pracę" / "Zakończ pracę" — zastąpione jednym przyciskiem "✓ Dodaj dzisiejsze godziny", który od razu loguje dzisiejszy dzień wg wybranej zmiany.</li>
+        <li>Ekran z PIN-em zabezpieczający dostęp do apki.</li>
+        <li>Uproszczony wybór zmiany: gotowe szablony + własne godziny.</li>
+        <li>Jeden przycisk "✓ Dodaj dzisiejsze godziny" zamiast ręcznego start/stop.</li>
     </ul>
 
     <h3>v0.4 &middot; 2026-08-01</h3>
     <ul class="changelog-list">
-        <li>Nowa kafelka "Inny dzień" w podglądzie godzin — sprawdź dowolny dzień z kalendarza albo podsumowanie całego wybranego miesiąca.</li>
-        <li>"Zmiana w tym tygodniu" na głównym ekranie — szybki wybór jednego z 6 gotowych szablonów godzin (np. 6:00–16:45, 21:45–8:30), który automatycznie przycina zarejestrowane godziny.</li>
-        <li>Poprawka przycinania godzin dla zmian nocnych przechodzących przez północ (np. 21:45–8:30).</li>
-        <li>Nowa opcja "🛫 Wyjazd do Polski" — jednym kliknięciem ustawia skrócony dzień pracy (6h) i oznacza kolejny dzień jako wolny.</li>
-        <li>Usunięto stary, ręczny grafik godzin per dzień tygodnia z Ustawień — zastąpiony prostszą "Zmianą w tym tygodniu".</li>
+        <li>Nowość: podgląd dowolnego dnia lub podsumowania miesiąca.</li>
+        <li>Nowość: szybki wybór szablonu zmiany na tydzień, z automatycznym przycinaniem godzin.</li>
+        <li>Poprawka przycinania godzin dla zmian nocnych przez północ.</li>
+        <li>Nowość: "🛫 Wyjazd do Polski" — jednym kliknięciem skrócony dzień + wolne kolejnego dnia.</li>
     </ul>
 
     <h3>v0.3 &middot; 2026-08-01</h3>
     <ul class="changelog-list">
-        <li>Usunięto wyliczanie 20% dodatku nocnego — godziny nocne (20:00–6:00) są teraz tylko wyróżnione kolorową plakietką, bez przeliczeń procentowych.</li>
-        <li>Wyróżnienie godzin przypadających dokładnie na niedzielę (np. przy zmianie zaczynającej się w niedzielę wieczorem) osobną, różową plakietką.</li>
-        <li>Soboty i niedziele wyróżnione kolorem w widoku historii.</li>
-        <li>Poprawka błędu w kodzie strony (uszkodzony znacznik meta).</li>
+        <li>Usunięto wyliczanie % dodatku nocnego — godziny nocne tylko wyróżnione plakietką.</li>
+        <li>Nowość: wyróżnienie godzin niedzielnych osobną plakietką; soboty/niedziele kolorem w historii.</li>
     </ul>
 
     <h3>v0.2 &middot; 2026-08-01</h3>
     <ul class="changelog-list">
-        <li>Wybór miesiąca w historii + godziny "od–do" przy każdej sesji, nie tylko suma.</li>
-        <li>Dodatek nocny 20% za godziny 20:00–6:00, wyliczany automatycznie.</li>
-        <li>Przerwa 45 min domyślnie odejmowana od każdego dnia (brutto vs netto), z możliwością edycji.</li>
-        <li>Edycja dnia: zmiana godzin, przerwy, a nawet daty wpisu.</li>
-        <li>Ręczne dodawanie dni wstecz (np. uzupełnienie zeszłego miesiąca).</li>
-        <li>Usuwanie pojedynczego dnia i reset całej bazy danych.</li>
-        <li>Podgląd "Dziś" / "Wczoraj" nad historią.</li>
-        <li>Tryb ciemny — automatyczny wg systemu + ręczny przełącznik.</li>
-        <li>Przewijana lista historii zamiast rozciągania całej strony.</li>
-        <li>Nowe logo aplikacji i poprawiony nagłówek.</li>
+        <li>Wybór miesiąca w historii, godziny "od–do" przy każdej sesji.</li>
+        <li>Przerwa 45 min domyślnie odejmowana od dnia (brutto vs netto), edytowalna.</li>
+        <li>Edycja i usuwanie dni, reset bazy, podgląd "Dziś"/"Wczoraj".</li>
+        <li>Nowość: tryb ciemny.</li>
     </ul>
 
     <h3>v0.1 &middot; pierwsza wersja</h3>
     <ul class="changelog-list">
         <li>Start/stop liczący godziny pracy, zapisywane w Supabase i zsynchronizowane między urządzeniami.</li>
-        <li>Konfigurowalny grafik zmian z automatycznym przycinaniem godzin spoza zmiany.</li>
+        <li>Konfigurowalny grafik zmian z automatycznym przycinaniem godzin.</li>
         <li>Instalacja jako PWA na iPhone (ikona, działanie offline).</li>
     </ul>
 

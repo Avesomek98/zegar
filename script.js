@@ -40,6 +40,29 @@ function showAuthMessage(text, isSuccess) {
     setStatusMessage(authMessage, text, isSuccess);
 }
 
+// Supabase Auth zwraca komunikaty błędów po angielsku - tlumaczymy te najczestsze,
+// zeby cala apka (poza tym jednym miejscem) nie przelaczala sie nagle na angielski.
+const AUTH_ERROR_TRANSLATIONS = {
+    "Invalid login credentials": "Nieprawidłowy e-mail lub hasło.",
+    "Email not confirmed": "E-mail nie został jeszcze potwierdzony. Sprawdź skrzynkę odbiorczą.",
+    "User already registered": "Konto z tym adresem e-mail już istnieje.",
+    "A user with this email address has already been registered": "Konto z tym adresem e-mail już istnieje.",
+    "Password should be at least 6 characters": "Hasło musi mieć co najmniej 6 znaków.",
+    "Unable to validate email address: invalid format": "Nieprawidłowy format adresu e-mail.",
+    "New password should be different from the old password.": "Nowe hasło musi różnić się od poprzedniego.",
+    "Email address is invalid": "Nieprawidłowy adres e-mail.",
+    "Email rate limit exceeded": "Zbyt wiele prób. Spróbuj ponownie za chwilę."
+};
+
+function translateAuthError(message) {
+    if (!message) return message;
+    if (AUTH_ERROR_TRANSLATIONS[message]) return AUTH_ERROR_TRANSLATIONS[message];
+    if (/^For security purposes, you can only request this/i.test(message)) {
+        return "Ze względów bezpieczeństwa spróbuj ponownie za chwilę.";
+    }
+    return message;
+}
+
 function updateAuthModeUI() {
     if (authMode === "login") {
         authTitle.textContent = "Zaloguj się";
@@ -73,7 +96,7 @@ authForm.onsubmit = async (event) => {
     authSubmitBtn.disabled = false;
 
     if (error) {
-        showAuthMessage(error.message, false);
+        showAuthMessage(translateAuthError(error.message), false);
         return;
     }
 
@@ -99,7 +122,7 @@ forgotPasswordBtn.onclick = async () => {
     forgotPasswordBtn.disabled = false;
 
     if (error) {
-        showAuthMessage(error.message, false);
+        showAuthMessage(translateAuthError(error.message), false);
         return;
     }
     showAuthMessage("Jeśli podany e-mail jest zarejestrowany, wysłaliśmy na niego link do resetu hasła.", true);
@@ -115,7 +138,7 @@ recoveryForm.onsubmit = async (event) => {
     submitBtn.disabled = false;
 
     if (error) {
-        alert(error.message);
+        alert(translateAuthError(error.message));
         return;
     }
 
@@ -144,7 +167,7 @@ changeEmailForm.onsubmit = async (event) => {
     submitBtn.disabled = false;
 
     if (error) {
-        setStatusMessage(changeEmailMessage, error.message, false);
+        setStatusMessage(changeEmailMessage, translateAuthError(error.message), false);
         return;
     }
     setStatusMessage(changeEmailMessage, "Sprawdź skrzynkę (starą i nową), żeby potwierdzić zmianę e-maila.", true);
@@ -162,7 +185,7 @@ changePasswordForm.onsubmit = async (event) => {
     submitBtn.disabled = false;
 
     if (error) {
-        setStatusMessage(changePasswordMessage, error.message, false);
+        setStatusMessage(changePasswordMessage, translateAuthError(error.message), false);
         return;
     }
     setStatusMessage(changePasswordMessage, "Hasło zmienione.", true);
@@ -179,7 +202,7 @@ deleteAccountBtn.onclick = async () => {
 
     if (error) {
         console.error(error);
-        alert("Nie udało się usunąć konta: " + error.message);
+        alert("Nie udało się usunąć konta: " + translateAuthError(error.message));
         return;
     }
 
@@ -248,12 +271,15 @@ const exportPolandScheduleBtn = document.getElementById("exportPolandScheduleBtn
 const exportPolandScheduleDialog = document.getElementById("exportPolandScheduleDialog");
 const exportPolandScheduleForm = document.getElementById("exportPolandScheduleForm");
 const exportPolandScheduleRange = document.getElementById("exportPolandScheduleRange");
+const exportPolandScheduleFormat = document.getElementById("exportPolandScheduleFormat");
+const exportPolandScheduleMessage = document.getElementById("exportPolandScheduleMessage");
 const closeExportPolandScheduleBtn = document.getElementById("closeExportPolandScheduleBtn");
 const history = document.getElementById("history");
 const monthTotalEl = document.getElementById("monthTotal");
 const accountBtn = document.getElementById("accountBtn");
 const accountDialog = document.getElementById("accountDialog");
 const accountDialogEmail = document.getElementById("accountDialogEmail");
+const accountDialogEmployeeNumber = document.getElementById("accountDialogEmployeeNumber");
 const accountLogoutBtn = document.getElementById("accountLogoutBtn");
 const accountManageBtn = document.getElementById("accountManageBtn");
 const closeAccountBtn = document.getElementById("closeAccountBtn");
@@ -264,12 +290,24 @@ const closeSettingsBtn = document.getElementById("closeSettingsBtn");
 const resetAllBtn = document.getElementById("resetAllBtn");
 const settingsTabs = [...document.querySelectorAll(".dialog-tab")];
 const settingsPanels = [...document.querySelectorAll(".dialog-tab-panel")];
+const configBtn = document.getElementById("configBtn");
+const configDialog = document.getElementById("configDialog");
+const closeConfigBtn = document.getElementById("closeConfigBtn");
+const employeeNumberForm = document.getElementById("employeeNumberForm");
+const employeeNumberInput = document.getElementById("employeeNumberInput");
+const employeeNumberMessage = document.getElementById("employeeNumberMessage");
+const clearEmployeeNumberBtn = document.getElementById("clearEmployeeNumberBtn");
+const employeeNumberFooter = document.getElementById("employeeNumberFooter");
 const polandCycleForm = document.getElementById("polandCycleForm");
 const polandCycleAnchorInput = document.getElementById("polandCycleAnchorInput");
 const polandCycleWeeksInput = document.getElementById("polandCycleWeeksInput");
 const polandCycleHomeDaysInput = document.getElementById("polandCycleHomeDaysInput");
 const polandCycleMessage = document.getElementById("polandCycleMessage");
 const clearPolandCycleBtn = document.getElementById("clearPolandCycleBtn");
+const vacationAllowanceForm = document.getElementById("vacationAllowanceForm");
+const vacationAllowanceInput = document.getElementById("vacationAllowanceInput");
+const vacationAllowanceMessage = document.getElementById("vacationAllowanceMessage");
+const vacationAllowanceYear = document.getElementById("vacationAllowanceYear");
 
 // Dotkniecie/klikniecie gdziekolwiek w polu daty ma od razu otwierac kalendarz,
 // nie tylko klikniecie w ikonke po prawej stronie.
@@ -282,6 +320,12 @@ polandCycleAnchorInput.addEventListener("click", () => {
 const quickStats = document.getElementById("quickStats");
 const monthPicker = document.getElementById("monthPicker");
 const exportMonthBtn = document.getElementById("exportMonthBtn");
+const exportMonthDialog = document.getElementById("exportMonthDialog");
+const exportMonthForm = document.getElementById("exportMonthForm");
+const exportMonthSelect = document.getElementById("exportMonthSelect");
+const exportMonthFormat = document.getElementById("exportMonthFormat");
+const exportMonthMessage = document.getElementById("exportMonthMessage");
+const closeExportMonthBtn = document.getElementById("closeExportMonthBtn");
 const monthCalendar = document.getElementById("monthCalendar");
 const themeToggleBtn = document.getElementById("themeToggleBtn");
 const authThemeToggleBtn = document.getElementById("authThemeToggleBtn");
@@ -305,7 +349,6 @@ const editDayBreak = document.getElementById("editDayBreak");
 const editDayMarkTripOff = document.getElementById("editDayMarkTripOff");
 const deleteDayBtn = document.getElementById("deleteDayBtn");
 const closeEditDayBtn = document.getElementById("closeEditDayBtn");
-const addDayBtn = document.getElementById("addDayBtn");
 const activeShiftSelect = document.getElementById("activeShiftSelect");
 const customShiftFields = document.getElementById("customShiftFields");
 const activeShiftCustomStart = document.getElementById("activeShiftCustomStart");
@@ -319,7 +362,16 @@ const dayDetailsEditBtn = document.getElementById("dayDetailsEditBtn");
 const closeDayDetailsBtn = document.getElementById("closeDayDetailsBtn");
 let dayDetailsCurrentKey = null;
 
-const polandTripBtn = document.getElementById("polandTripBtn");
+const dayActionDialog = document.getElementById("dayActionDialog");
+const dayActionTitle = document.getElementById("dayActionTitle");
+const dayActionHint = document.getElementById("dayActionHint");
+const dayActionHoursBtn = document.getElementById("dayActionHoursBtn");
+const dayActionVacationBtn = document.getElementById("dayActionVacationBtn");
+const dayActionSickLeaveBtn = document.getElementById("dayActionSickLeaveBtn");
+const dayActionPolandTripBtn = document.getElementById("dayActionPolandTripBtn");
+const closeDayActionBtn = document.getElementById("closeDayActionBtn");
+let dayActionDate = null;
+
 const polandTripDialog = document.getElementById("polandTripDialog");
 const polandTripForm = document.getElementById("polandTripForm");
 const polandTripDate = document.getElementById("polandTripDate");
@@ -328,9 +380,28 @@ const closePolandTripBtn = document.getElementById("closePolandTripBtn");
 const vacationBtn = document.getElementById("vacationBtn");
 const vacationDialog = document.getElementById("vacationDialog");
 const vacationForm = document.getElementById("vacationForm");
-const vacationStartDate = document.getElementById("vacationStartDate");
-const vacationEndDate = document.getElementById("vacationEndDate");
+const vacationRangeCalendar = document.getElementById("vacationRangeCalendar");
+const vacationRangePrevBtn = document.getElementById("vacationRangePrevBtn");
+const vacationRangeNextBtn = document.getElementById("vacationRangeNextBtn");
+const vacationRangeMonthLabel = document.getElementById("vacationRangeMonthLabel");
+const vacationRangeSummary = document.getElementById("vacationRangeSummary");
 const closeVacationBtn = document.getElementById("closeVacationBtn");
+
+const sickLeaveBtn = document.getElementById("sickLeaveBtn");
+const sickLeaveDialog = document.getElementById("sickLeaveDialog");
+const sickLeaveSummary = document.getElementById("sickLeaveSummary");
+const sickLeaveForm = document.getElementById("sickLeaveForm");
+const sickLeaveRangeCalendar = document.getElementById("sickLeaveRangeCalendar");
+const sickLeaveRangePrevBtn = document.getElementById("sickLeaveRangePrevBtn");
+const sickLeaveRangeNextBtn = document.getElementById("sickLeaveRangeNextBtn");
+const sickLeaveRangeMonthLabel = document.getElementById("sickLeaveRangeMonthLabel");
+const sickLeaveRangeSummary = document.getElementById("sickLeaveRangeSummary");
+const sickLeaveNoteInput = document.getElementById("sickLeaveNoteInput");
+const closeSickLeaveBtn = document.getElementById("closeSickLeaveBtn");
+const openSickLeaveHistoryBtn = document.getElementById("openSickLeaveHistoryBtn");
+const sickLeaveHistoryDialog = document.getElementById("sickLeaveHistoryDialog");
+const sickLeaveHistoryBody = document.getElementById("sickLeaveHistoryBody");
+const closeSickLeaveHistoryBtn = document.getElementById("closeSickLeaveHistoryBtn");
 
 const weekHoursBtn = document.getElementById("weekHoursBtn");
 const weekHoursDialog = document.getElementById("weekHoursDialog");
@@ -347,22 +418,26 @@ const weekHoursBreak = document.getElementById("weekHoursBreak");
 const weekHoursSkipWeekends = document.getElementById("weekHoursSkipWeekends");
 const closeWeekHoursBtn = document.getElementById("closeWeekHoursBtn");
 
-let weekRangeStart = null;
-let weekRangeEnd = null;
-let weekRangeViewDate = new Date();
-
 let editingDate = null;
 let dayTotalsCache = new Map();
 let monthsIndexCache = new Map();
 let selectedMonthKey = null;
 let activeShiftCache = null; // { start, end, label } | null
 let vacationDatesCache = new Set(); // Set<"YYYY-MM-DD"> dni oznaczonych jako Urlop
+let sickLeaveDatesCache = new Set(); // Set<"YYYY-MM-DD"> dni oznaczonych jako zwolnienie lekarskie
+let sickLeaveRecordsCache = []; // [{ date, reason }], najnowsze pierwsze - do okienka Historia zwolnien
 let polandCycleCache = null; // { anchor: Date, cycleDays: number, homeDays: number } | null
+let vacationAllowanceCache = null; // liczba dni urlopu przyznanych na biezacy rok | null (nieustawiony)
+let employeeNumberCache = null; // numer pracownika (string, zeby zachowac wiodace zera) | null
 
 const NIGHT_START_HOUR = 20;
 const NIGHT_END_HOUR = 6;
 const DEFAULT_BREAK_MINUTES = 45;
 const BREAK_HOUR = 2; // przerwa jest realnie brana o 2:00 w nocy, gdy zmiana obejmuje te pore
+
+// Zwolnienie lekarskie rozpoznajemy po prefiksie notatki - "Zwolnienie lekarskie" (bez powodu)
+// albo "Zwolnienie lekarskie: <powod>" (gdy uzytkownik poda opcjonalna notatke).
+const SICK_LEAVE_NOTE_PREFIX = "Zwolnienie lekarskie";
 
 const THEME_KEY = "theme";
 
@@ -414,6 +489,26 @@ function placePolandStatusCard(isDesktop) {
 
 placePolandStatusCard(desktopLayoutQuery.matches);
 desktopLayoutQuery.addEventListener("change", (event) => placePolandStatusCard(event.matches));
+
+// Na telefonie "Dzisiejsza zmiana" ma byc widoczna od razu, wyzej niz szybkie akcje -
+// przenosimy ja do panelu bocznego (nad "quick-actions"). Na desktopie wraca na swoje
+// pierwotne miejsce w kolumnie glownej (nad statystykami i kalendarzem).
+const appMain = document.querySelector(".app-main");
+const activeShiftRow = document.querySelector(".active-shift-row");
+const quickActionsCard = document.querySelector(".quick-actions");
+
+function placeActiveShiftRow(isDesktop) {
+    if (isDesktop) {
+        if (activeShiftRow.parentElement !== appMain) {
+            appMain.insertBefore(activeShiftRow, appMain.firstChild);
+        }
+    } else if (activeShiftRow.nextElementSibling !== quickActionsCard) {
+        appSidebar.insertBefore(activeShiftRow, quickActionsCard);
+    }
+}
+
+placeActiveShiftRow(desktopLayoutQuery.matches);
+desktopLayoutQuery.addEventListener("change", (event) => placeActiveShiftRow(event.matches));
 
 refreshBtn.onclick = () => {
     window.location.reload();
@@ -511,6 +606,138 @@ applyCustomShiftBtn.onclick = async () => {
     applyCustomShiftBtn.disabled = false;
 };
 
+async function refreshVacationAllowanceCache() {
+    const { data, error } = await supabase
+        .from("app_settings")
+        .select("vacation_days_per_year")
+        .eq("user_id", currentUserId)
+        .maybeSingle();
+
+    if (error) {
+        console.error(error);
+        return;
+    }
+    vacationAllowanceCache = data?.vacation_days_per_year ?? null;
+}
+
+function populateVacationAllowanceForm() {
+    setStatusMessage(vacationAllowanceMessage, "");
+    vacationAllowanceYear.textContent = String(new Date().getFullYear());
+    vacationAllowanceInput.value = vacationAllowanceCache != null ? String(vacationAllowanceCache) : "";
+}
+
+vacationAllowanceForm.onsubmit = async (event) => {
+    event.preventDefault();
+    const days = Number(vacationAllowanceInput.value);
+    if (!Number.isInteger(days) || days < 0) return;
+
+    const submitBtn = vacationAllowanceForm.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+
+    const { error } = await supabase
+        .from("app_settings")
+        .upsert(
+            { user_id: currentUserId, vacation_days_per_year: days, updated_at: new Date().toISOString() },
+            { onConflict: "user_id" }
+        );
+
+    submitBtn.disabled = false;
+
+    if (error) {
+        console.error(error);
+        setStatusMessage(vacationAllowanceMessage, "Nie udało się zapisać ustawień.", false);
+        return;
+    }
+
+    vacationAllowanceCache = days;
+    setStatusMessage(vacationAllowanceMessage, "Zapisano.", true);
+    renderQuickStats();
+};
+
+async function refreshEmployeeNumberCache() {
+    const { data, error } = await supabase
+        .from("app_settings")
+        .select("employee_number")
+        .eq("user_id", currentUserId)
+        .maybeSingle();
+
+    if (error) {
+        console.error(error);
+        return;
+    }
+    employeeNumberCache = data?.employee_number || null;
+}
+
+function populateEmployeeNumberForm() {
+    setStatusMessage(employeeNumberMessage, "");
+    employeeNumberInput.value = employeeNumberCache || "";
+}
+
+// Widoczna w szybkich akcjach i w oknie Konto - subtelny sygnal "jestes rozpoznany jako X",
+// podobnie jak e-mail zalogowanego konta.
+function renderEmployeeNumberFooter() {
+    if (employeeNumberCache) {
+        employeeNumberFooter.textContent = `Nr pracownika: ${employeeNumberCache}`;
+        employeeNumberFooter.style.display = "block";
+    } else {
+        employeeNumberFooter.style.display = "none";
+    }
+}
+
+async function saveEmployeeNumber(value) {
+    const { error } = await supabase
+        .from("app_settings")
+        .upsert(
+            { user_id: currentUserId, employee_number: value || null, updated_at: new Date().toISOString() },
+            { onConflict: "user_id" }
+        );
+
+    if (error) {
+        console.error(error);
+        setStatusMessage(employeeNumberMessage, "Nie udało się zapisać numeru.", false);
+        return;
+    }
+
+    employeeNumberCache = value || null;
+    employeeNumberInput.value = employeeNumberCache || "";
+    setStatusMessage(employeeNumberMessage, employeeNumberCache ? "Zapisano." : "Numer usunięty.", true);
+    renderEmployeeNumberFooter();
+}
+
+employeeNumberForm.onsubmit = async (event) => {
+    event.preventDefault();
+    const submitBtn = employeeNumberForm.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    await saveEmployeeNumber(employeeNumberInput.value.trim());
+    submitBtn.disabled = false;
+};
+
+clearEmployeeNumberBtn.onclick = async () => {
+    clearEmployeeNumberBtn.disabled = true;
+    await saveEmployeeNumber("");
+    clearEmployeeNumberBtn.disabled = false;
+};
+
+const configTabs = [...document.querySelectorAll(".config-tab")];
+const configPanels = [...document.querySelectorAll(".config-tab-panel")];
+
+function setConfigTab(tab) {
+    configTabs.forEach((t) => t.classList.toggle("is-active", t.dataset.configTab === tab));
+    configPanels.forEach((p) => { p.hidden = p.dataset.configTabPanel !== tab; });
+}
+configTabs.forEach((t) => { t.onclick = () => setConfigTab(t.dataset.configTab); });
+
+function openConfigDialog(tab = "employee") {
+    setConfigTab(tab);
+    populateEmployeeNumberForm();
+    populatePolandCycleForm();
+    populateVacationAllowanceForm();
+    configDialog.showModal();
+}
+
+configBtn.onclick = () => openConfigDialog();
+closeConfigBtn.onclick = () => configDialog.close();
+
 // Kazdy uzytkownik moze miec inny rytm zjazdow do Polski (np. co tydzien zamiast co dwa
 // tygodnie), wiec cykl jest wyliczany na podstawie wlasnych ustawien z app_settings, a nie
 // na sztywno wpisanych stalych.
@@ -587,6 +814,7 @@ polandCycleForm.onsubmit = async (event) => {
     polandCycleCache = { anchor: new Date(y, m - 1, d), cycleDays: weeks * 7, homeDays };
     setStatusMessage(polandCycleMessage, "Zapisano.", true);
     renderPolandStatus();
+    renderMonthCalendar(selectedMonthKey);
 };
 
 clearPolandCycleBtn.onclick = async () => {
@@ -614,6 +842,7 @@ clearPolandCycleBtn.onclick = async () => {
     populatePolandCycleForm();
     setStatusMessage(polandCycleMessage, "Ustawienia cyklu usunięte.", true);
     renderPolandStatus();
+    renderMonthCalendar(selectedMonthKey);
 };
 
 async function loadHistory() {
@@ -799,6 +1028,34 @@ function buildVacationDates(entries) {
     return dates;
 }
 
+function buildSickLeaveDates(entries) {
+    const dates = new Set();
+    entries.forEach((entry) => {
+        if (entry.note && entry.note.startsWith(SICK_LEAVE_NOTE_PREFIX)) {
+            dates.add(dateKey(new Date(entry.start_time)));
+        }
+    });
+    return dates;
+}
+
+function sickLeaveReasonFromNote(note) {
+    const withReasonPrefix = `${SICK_LEAVE_NOTE_PREFIX}: `;
+    return note.startsWith(withReasonPrefix) ? note.slice(withReasonPrefix.length) : null;
+}
+
+// Pelna lista dni zwolnienia (data + opcjonalny powod) do okienka "Historia zwolnien" -
+// w odroznieniu od sickLeaveDatesCache (tylko klucze dat, do szybkich sprawdzen w kalendarzu).
+function buildSickLeaveRecords(entries) {
+    const records = [];
+    entries.forEach((entry) => {
+        if (entry.note && entry.note.startsWith(SICK_LEAVE_NOTE_PREFIX)) {
+            records.push({ date: new Date(entry.start_time), reason: sickLeaveReasonFromNote(entry.note) });
+        }
+    });
+    records.sort((a, b) => b.date - a.date);
+    return records;
+}
+
 function buildDayTotals(entries) {
     const dayTotals = new Map();
     entries.forEach((entry) => {
@@ -851,6 +1108,26 @@ function buildMonthsIndex(entries) {
     return months;
 }
 
+// Ile dni urlopu z biezacego roku kalendarzowego "zabiera" pule urlopowa - bez sobot/niedziel
+// i bez dni, ktore i tak wypadaja w Polsce wg cyklu zjazdow (patrz isVacationChargeableDate) -
+// ta sama zasada, co w podsumowaniu miesiaca (monthVacationChargeableDays w renderMonth).
+function currentYearVacationChargeableDays() {
+    const year = new Date().getFullYear();
+    let count = 0;
+    vacationDatesCache.forEach((key) => {
+        const [y, m, d] = key.split("-").map(Number);
+        if (y !== year) return;
+        if (isVacationChargeableDate(new Date(y, m - 1, d))) count += 1;
+    });
+    return count;
+}
+
+// null = limit urlopu nieustawiony (kafelek "Pozostały urlop" zaprasza do konfiguracji).
+function remainingVacationDays() {
+    if (vacationAllowanceCache == null) return null;
+    return vacationAllowanceCache - currentYearVacationChargeableDays();
+}
+
 function renderQuickStats() {
     const now = new Date();
     const todayHours = dayTotalsCache.get(dateKey(now))?.hours || 0;
@@ -863,6 +1140,17 @@ function renderQuickStats() {
         }
     });
 
+    const remaining = remainingVacationDays();
+    const vacationCardHtml = remaining === null
+        ? `<div class="stat-card stat-card--clickable" id="vacationStatCard">
+                <span class="stat-label">Pozostały urlop</span>
+                <span class="stat-value">Skonfiguruj →</span>
+           </div>`
+        : `<div class="stat-card stat-card--clickable${remaining < 0 ? " stat-card--warning" : ""}" id="vacationStatCard">
+                <span class="stat-label">Pozostały urlop</span>
+                <span class="stat-value">${remaining} ${remaining === 1 ? "dzień" : "dni"}</span>
+           </div>`;
+
     quickStats.innerHTML = `
         <div class="stat-card">
             <span class="stat-label">Dziś</span>
@@ -872,8 +1160,13 @@ function renderQuickStats() {
             <span class="stat-label">W tym miesiącu</span>
             <span class="stat-value">${monthHours.toFixed(2)} godz.</span>
         </div>
+        ${vacationCardHtml}
     `;
 }
+
+quickStats.addEventListener("click", (event) => {
+    if (event.target.closest("#vacationStatCard")) openConfigDialog("vacation");
+});
 
 function populateMonthPicker(months) {
     const sortedKeys = [...months.keys()].sort().reverse();
@@ -950,11 +1243,14 @@ function renderMonthCalendar(key) {
 
         if (day) {
             const isVacation = day.sessions.some((s) => s.note === "Urlop");
+            const isSickLeave = day.sessions.some((s) => s.note && s.note.startsWith(SICK_LEAVE_NOTE_PREFIX));
             const isDayOff = day.sessions.some((s) => s.hours === 0 && s.start.getTime() === s.end.getTime());
             const hasHours = day.sessions.some((s) => !(s.hours === 0 && s.start.getTime() === s.end.getTime()));
 
             if (isVacation) {
                 cell.classList.add("cal-cell--vacation");
+            } else if (isSickLeave) {
+                cell.classList.add("cal-cell--sick");
             } else if (isDayOff) {
                 cell.classList.add("cal-cell--off");
             } else if (hasHours) {
@@ -975,6 +1271,7 @@ function renderMonthCalendar(key) {
 
         if (dKey === todayKey) cell.classList.add("cal-cell--today");
         if (dKey > todayKey) cell.classList.add("cal-cell--future");
+        if (isDateInPolandCycle(date)) cell.classList.add("cal-cell--poland-home");
 
         monthCalendar.appendChild(cell);
     }
@@ -994,20 +1291,57 @@ monthCalendar.addEventListener("click", (event) => {
 
     const [y, m, d] = dKey.split("-").map(Number);
     const clickedDate = new Date(y, m - 1, d);
-    const todayMidnight = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
-    if (clickedDate > todayMidnight) {
-        return;
-    }
+    openDayActionMenu(clickedDate);
+});
 
+// Klikniecie pustego dnia w kalendarzu otwiera menu wyboru akcji zamiast od razu skakac do
+// dodawania godzin - urlop/zwolnienie/wyjazd do Polski mozna zaplanowac tez na przyszlosc,
+// ale przepracowanych godzin nie da sie dodac dla dnia, ktory jeszcze sie nie odbyl.
+function openDayActionMenu(date) {
+    dayActionDate = date;
+    const todayMidnight = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
+    const isFuture = date > todayMidnight;
+
+    dayActionTitle.textContent = date.toLocaleDateString("pl-PL", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+    dayActionHoursBtn.disabled = isFuture;
+    dayActionHint.style.display = isFuture ? "block" : "none";
+
+    dayActionDialog.showModal();
+}
+
+dayActionHoursBtn.onclick = () => {
+    dayActionDialog.close();
     openEditDialog({
         original: null,
-        date: clickedDate,
+        date: dayActionDate,
         start: null,
         end: null,
         breakMinutes: DEFAULT_BREAK_MINUTES,
         dateEditable: false
     });
-});
+};
+
+dayActionVacationBtn.onclick = () => {
+    dayActionDialog.close();
+    vacationRangePicker.setRange(dayActionDate, dayActionDate);
+    vacationDialog.showModal();
+};
+
+dayActionSickLeaveBtn.onclick = () => {
+    dayActionDialog.close();
+    renderSickLeaveSummary();
+    sickLeaveNoteInput.value = "";
+    sickLeaveRangePicker.setRange(dayActionDate, dayActionDate);
+    sickLeaveDialog.showModal();
+};
+
+dayActionPolandTripBtn.onclick = () => {
+    dayActionDialog.close();
+    polandTripDate.value = dateKey(dayActionDate);
+    polandTripDialog.showModal();
+};
+
+closeDayActionBtn.onclick = () => dayActionDialog.close();
 
 function buildDaySessionsHtml(day) {
     let dayHours = 0;
@@ -1119,6 +1453,7 @@ function renderMonth(key) {
     let monthSunday = 0;
     let monthVacationDays = 0;
     let monthVacationChargeableDays = 0;
+    let monthSickDays = 0;
 
     [...month.days.keys()].sort().reverse().forEach((dKey) => {
         const day = month.days.get(dKey);
@@ -1129,18 +1464,20 @@ function renderMonth(key) {
         monthSunday += daySunday;
 
         const isVacation = day.sessions.some((s) => s.note === "Urlop");
+        const isSickLeave = day.sessions.some((s) => s.note && s.note.startsWith(SICK_LEAVE_NOTE_PREFIX));
         const dow = day.date.getDay();
         const isWeekendDay = dow === 0 || dow === 6;
 
         if (isVacation) {
             monthVacationDays += 1;
-            if (!isWeekendDay) monthVacationChargeableDays += 1;
+            if (isVacationChargeableDate(day.date)) monthVacationChargeableDays += 1;
         }
+        if (isSickLeave) monthSickDays += 1;
 
-        const isWeekend = !isVacation && isWeekendDay;
+        const isWeekend = !isVacation && !isSickLeave && isWeekendDay;
 
         const card = document.createElement("div");
-        card.className = "day-card" + (isVacation ? " day-card--vacation" : isWeekend ? " day-card--weekend" : "");
+        card.className = "day-card" + (isVacation ? " day-card--vacation" : isSickLeave ? " day-card--sick" : isWeekend ? " day-card--weekend" : "");
         card.dataset.dayKey = dKey;
         card.innerHTML = `
             <div class="day-card-header">
@@ -1157,7 +1494,10 @@ function renderMonth(key) {
     if (monthNight > 0.005) totalParts.push(`🌙 ${monthNight.toFixed(2)} godz. nocnych`);
     if (monthSunday > 0.005) totalParts.push(`🔴 ${monthSunday.toFixed(2)} godz. niedzielnych`);
     if (monthVacationDays > 0) {
-        totalParts.push(`🌴 ${monthVacationDays} ${monthVacationDays === 1 ? "dzień" : "dni"} urlopu (${monthVacationChargeableDays} z puli, bez sob/nd)`);
+        totalParts.push(`🌴 ${monthVacationDays} ${monthVacationDays === 1 ? "dzień" : "dni"} urlopu (${monthVacationChargeableDays} z puli, bez sob/nd i dni w PL)`);
+    }
+    if (monthSickDays > 0) {
+        totalParts.push(`🤒 ${monthSickDays} ${monthSickDays === 1 ? "dzień" : "dni"} zwolnienia`);
     }
 
     monthTotalEl.textContent = totalParts.join(" · ");
@@ -1171,22 +1511,251 @@ function csvEscape(value) {
     return str;
 }
 
-function buildMonthCsv(key) {
+function rowsToCsv(rows) {
+    return rows.map((row) => row.map(csvEscape).join(",")).join("\r\n");
+}
+
+// Excel (.xlsx) i PDF wymagaja zewnetrznych bibliotek - doladowywane leniwie (dynamic import
+// z tego samego CDN, z ktorego juz korzysta Supabase) tylko wtedy, gdy user faktycznie wybierze
+// jeden z tych formatow. CSV dziala w pelni offline, te dwa formaty wymagaja polaczenia z siecia
+// przy pierwszym takim eksporcie.
+async function rowsToXlsxBlob(rows, sheetName) {
+    const XLSX = await import("https://cdn.jsdelivr.net/npm/xlsx@0.18.5/+esm");
+    const worksheet = XLSX.utils.aoa_to_sheet(rows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+    const buffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+    return new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+}
+
+// jsPDF (standardowe 14 fontow) nie obsluguje polskich znakow (a, c, e, l, n, o, s, z, z) -
+// osadzamy wlasny font (PT Sans, ma pelne wsparcie Central European) zamiast domyslnego.
+// Font doladowywany leniwie z lokalnego pliku (fonts/pt-sans-regular.js), tylko przy eksporcie PDF.
+async function createPdfDocument(orientation) {
+    const { jsPDF } = await import("https://cdn.jsdelivr.net/npm/jspdf@2/+esm");
+    const { PT_SANS_REGULAR_BASE64 } = await import("./fonts/pt-sans-regular.js");
+
+    const doc = new jsPDF({ orientation, unit: "pt", format: "a4" });
+    doc.addFileToVFS("PTSans-Regular.ttf", PT_SANS_REGULAR_BASE64);
+    doc.addFont("PTSans-Regular.ttf", "PTSans", "normal");
+    doc.setFont("PTSans", "normal");
+    return doc;
+}
+
+// Rysuje profesjonalnie wygladajacy naglowek raportu: nazwa apki, tytul, cienka linia pod spodem.
+// Zwraca Y, od ktorego mozna rysowac dalsza tresc (np. tabele).
+function drawPdfReportHeader(doc, marginX, title) {
+    const pageWidth = doc.internal.pageSize.getWidth();
+    let y = 42;
+
+    doc.setFontSize(17);
+    doc.setTextColor(30, 33, 45);
+    doc.text("Kalendarz Pracy", marginX, y);
+
+    if (employeeNumberCache) {
+        doc.setFontSize(10.5);
+        doc.setTextColor(100, 105, 120);
+        doc.text(`Nr pracownika: ${employeeNumberCache}`, pageWidth - marginX, y, { align: "right" });
+        doc.setTextColor(30, 33, 45);
+    }
+
+    y += 18;
+    doc.setFontSize(11.5);
+    doc.setTextColor(100, 105, 120);
+    doc.text(title, marginX, y);
+    doc.setTextColor(0, 0, 0);
+
+    y += 10;
+    doc.setDrawColor(74, 144, 217);
+    doc.setLineWidth(1.3);
+    doc.line(marginX, y, pageWidth - marginX, y);
+    doc.setLineWidth(0.5);
+    doc.setDrawColor(0, 0, 0);
+
+    return y + 22;
+}
+
+// Generyczna tabela z zawijaniem tresci w komorkach (kazda kolumna moze miec wiele linii,
+// wysokosc wiersza dopasowuje sie do najdluzszej z nich) i automatycznym przechodzeniem na
+// kolejna strone, z ponownym rysowaniem naglowka tabeli na kazdej nowej stronie.
+function drawPdfTable(doc, { columns, headerRow, bodyRows, marginX, startY, marginBottom = 56, fontSize = 8.5 }) {
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const totalWidth = columns.reduce((sum, col) => sum + col.width, 0);
+    const cellPadding = 4;
+    const lineGap = fontSize + 2.5;
+
+    function colX(index) {
+        let x = marginX;
+        for (let i = 0; i < index; i++) x += columns[i].width;
+        return x;
+    }
+
+    function measure(cells, size) {
+        doc.setFontSize(size);
+        const wrapped = cells.map((cell, i) => doc.splitTextToSize(String(cell ?? ""), columns[i].width - cellPadding * 2));
+        const lineCount = Math.max(1, ...wrapped.map((lines) => lines.length));
+        return { wrapped, height: lineCount * lineGap + cellPadding * 2 };
+    }
+
+    function drawHeaderRow(y) {
+        const { wrapped, height } = measure(headerRow, fontSize);
+        doc.setFillColor(238, 242, 250);
+        doc.rect(marginX, y, totalWidth, height, "F");
+        doc.setFontSize(fontSize);
+        doc.setTextColor(50, 60, 90);
+        wrapped.forEach((lines, i) => {
+            lines.forEach((line, li) => {
+                doc.text(line, colX(i) + cellPadding, y + cellPadding + lineGap * (li + 1) - 3);
+            });
+        });
+        doc.setTextColor(0, 0, 0);
+        const bottom = y + height;
+        doc.setDrawColor(180, 190, 210);
+        doc.line(marginX, bottom, marginX + totalWidth, bottom);
+        doc.setDrawColor(0, 0, 0);
+        return bottom;
+    }
+
+    let y = drawHeaderRow(startY);
+
+    bodyRows.forEach((row) => {
+        const { wrapped, height } = measure(row, fontSize);
+
+        if (y + height > pageHeight - marginBottom) {
+            doc.addPage();
+            y = drawHeaderRow(42);
+        }
+
+        doc.setFontSize(fontSize);
+        wrapped.forEach((lines, i) => {
+            lines.forEach((line, li) => {
+                doc.text(line, colX(i) + cellPadding, y + cellPadding + lineGap * (li + 1) - 3);
+            });
+        });
+
+        const rowBottom = y + height;
+        doc.setDrawColor(228, 231, 238);
+        doc.line(marginX, rowBottom, marginX + totalWidth, rowBottom);
+        doc.setDrawColor(0, 0, 0);
+        y = rowBottom;
+    });
+
+    return y;
+}
+
+// Sekcja "Podsumowanie" pod tabela - osobno stylowana (nie jako kolejne wiersze tabeli, w
+// odroznieniu od CSV/Excel, gdzie podsumowanie to po prostu dodatkowe wiersze arkusza).
+function drawPdfSummarySection(doc, marginX, startY, lines) {
+    const pageHeight = doc.internal.pageSize.getHeight();
+    let y = startY;
+
+    if (y > pageHeight - 90) {
+        doc.addPage();
+        y = 42;
+    } else {
+        y += 26;
+    }
+
+    doc.setFontSize(12.5);
+    doc.text("Podsumowanie", marginX, y);
+    y += 6;
+    doc.setDrawColor(200, 205, 215);
+    doc.line(marginX, y, doc.internal.pageSize.getWidth() - marginX, y);
+    doc.setDrawColor(0, 0, 0);
+    y += 18;
+
+    doc.setFontSize(10);
+    lines.forEach((line) => {
+        if (y > pageHeight - 40) {
+            doc.addPage();
+            y = 42;
+        }
+        doc.text(line, marginX, y);
+        y += 16;
+    });
+
+    return y;
+}
+
+// Wspolny zapis/udostepnienie pliku dla wszystkich formatow eksportu - na telefonie przez
+// natywne okno "Udostepnij" (jesli obslugiwane dla danego typu pliku), na komputerze zwykle pobranie.
+async function downloadOrShareFile(blob, filename, shareTitle) {
+    const file = new File([blob], filename, { type: blob.type });
+
+    if (!desktopLayoutQuery.matches && navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+            await navigator.share({ files: [file], title: shareTitle });
+            return;
+        } catch (err) {
+            if (err.name === "AbortError") return;
+            console.error(err);
+        }
+    }
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
+
+// Numer pracownika w nagłówku arkusza (CSV/Excel) - w PDF ten sam numer dorysowany jest
+// osobno w drawPdfReportHeader (wlasny layout, nie kolejny wiersz tabeli).
+function withEmployeeHeaderRows(rows) {
+    if (!employeeNumberCache) return rows;
+    return [["Nr pracownika", employeeNumberCache], [], ...rows];
+}
+
+// format: "csv" | "xlsx" | "pdf". `buildPdf` generuje PDF osobno (inny layout niz plaskie
+// wiersze CSV/Excel - patrz buildMonthPdfBlob/buildPolandSchedulePdfBlob).
+async function exportReport({ rows, format, baseFilename, shareTitle, sheetName, buildPdf }) {
+    if (format === "xlsx") {
+        const blob = await rowsToXlsxBlob(withEmployeeHeaderRows(rows), sheetName);
+        await downloadOrShareFile(blob, `${baseFilename}.xlsx`, shareTitle);
+    } else if (format === "pdf") {
+        const blob = await buildPdf();
+        await downloadOrShareFile(blob, `${baseFilename}.pdf`, shareTitle);
+    } else {
+        const blob = new Blob(["﻿" + rowsToCsv(withEmployeeHeaderRows(rows))], { type: "text/csv;charset=utf-8" });
+        await downloadOrShareFile(blob, `${baseFilename}.csv`, shareTitle);
+    }
+}
+
+const MONTH_REPORT_HEADER = [
+    "Data", "Dzień tygodnia", "Od", "Do", "Brutto (godz.)",
+    "Przerwa (min)", "Netto (godz.)", "Nocne (godz.)", "Niedzielne (godz.)", "Notatka"
+];
+
+// Dane raportu miesiaca w formie strukturalnej (nie od razu jako plaskie wiersze CSV) - zeby
+// PDF mogl pokazac podsumowanie jako osobno stylowana sekcja, a nie kolejne wiersze tabeli
+// (tak jak w CSV/Excel, gdzie to po prostu dodatkowe wiersze arkusza - patrz monthReportToRows).
+function buildMonthReportData(key) {
     const month = monthsIndexCache.get(key);
     if (!month) return null;
 
-    const rows = [[
-        "Data", "Dzień tygodnia", "Od", "Do", "Brutto (godz.)",
-        "Przerwa (min)", "Netto (godz.)", "Nocne (godz.)", "Niedzielne (godz.)", "Notatka"
-    ]];
-
+    const dataRows = [];
     let totalNet = 0;
     let totalNight = 0;
     let totalSunday = 0;
     let rowCount = 0;
+    let vacationDays = 0;
+    let vacationChargeableDays = 0;
+    let sickDays = 0;
 
     [...month.days.keys()].sort().forEach((dKey) => {
         const day = month.days.get(dKey);
+
+        if (day.sessions.some((s) => s.note === "Urlop")) {
+            vacationDays += 1;
+            if (isVacationChargeableDate(day.date)) vacationChargeableDays += 1;
+        }
+        if (day.sessions.some((s) => s.note && s.note.startsWith(SICK_LEAVE_NOTE_PREFIX))) {
+            sickDays += 1;
+        }
+
         day.sessions
             .sort((a, b) => a.start - b.start)
             .forEach((session) => {
@@ -1200,7 +1769,7 @@ function buildMonthCsv(key) {
 
                 const isDayOff = session.hours === 0 && session.start.getTime() === session.end.getTime();
 
-                rows.push([
+                dataRows.push([
                     day.date.toLocaleDateString("pl-PL"),
                     day.date.toLocaleDateString("pl-PL", { weekday: "long" }),
                     isDayOff ? "-" : formatTime(session.start),
@@ -1217,50 +1786,128 @@ function buildMonthCsv(key) {
 
     if (rowCount === 0) return null;
 
-    rows.push([]);
-    rows.push(["Suma", "", "", "", "", "", totalNet.toFixed(2), totalNight.toFixed(2), totalSunday.toFixed(2), ""]);
-
-    return rows.map((row) => row.map(csvEscape).join(",")).join("\r\n");
+    return {
+        dataRows,
+        summary: { totalNet, totalNight, totalSunday, vacationDays, vacationChargeableDays, sickDays }
+    };
 }
 
-exportMonthBtn.onclick = async () => {
-    if (!selectedMonthKey) return;
+// Do CSV/Excel podsumowanie to po prostu dodatkowe wiersze na koncu tego samego arkusza.
+function monthReportToRows(reportData) {
+    const { totalNet, totalNight, totalSunday, vacationDays, vacationChargeableDays, sickDays } = reportData.summary;
+    const rows = [MONTH_REPORT_HEADER, ...reportData.dataRows];
 
-    const csv = buildMonthCsv(selectedMonthKey);
-    if (!csv) {
+    rows.push([]);
+    rows.push(["Suma", "", "", "", "", "", totalNet.toFixed(2), totalNight.toFixed(2), totalSunday.toFixed(2), ""]);
+    if (vacationDays > 0) {
+        rows.push([`Dni urlopu: ${vacationDays} (${vacationChargeableDays} z puli, bez sob/nd i dni w PL)`]);
+    }
+    if (sickDays > 0) {
+        rows.push([`Dni zwolnienia lekarskiego: ${sickDays}`]);
+    }
+
+    return rows;
+}
+
+// PDF: A4 pionowo, wlasny font (polskie znaki), Notatka dostaje najwiecej miejsca z kolumn,
+// podsumowanie jako osobna, stylowana sekcja pod tabela (nie kolejne wiersze).
+async function buildMonthPdfBlob(reportData, monthLabel) {
+    const doc = await createPdfDocument("portrait");
+    const marginX = 36;
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    let y = drawPdfReportHeader(doc, marginX, `Zestawienie godzin pracy — ${monthLabel}`);
+
+    // Dzien tygodnia i Od/Do dostaja wiecej miejsca - "poniedzialek" oraz "06:00" nie miescily
+    // sie wczesniej w jednej linii i lamaly sie w polowie slowa/liczby.
+    const fixedWidths = [50, 62, 34, 34, 34, 36, 34, 34, 40];
+    const usableWidth = pageWidth - marginX * 2;
+    const columns = [
+        ...fixedWidths.map((width) => ({ width })),
+        { width: usableWidth - fixedWidths.reduce((sum, w) => sum + w, 0) }
+    ];
+
+    y = drawPdfTable(doc, {
+        columns,
+        headerRow: ["Data", "Dzień tyg.", "Od", "Do", "Brutto", "Przerwa", "Netto", "Nocne", "Niedz.", "Notatka"],
+        bodyRows: reportData.dataRows,
+        marginX,
+        startY: y
+    });
+
+    const { totalNet, totalNight, totalSunday, vacationDays, vacationChargeableDays, sickDays } = reportData.summary;
+    const summaryLines = [`Suma godzin netto: ${totalNet.toFixed(2)} godz.`];
+    if (totalNight > 0.005) summaryLines.push(`Godziny nocne: ${totalNight.toFixed(2)} godz.`);
+    if (totalSunday > 0.005) summaryLines.push(`Godziny niedzielne: ${totalSunday.toFixed(2)} godz.`);
+    if (vacationDays > 0) summaryLines.push(`Dni urlopu: ${vacationDays} (${vacationChargeableDays} z puli, bez sob/nd i dni w PL)`);
+    if (sickDays > 0) summaryLines.push(`Dni zwolnienia lekarskiego: ${sickDays}`);
+
+    drawPdfSummarySection(doc, marginX, y, summaryLines);
+
+    return doc.output("blob");
+}
+
+// Eksport ma wlasny wybor miesiaca (niezalezny od monthPicker w Historii) - zeby dalo sie
+// pobrac dowolny miesiac z historii bez konieczności najpierw przelaczania na niego widoku.
+function populateExportMonthSelect() {
+    const sortedKeys = [...monthsIndexCache.keys()].sort().reverse();
+    exportMonthSelect.innerHTML = sortedKeys
+        .map((key) => {
+            const month = monthsIndexCache.get(key);
+            const label = `${MONTH_NAMES[month.date.getMonth()]} ${month.date.getFullYear()}`;
+            return `<option value="${key}">${label}</option>`;
+        })
+        .join("");
+    exportMonthSelect.value = sortedKeys.includes(selectedMonthKey) ? selectedMonthKey : sortedKeys[0];
+}
+
+exportMonthBtn.onclick = () => {
+    populateExportMonthSelect();
+    exportMonthDialog.showModal();
+};
+
+closeExportMonthBtn.onclick = () => exportMonthDialog.close();
+
+exportMonthForm.onsubmit = async (event) => {
+    event.preventDefault();
+    const key = exportMonthSelect.value;
+    if (!key) return;
+
+    const reportData = buildMonthReportData(key);
+    if (!reportData) {
         alert("Brak danych do eksportu w tym miesiącu.");
         return;
     }
 
-    const monthLabel = monthPicker.options[monthPicker.selectedIndex]?.textContent || selectedMonthKey;
-    const filename = `godziny-${selectedMonthKey}.csv`;
-    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
-    const file = new File([blob], filename, { type: "text/csv" });
+    const monthLabel = exportMonthSelect.options[exportMonthSelect.selectedIndex]?.textContent || key;
+    const submitBtn = exportMonthForm.querySelector('button[type="submit"]');
+    setStatusMessage(exportMonthMessage, "");
+    submitBtn.disabled = true;
 
-    if (!desktopLayoutQuery.matches && navigator.canShare && navigator.canShare({ files: [file] })) {
-        try {
-            await navigator.share({ files: [file], title: `Godziny pracy — ${monthLabel}` });
-            return;
-        } catch (err) {
-            if (err.name === "AbortError") return;
-            console.error(err);
-        }
+    try {
+        await exportReport({
+            rows: monthReportToRows(reportData),
+            format: exportMonthFormat.value,
+            baseFilename: `godziny-${key}`,
+            shareTitle: `Godziny pracy — ${monthLabel}`,
+            sheetName: "Godziny",
+            buildPdf: () => buildMonthPdfBlob(reportData, monthLabel)
+        });
+        exportMonthDialog.close();
+    } catch (err) {
+        console.error(err);
+        setStatusMessage(exportMonthMessage, "Nie udało się wygenerować pliku — sprawdź połączenie z internetem (Excel/PDF wymagają sieci).", false);
+    } finally {
+        submitBtn.disabled = false;
     }
-
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
 };
 
 function refreshHistoryView(entries) {
     dayTotalsCache = buildDayTotals(entries);
     monthsIndexCache = buildMonthsIndex(entries);
     vacationDatesCache = buildVacationDates(entries);
+    sickLeaveDatesCache = buildSickLeaveDates(entries);
+    sickLeaveRecordsCache = buildSickLeaveRecords(entries);
     renderQuickStats();
     renderPolandStatus();
 
@@ -1304,7 +1951,6 @@ addTodayShiftBtn.onclick = async () => {
 function openSettingsDialog(tab = "account") {
     settingsTabs.forEach((t) => t.classList.toggle("is-active", t.dataset.tab === tab));
     settingsPanels.forEach((p) => { p.hidden = p.dataset.tabPanel !== tab; });
-    populatePolandCycleForm();
     settingsDialog.showModal();
 }
 settingsTabs.forEach((t) => { t.onclick = () => openSettingsDialog(t.dataset.tab); });
@@ -1314,6 +1960,12 @@ closeSettingsBtn.onclick = () => settingsDialog.close();
 
 accountBtn.onclick = () => {
     accountDialogEmail.textContent = accountEmail.textContent;
+    if (employeeNumberCache) {
+        accountDialogEmployeeNumber.textContent = `Nr pracownika: ${employeeNumberCache}`;
+        accountDialogEmployeeNumber.style.display = "block";
+    } else {
+        accountDialogEmployeeNumber.style.display = "none";
+    }
     accountDialog.showModal();
 };
 
@@ -1366,19 +2018,6 @@ history.addEventListener("click", (event) => {
     if (!btn) return;
     openEditDialogForDay(btn.dataset.dayKey);
 });
-
-addDayBtn.onclick = () => {
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    openEditDialog({
-        original: null,
-        date: yesterday,
-        start: null,
-        end: null,
-        breakMinutes: DEFAULT_BREAK_MINUTES
-    });
-};
 
 closeEditDayBtn.onclick = () => editDayDialog.close();
 
@@ -1456,17 +2095,6 @@ resetAllBtn.onclick = async () => {
     }
 };
 
-polandTripBtn.onclick = () => {
-    if (!polandTripDate.value) {
-        const today = new Date();
-        const nextThursday = new Date(today);
-        const daysUntilThursday = (4 - today.getDay() + 7) % 7 || 7;
-        nextThursday.setDate(today.getDate() + daysUntilThursday);
-        polandTripDate.value = dateKey(nextThursday);
-    }
-    polandTripDialog.showModal();
-};
-
 closePolandTripBtn.onclick = () => polandTripDialog.close();
 
 polandTripForm.onsubmit = async (event) => {
@@ -1515,8 +2143,12 @@ polandTripForm.onsubmit = async (event) => {
 };
 
 vacationBtn.onclick = () => {
-    if (!vacationStartDate.value) vacationStartDate.value = dateKey(new Date());
-    if (!vacationEndDate.value) vacationEndDate.value = vacationStartDate.value;
+    if (!vacationRangePicker.state.start) {
+        const today = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
+        vacationRangePicker.setRange(today, today);
+    } else {
+        vacationRangePicker.render();
+    }
     vacationDialog.showModal();
 };
 
@@ -1524,15 +2156,9 @@ closeVacationBtn.onclick = () => vacationDialog.close();
 
 vacationForm.onsubmit = async (event) => {
     event.preventDefault();
-    if (!vacationStartDate.value || !vacationEndDate.value) return;
-
-    const [sy, sm, sd] = vacationStartDate.value.split("-").map(Number);
-    const [ey, em, ed] = vacationEndDate.value.split("-").map(Number);
-    const rangeStart = new Date(sy, sm - 1, sd);
-    const rangeEnd = new Date(ey, em - 1, ed);
-
-    if (rangeEnd < rangeStart) {
-        alert("Data \"Do\" nie może być wcześniejsza niż \"Od\".");
+    const { start: rangeStart, end: rangeEnd } = vacationRangePicker.state;
+    if (!rangeStart || !rangeEnd) {
+        alert("Zaznacz zakres w kalendarzu (dla jednego dnia stuknij go dwukrotnie).");
         return;
     }
 
@@ -1559,6 +2185,135 @@ vacationForm.onsubmit = async (event) => {
     vacationDialog.close();
 };
 
+function renderSickLeaveSummary() {
+    const count = sickLeaveDatesCache.size;
+    sickLeaveSummary.textContent = count === 0
+        ? "Nie masz jeszcze zapisanych dni zwolnienia lekarskiego."
+        : `Łącznie dni na zwolnieniu lekarskim: ${count}.`;
+}
+
+function renderSickLeaveHistory() {
+    if (sickLeaveRecordsCache.length === 0) {
+        sickLeaveHistoryBody.innerHTML = `<p class="hint">Nie masz jeszcze zapisanych dni zwolnienia lekarskiego.</p>`;
+        return;
+    }
+
+    const yearCounts = new Map();
+    sickLeaveRecordsCache.forEach(({ date }) => {
+        const year = date.getFullYear();
+        yearCounts.set(year, (yearCounts.get(year) || 0) + 1);
+    });
+    const years = [...yearCounts.keys()].sort((a, b) => b - a);
+
+    // Podsumowanie roczne jako jedna zwarta linijka (zamiast listy punktowanej) - kompaktowo
+    // nawet przy wielu latach historii.
+    const summaryHtml = years
+        .map((year) => {
+            const count = yearCounts.get(year);
+            return `<strong>${year}</strong> — ${count} ${count === 1 ? "dzień" : "dni"}`;
+        })
+        .join(" · ");
+
+    // Szczegoly grupowane wg miesiaca (rozwijane <details>) - przy duzej liczbie zwolnien
+    // plaska lista bylaby nieczytelna, a tak od razu widac miesiac i rozwija sie na klikniecie.
+    const monthGroups = new Map(); // "YYYY-MM" -> { date: Date (dowolny dzien z miesiaca), records: [] }
+    sickLeaveRecordsCache.forEach((record) => {
+        const mKey = monthKey(record.date);
+        if (!monthGroups.has(mKey)) {
+            monthGroups.set(mKey, { date: record.date, records: [] });
+        }
+        monthGroups.get(mKey).records.push(record);
+    });
+
+    const detailsHtml = [...monthGroups.keys()]
+        .sort()
+        .reverse()
+        .map((mKey) => {
+            const group = monthGroups.get(mKey);
+            const monthLabel = `${MONTH_NAMES[group.date.getMonth()]} ${group.date.getFullYear()}`;
+            // W nagłówku miesiąca jest już nazwa miesiąca i rok, więc kazdy dzien pokazujemy
+            // krotko (numer + skrot dnia tygodnia) - pelna data w kazdej linijce (np. przy
+            // calym miesiacu zwolnienia) robila z tego dlugi, nieczytelny bazgrol.
+            const itemsHtml = group.records
+                .slice()
+                .sort((a, b) => a.date - b.date)
+                .map(({ date, reason }) => {
+                    const dow = CAL_WEEKDAY_LETTERS[(date.getDay() + 6) % 7];
+                    return `<li><strong>${date.getDate()}</strong> <span class="hint">(${dow})</span>${reason ? ` — ${reason}` : ""}</li>`;
+                })
+                .join("");
+
+            return `
+                <details class="sick-history-month">
+                    <summary>${monthLabel} (${group.records.length} ${group.records.length === 1 ? "dzień" : "dni"})</summary>
+                    <ul class="changelog-list">${itemsHtml}</ul>
+                </details>
+            `;
+        })
+        .join("");
+
+    sickLeaveHistoryBody.innerHTML = `
+        <p class="hint">${summaryHtml}</p>
+        <h3>Szczegóły</h3>
+        ${detailsHtml}
+    `;
+}
+
+openSickLeaveHistoryBtn.onclick = () => {
+    renderSickLeaveHistory();
+    sickLeaveHistoryDialog.showModal();
+};
+
+closeSickLeaveHistoryBtn.onclick = () => sickLeaveHistoryDialog.close();
+
+sickLeaveBtn.onclick = () => {
+    renderSickLeaveSummary();
+    sickLeaveNoteInput.value = "";
+    if (!sickLeaveRangePicker.state.start) {
+        const today = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
+        sickLeaveRangePicker.setRange(today, today);
+    } else {
+        sickLeaveRangePicker.render();
+    }
+    sickLeaveDialog.showModal();
+};
+
+closeSickLeaveBtn.onclick = () => sickLeaveDialog.close();
+
+sickLeaveForm.onsubmit = async (event) => {
+    event.preventDefault();
+    const { start: rangeStart, end: rangeEnd } = sickLeaveRangePicker.state;
+    if (!rangeStart || !rangeEnd) {
+        alert("Zaznacz zakres w kalendarzu (dla jednego dnia stuknij go dwukrotnie).");
+        return;
+    }
+
+    const reason = sickLeaveNoteInput.value.trim();
+    const note = reason ? `${SICK_LEAVE_NOTE_PREFIX}: ${reason}` : SICK_LEAVE_NOTE_PREFIX;
+
+    const submitBtn = sickLeaveForm.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+
+    const day = new Date(rangeStart);
+    while (day <= rangeEnd) {
+        await deleteSessionsForDay(day);
+        const dayStart = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 0, 0, 0, 0);
+        await saveEntry({
+            start_time: dayStart.toISOString(),
+            end_time: dayStart.toISOString(),
+            hours: 0,
+            break_minutes: 0,
+            note
+        });
+        day.setDate(day.getDate() + 1);
+    }
+
+    selectedMonthKey = monthKey(rangeStart);
+    refreshHistoryView(await loadHistory());
+    submitBtn.disabled = false;
+    sickLeaveDialog.close();
+};
+
 function previousWeekRange() {
     const today = new Date();
     const daysSinceMonday = (today.getDay() + 6) % 7;
@@ -1578,118 +2333,191 @@ weekHoursPreset.onchange = () => {
     weekHoursPreset.value = "";
 };
 
-function renderWeekRangeSummary() {
-    if (weekRangeStart && weekRangeEnd) {
-        weekRangeSummary.textContent = `Zaznaczono: ${weekRangeStart.toLocaleDateString("pl-PL")} – ${weekRangeEnd.toLocaleDateString("pl-PL")}`;
-    } else if (weekRangeStart) {
-        weekRangeSummary.textContent = `Początek: ${weekRangeStart.toLocaleDateString("pl-PL")} — stuknij dzień końcowy.`;
-    } else {
-        weekRangeSummary.textContent = "Stuknij dzień początkowy zakresu.";
+function defaultRangeSummary(start, end) {
+    if (start && end) {
+        return `Zaznaczono: ${start.toLocaleDateString("pl-PL")} – ${end.toLocaleDateString("pl-PL")}`;
     }
+    if (start) {
+        return `Początek: ${start.toLocaleDateString("pl-PL")} — stuknij dzień końcowy.`;
+    }
+    return "Stuknij dzień początkowy zakresu.";
 }
 
-function renderWeekRangeCalendar() {
-    weekRangeCalendar.innerHTML = "";
+// Wspolny "kalendarz z zaznaczaniem zakresu" (stuknij dzien poczatkowy, potem koncowy) -
+// uzywany zarowno przez "Dodaj caly tydzien" (tylko przeszlosc/dzisiaj), jak i "Urlop"
+// (planowanie w przyszlosc, wiec allowFuture:true odblokowuje przyszle dni i miesiace).
+function createRangePicker({ calendarEl, prevBtn, nextBtn, monthLabelEl, summaryEl, allowFuture = false, formatSummary = defaultRangeSummary }) {
+    const state = { start: null, end: null, viewDate: new Date() };
 
-    const y = weekRangeViewDate.getFullYear();
-    const m = weekRangeViewDate.getMonth();
-    const firstOfMonth = new Date(y, m, 1);
-    const daysInMonth = new Date(y, m + 1, 0).getDate();
-    const todayMidnight = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
+    function render() {
+        calendarEl.innerHTML = "";
 
-    weekRangeMonthLabel.textContent = firstOfMonth.toLocaleDateString("pl-PL", { month: "long", year: "numeric" });
-    weekRangeNextBtn.disabled = y === todayMidnight.getFullYear() && m === todayMidnight.getMonth();
+        const y = state.viewDate.getFullYear();
+        const m = state.viewDate.getMonth();
+        const firstOfMonth = new Date(y, m, 1);
+        const daysInMonth = new Date(y, m + 1, 0).getDate();
+        const todayMidnight = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
 
-    const monthData = monthsIndexCache.get(monthKey(firstOfMonth));
+        monthLabelEl.textContent = firstOfMonth.toLocaleDateString("pl-PL", { month: "long", year: "numeric" });
+        if (!allowFuture) {
+            nextBtn.disabled = y === todayMidnight.getFullYear() && m === todayMidnight.getMonth();
+        }
 
-    CAL_WEEKDAY_LETTERS.forEach((label) => {
-        const head = document.createElement("div");
-        head.className = "cal-weekday";
-        head.textContent = label;
-        weekRangeCalendar.appendChild(head);
+        const monthData = monthsIndexCache.get(monthKey(firstOfMonth));
+
+        CAL_WEEKDAY_LETTERS.forEach((label) => {
+            const head = document.createElement("div");
+            head.className = "cal-weekday";
+            head.textContent = label;
+            calendarEl.appendChild(head);
+        });
+
+        const firstDow = (firstOfMonth.getDay() + 6) % 7;
+        for (let i = 0; i < firstDow; i++) {
+            const filler = document.createElement("div");
+            filler.className = "cal-cell cal-cell--empty";
+            calendarEl.appendChild(filler);
+        }
+
+        for (let d = 1; d <= daysInMonth; d++) {
+            const date = new Date(y, m, d);
+            const cell = document.createElement("button");
+            cell.type = "button";
+            cell.className = "cal-cell";
+            cell.textContent = String(d);
+            cell.dataset.date = dateKey(date);
+
+            if (!allowFuture && date > todayMidnight) {
+                cell.classList.add("cal-cell--future");
+            }
+            if (date.getTime() === todayMidnight.getTime()) {
+                cell.classList.add("cal-cell--today");
+            }
+            if (state.start && date.getTime() === state.start.getTime()) {
+                cell.classList.add("cal-cell--range-start");
+            }
+            if (state.end && date.getTime() === state.end.getTime()) {
+                cell.classList.add("cal-cell--range-end");
+            }
+            if (state.start && state.end && date > state.start && date < state.end) {
+                cell.classList.add("cal-cell--range-mid");
+            }
+            if (monthData?.days.has(dateKey(date))) {
+                cell.classList.add("cal-cell--has-data");
+            }
+
+            calendarEl.appendChild(cell);
+        }
+
+        summaryEl.textContent = formatSummary(state.start, state.end);
+    }
+
+    calendarEl.addEventListener("click", (event) => {
+        const selector = allowFuture
+            ? ".cal-cell:not(.cal-cell--empty)"
+            : ".cal-cell:not(.cal-cell--empty):not(.cal-cell--future)";
+        const cell = event.target.closest(selector);
+        if (!cell) return;
+
+        const [y, m, d] = cell.dataset.date.split("-").map(Number);
+        const clicked = new Date(y, m - 1, d);
+
+        if (!state.start || (state.start && state.end)) {
+            state.start = clicked;
+            state.end = null;
+        } else if (clicked < state.start) {
+            state.end = state.start;
+            state.start = clicked;
+        } else {
+            state.end = clicked;
+        }
+
+        render();
     });
 
-    const firstDow = (firstOfMonth.getDay() + 6) % 7;
-    for (let i = 0; i < firstDow; i++) {
-        const filler = document.createElement("div");
-        filler.className = "cal-cell cal-cell--empty";
-        weekRangeCalendar.appendChild(filler);
-    }
+    prevBtn.onclick = () => {
+        state.viewDate = new Date(state.viewDate.getFullYear(), state.viewDate.getMonth() - 1, 1);
+        render();
+    };
 
-    for (let d = 1; d <= daysInMonth; d++) {
-        const date = new Date(y, m, d);
-        const cell = document.createElement("button");
-        cell.type = "button";
-        cell.className = "cal-cell";
-        cell.textContent = String(d);
-        cell.dataset.date = dateKey(date);
+    nextBtn.onclick = () => {
+        state.viewDate = new Date(state.viewDate.getFullYear(), state.viewDate.getMonth() + 1, 1);
+        render();
+    };
 
-        if (date > todayMidnight) {
-            cell.classList.add("cal-cell--future");
+    return {
+        state,
+        render,
+        setRange(start, end) {
+            state.start = start;
+            state.end = end;
+            state.viewDate = new Date(start.getFullYear(), start.getMonth(), 1);
+            render();
         }
-        if (date.getTime() === todayMidnight.getTime()) {
-            cell.classList.add("cal-cell--today");
-        }
-        if (weekRangeStart && date.getTime() === weekRangeStart.getTime()) {
-            cell.classList.add("cal-cell--range-start");
-        }
-        if (weekRangeEnd && date.getTime() === weekRangeEnd.getTime()) {
-            cell.classList.add("cal-cell--range-end");
-        }
-        if (weekRangeStart && weekRangeEnd && date > weekRangeStart && date < weekRangeEnd) {
-            cell.classList.add("cal-cell--range-mid");
-        }
-        if (monthData?.days.has(dateKey(date))) {
-            cell.classList.add("cal-cell--has-data");
-        }
-
-        weekRangeCalendar.appendChild(cell);
-    }
-
-    renderWeekRangeSummary();
+    };
 }
 
-weekRangeCalendar.addEventListener("click", (event) => {
-    const cell = event.target.closest(".cal-cell:not(.cal-cell--empty):not(.cal-cell--future)");
-    if (!cell) return;
-
-    const [y, m, d] = cell.dataset.date.split("-").map(Number);
-    const clicked = new Date(y, m - 1, d);
-
-    if (!weekRangeStart || (weekRangeStart && weekRangeEnd)) {
-        weekRangeStart = clicked;
-        weekRangeEnd = null;
-    } else if (clicked < weekRangeStart) {
-        weekRangeEnd = weekRangeStart;
-        weekRangeStart = clicked;
-    } else {
-        weekRangeEnd = clicked;
-    }
-
-    renderWeekRangeCalendar();
+const weekRangePicker = createRangePicker({
+    calendarEl: weekRangeCalendar,
+    prevBtn: weekRangePrevBtn,
+    nextBtn: weekRangeNextBtn,
+    monthLabelEl: weekRangeMonthLabel,
+    summaryEl: weekRangeSummary
 });
 
-weekRangePrevBtn.onclick = () => {
-    weekRangeViewDate = new Date(weekRangeViewDate.getFullYear(), weekRangeViewDate.getMonth() - 1, 1);
-    renderWeekRangeCalendar();
-};
+// Urlop to planowanie w przyszlosc (allowFuture), a podsumowanie od razu pokazuje ile dni
+// z puli urlopowej zajmie zaznaczony zakres i ile zostanie po zapisaniu - zeby bylo widac
+// skutek decyzji zanim jeszcze klikniemy "Zapisz".
+function formatVacationRangeSummary(start, end) {
+    if (!start) return "Stuknij dzień początkowy urlopu.";
+    if (!end) return `Początek: ${start.toLocaleDateString("pl-PL")} — stuknij dzień końcowy.`;
 
-weekRangeNextBtn.onclick = () => {
-    weekRangeViewDate = new Date(weekRangeViewDate.getFullYear(), weekRangeViewDate.getMonth() + 1, 1);
-    renderWeekRangeCalendar();
-};
+    let totalDays = 0;
+    let chargeableDays = 0;
+    const cursor = new Date(start);
+    while (cursor <= end) {
+        totalDays += 1;
+        if (isVacationChargeableDate(cursor)) chargeableDays += 1;
+        cursor.setDate(cursor.getDate() + 1);
+    }
+
+    let text = `Zaznaczono: ${start.toLocaleDateString("pl-PL")} – ${end.toLocaleDateString("pl-PL")} `
+        + `(${totalDays} ${totalDays === 1 ? "dzień" : "dni"}, ${chargeableDays} z puli urlopowej)`;
+
+    const remaining = remainingVacationDays();
+    if (remaining !== null) {
+        text += ` · zostanie ${remaining - chargeableDays} dni`;
+    }
+    return text;
+}
+
+const vacationRangePicker = createRangePicker({
+    calendarEl: vacationRangeCalendar,
+    prevBtn: vacationRangePrevBtn,
+    nextBtn: vacationRangeNextBtn,
+    monthLabelEl: vacationRangeMonthLabel,
+    summaryEl: vacationRangeSummary,
+    allowFuture: true,
+    formatSummary: formatVacationRangeSummary
+});
+
+const sickLeaveRangePicker = createRangePicker({
+    calendarEl: sickLeaveRangeCalendar,
+    prevBtn: sickLeaveRangePrevBtn,
+    nextBtn: sickLeaveRangeNextBtn,
+    monthLabelEl: sickLeaveRangeMonthLabel,
+    summaryEl: sickLeaveRangeSummary,
+    allowFuture: true
+});
 
 weekHoursBtn.onclick = () => {
     const { start, end } = previousWeekRange();
-    weekRangeStart = start;
-    weekRangeEnd = end;
-    weekRangeViewDate = new Date(start.getFullYear(), start.getMonth(), 1);
+    weekRangePicker.setRange(start, end);
     weekHoursPreset.innerHTML = `<option value="">— wybierz —</option>${editDayPresetOptions}`;
     if (activeShiftCache) {
         weekHoursStart.value = activeShiftCache.start;
         weekHoursEnd.value = activeShiftCache.end;
     }
-    renderWeekRangeCalendar();
     weekHoursDialog.showModal();
 };
 
@@ -1697,13 +2525,11 @@ closeWeekHoursBtn.onclick = () => weekHoursDialog.close();
 
 weekHoursForm.onsubmit = async (event) => {
     event.preventDefault();
-    if (!weekRangeStart || !weekRangeEnd) {
+    const { start: rangeStart, end: rangeEnd } = weekRangePicker.state;
+    if (!rangeStart || !rangeEnd) {
         alert("Zaznacz dzień początkowy i końcowy zakresu w kalendarzu.");
         return;
     }
-
-    const rangeStart = weekRangeStart;
-    const rangeEnd = weekRangeEnd;
 
     const [sh, smi] = weekHoursStart.value.split(":").map(Number);
     const [eh, emi] = weekHoursEnd.value.split(":").map(Number);
@@ -1737,6 +2563,29 @@ weekHoursForm.onsubmit = async (event) => {
 
 function daysBetween(a, b) {
     return Math.round((b - a) / (1000 * 60 * 60 * 24));
+}
+
+// Czy dany dzien (dowolna data - przeszla, przyszla, z zapisanymi godzinami albo bez)
+// wypada w Polsce wg skonfigurowanego cyklu zjazdow - uzywane do zaznaczania w kalendarzu
+// miesiaca dni "w domu", niezaleznie od tego, czy zapisano dla nich jakiekolwiek godziny pracy.
+function isDateInPolandCycle(date) {
+    if (!polandCycleCache) return false;
+    const { anchor, cycleDays, homeDays } = polandCycleCache;
+    const anchorMidnight = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate());
+    const dateMidnight = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const daysSinceAnchor = daysBetween(anchorMidnight, dateMidnight);
+    const cyclePos = ((daysSinceAnchor % cycleDays) + cycleDays) % cycleDays;
+    return cyclePos < homeDays;
+}
+
+// Dzien urlopu zabiera pule urlopowa tylko jesli i tak bylby dniem roboczym - czyli nie jest
+// weekendem ani dniem, ktory i tak wypada w Polsce wg cyklu zjazdow (ten dzien i tak przysluguje
+// jako wolny, wiec urlop na niego nie idzie "z puli").
+function isVacationChargeableDate(date) {
+    const dow = date.getDay();
+    if (dow === 0 || dow === 6) return false;
+    if (isDateInPolandCycle(date)) return false;
+    return true;
 }
 
 // Faktyczne przekroczenie granicy nie wypada o polnocy, tylko wieczorem - w dniu zjazdu
@@ -1779,6 +2628,19 @@ function updateVacationCountdown(todayMidnight, { suppress = false } = {}) {
     polandVacationCard.style.display = "";
 }
 
+// Windows nie renderuje wiekszosci flag emoji jako grafiki (pokazuje literowy kod kraju),
+// wiec flagi PL/DE w karcie statusu rysujemy klasa CSS (jak w kalendarzu), a nie emoji -
+// kompas zostaje emoji, bo to zwykly (nie-flagowy) emoji i dziala wszedzie bez problemu.
+function setPolandStatusFlag(kind) {
+    polandStatusFlag.classList.remove("psf--pl", "psf--de");
+    if (kind === "pl" || kind === "de") {
+        polandStatusFlag.classList.add(`psf--${kind}`);
+        polandStatusFlag.textContent = "";
+    } else {
+        polandStatusFlag.textContent = "🧭";
+    }
+}
+
 function renderPolandStatus() {
     const today = new Date();
     const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
@@ -1793,7 +2655,7 @@ function renderPolandStatus() {
             daysUntilReturn += 1;
         }
 
-        polandStatusFlag.textContent = "🇵🇱";
+        setPolandStatusFlag("pl");
         polandStatusText.textContent = "Jesteś w Polsce (urlop)";
         polandCountdownText.textContent = daysUntilReturn === 0
             ? "Dziś wracasz do Niemiec"
@@ -1803,7 +2665,7 @@ function renderPolandStatus() {
     }
 
     if (!polandCycleCache) {
-        polandStatusFlag.textContent = "🧭";
+        setPolandStatusFlag("compass");
         polandStatusText.textContent = "Cykl zjazdów nieskonfigurowany";
         polandCountdownText.textContent = "Kliknij, żeby go ustawić";
         updateVacationCountdown(todayMidnight);
@@ -1822,7 +2684,7 @@ function renderPolandStatus() {
         const returnMoment = new Date(today.getTime() + (homeDurationMs - cyclePosMs));
         const returnMidnight = new Date(returnMoment.getFullYear(), returnMoment.getMonth(), returnMoment.getDate());
         const daysUntilReturn = daysBetween(todayMidnight, returnMidnight);
-        polandStatusFlag.textContent = "🇵🇱";
+        setPolandStatusFlag("pl");
         polandStatusText.textContent = "Jesteś w Polsce";
         polandCountdownText.textContent = daysUntilReturn === 0
             ? "Dziś wracasz do Niemiec"
@@ -1847,7 +2709,7 @@ function renderPolandStatus() {
     const daysUntilNextTrip = daysBetween(todayMidnight, nextTripDate);
     const nextTripLabel = nextTripDate.toLocaleDateString("pl-PL", { day: "numeric", month: "long", year: "numeric" });
 
-    polandStatusFlag.textContent = "🇩🇪";
+    setPolandStatusFlag("de");
     polandStatusText.textContent = "Jesteś w Niemczech";
     polandCountdownText.textContent = daysUntilNextTrip === 0
         ? (isVacationTrip ? "Dziś zaczyna się Twój urlop w Polsce!" : "Dziś jedziesz do Polski!")
@@ -1876,42 +2738,52 @@ function nextPolandTripDates(count) {
 }
 
 // Lista pobytow w Polsce (od-do, kalendarzowo) w najblizszych `daysAhead` dniach - do eksportu,
-// np. zeby pokazac komus kiedy bedziemy w domu. Nie uwzglednia urlopow, tylko sam cykl zjazdow.
+// np. zeby pokazac komus kiedy bedziemy w domu. Dzien liczy sie jako "w Polsce" gdy wypada w
+// zwyklym cyklu zjazdow ALBO jest zaplanowanym urlopem - sasiadujace dni laczone sa w jeden
+// ciagly zakres (np. urlop doklejony do normalnego zjazdu wydluza go, zamiast pokazywac osobno).
 function polandStayRanges(daysAhead) {
     if (!polandCycleCache) return [];
 
-    const { anchor, cycleDays, homeDays } = polandCycleCache;
     const today = new Date();
     const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const anchorMidnight = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate());
-
-    const daysSinceAnchor = daysBetween(anchorMidnight, todayMidnight);
-    const cyclePos = ((daysSinceAnchor % cycleDays) + cycleDays) % cycleDays;
-
-    const firstStayStart = new Date(todayMidnight);
-    if (cyclePos < homeDays) {
-        firstStayStart.setDate(firstStayStart.getDate() - cyclePos);
-    } else {
-        firstStayStart.setDate(firstStayStart.getDate() + (cycleDays - cyclePos));
-    }
-
     const rangeEnd = new Date(todayMidnight);
     rangeEnd.setDate(rangeEnd.getDate() + daysAhead);
 
     const ranges = [];
-    const cursor = new Date(firstStayStart);
-    while (cursor < rangeEnd) {
-        const stayEnd = new Date(cursor);
-        stayEnd.setDate(stayEnd.getDate() + homeDays - 1);
-        ranges.push({ start: new Date(cursor), end: stayEnd });
-        cursor.setDate(cursor.getDate() + cycleDays);
+    let currentStart = null;
+    let currentVacationDays = 0;
+    const cursor = new Date(todayMidnight);
+
+    while (cursor <= rangeEnd) {
+        const isVacationDay = vacationDatesCache.has(dateKey(cursor));
+        const isHome = isDateInPolandCycle(cursor) || isVacationDay;
+
+        if (isHome) {
+            if (!currentStart) currentStart = new Date(cursor);
+            if (isVacationDay) currentVacationDays += 1;
+        } else if (currentStart) {
+            const stayEnd = new Date(cursor);
+            stayEnd.setDate(stayEnd.getDate() - 1);
+            ranges.push({ start: currentStart, end: stayEnd, vacationDays: currentVacationDays });
+            currentStart = null;
+            currentVacationDays = 0;
+        }
+
+        cursor.setDate(cursor.getDate() + 1);
     }
+
+    if (currentStart) {
+        const stayEnd = new Date(cursor);
+        stayEnd.setDate(stayEnd.getDate() - 1);
+        ranges.push({ start: currentStart, end: stayEnd, vacationDays: currentVacationDays });
+    }
+
     return ranges;
 }
 
 exportPolandScheduleBtn.onclick = () => {
     if (!polandCycleCache) {
-        alert("Najpierw skonfiguruj cykl zjazdów w Ustawieniach → Zjazdy do Polski.");
+        alert("Najpierw skonfiguruj cykl zjazdów w szybkich akcjach → 🛠️ Konfiguracja.");
         return;
     }
     exportPolandScheduleDialog.showModal();
@@ -1919,56 +2791,85 @@ exportPolandScheduleBtn.onclick = () => {
 
 closeExportPolandScheduleBtn.onclick = () => exportPolandScheduleDialog.close();
 
+function buildPolandScheduleRows(daysAhead) {
+    const ranges = polandStayRanges(daysAhead);
+    if (ranges.length === 0) return null;
+
+    const rows = [["Od", "Do", "Dni w Polsce", "Powód"]];
+    ranges.forEach(({ start, end, vacationDays }) => {
+        const totalDays = daysBetween(start, end) + 1;
+        rows.push([
+            start.toLocaleDateString("pl-PL"),
+            end.toLocaleDateString("pl-PL"),
+            String(totalDays),
+            vacationDays > 0 ? `Urlop — dlatego ${totalDays} dni w Polsce` : ""
+        ]);
+    });
+    return rows;
+}
+
+async function buildPolandSchedulePdfBlob(rows, subtitle) {
+    const doc = await createPdfDocument("portrait");
+    const marginX = 36;
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    const y = drawPdfReportHeader(doc, marginX, subtitle);
+
+    const usableWidth = pageWidth - marginX * 2;
+    const columns = [
+        { width: usableWidth * 0.22 },
+        { width: usableWidth * 0.22 },
+        { width: usableWidth * 0.16 },
+        { width: usableWidth * 0.4 }
+    ];
+
+    drawPdfTable(doc, {
+        columns,
+        headerRow: rows[0],
+        bodyRows: rows.slice(1),
+        marginX,
+        startY: y
+    });
+
+    return doc.output("blob");
+}
+
 exportPolandScheduleForm.onsubmit = async (event) => {
     event.preventDefault();
 
     const daysAhead = Number(exportPolandScheduleRange.value);
-    const ranges = polandStayRanges(daysAhead);
-    if (ranges.length === 0) {
+    const rows = buildPolandScheduleRows(daysAhead);
+    if (!rows) {
         alert("Brak zjazdów w wybranym okresie.");
         return;
     }
 
-    const rows = [["Od", "Do", "Dni w Polsce"]];
-    ranges.forEach(({ start, end }) => {
-        rows.push([
-            start.toLocaleDateString("pl-PL"),
-            end.toLocaleDateString("pl-PL"),
-            String(daysBetween(start, end) + 1)
-        ]);
-    });
-    const csv = rows.map((row) => row.map(csvEscape).join(",")).join("\r\n");
-
     const rangeLabel = exportPolandScheduleRange.options[exportPolandScheduleRange.selectedIndex].textContent;
-    const filename = `zjazdy-do-polski-${dateKey(new Date())}.csv`;
-    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
-    const file = new File([blob], filename, { type: "text/csv" });
+    const submitBtn = exportPolandScheduleForm.querySelector('button[type="submit"]');
+    setStatusMessage(exportPolandScheduleMessage, "");
+    submitBtn.disabled = true;
 
-    if (!desktopLayoutQuery.matches && navigator.canShare && navigator.canShare({ files: [file] })) {
-        try {
-            await navigator.share({ files: [file], title: `Zjazdy do Polski — ${rangeLabel}` });
-            exportPolandScheduleDialog.close();
-            return;
-        } catch (err) {
-            if (err.name === "AbortError") return;
-            console.error(err);
-        }
+    try {
+        await exportReport({
+            rows,
+            format: exportPolandScheduleFormat.value,
+            baseFilename: `zjazdy-do-polski-${dateKey(new Date())}`,
+            shareTitle: `Zjazdy do Polski — ${rangeLabel}`,
+            sheetName: "Zjazdy",
+            buildPdf: () => buildPolandSchedulePdfBlob(rows, `Zjazdy do Polski — ${rangeLabel}`)
+        });
+        exportPolandScheduleDialog.close();
+    } catch (err) {
+        console.error(err);
+        setStatusMessage(exportPolandScheduleMessage, "Nie udało się wygenerować pliku — sprawdź połączenie z internetem (Excel/PDF wymagają sieci).", false);
+    } finally {
+        submitBtn.disabled = false;
     }
-
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    exportPolandScheduleDialog.close();
 };
 
 polandStatusCard.onclick = () => {
     if (!polandCycleCache) {
-        openSettingsDialog("poland");
+        openConfigDialog("poland");
         return;
     }
     const dates = nextPolandTripDates(10);
@@ -1989,5 +2890,11 @@ async function initApp() {
 
     await refreshActiveShiftCache();
     populateActiveShiftSelect();
+
+    await refreshVacationAllowanceCache();
+
+    await refreshEmployeeNumberCache();
+    renderEmployeeNumberFooter();
+
     refreshHistoryView(await loadHistory());
 }

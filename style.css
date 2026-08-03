@@ -39,6 +39,10 @@
     --vacation-accent: #22c55e;
     --vacation-text: #166534;
 
+    --sick-bg: #f5f3ff;
+    --sick-accent: #8b5cf6;
+    --sick-text: #6d28d9;
+
     --worked-bg: #4a90d9;
     --worked-text: #ffffff;
     --shift0-bg: #2563eb;
@@ -89,6 +93,10 @@
         --vacation-accent: #4ade80;
         --vacation-text: #86efac;
 
+        --sick-bg: #241f38;
+        --sick-accent: #a78bfa;
+        --sick-text: #c4b5fd;
+
         --worked-bg: #4f8cff;
         --worked-text: #ffffff;
         --shift0-bg: #3b82f6;
@@ -131,6 +139,9 @@
     --vacation-bg: #10261a;
     --vacation-accent: #4ade80;
     --vacation-text: #86efac;
+    --sick-bg: #241f38;
+    --sick-accent: #a78bfa;
+    --sick-text: #c4b5fd;
     --worked-bg: #4f8cff;
     --worked-text: #ffffff;
     --shift0-bg: #3b82f6;
@@ -172,6 +183,9 @@
     --vacation-bg: #f0fdf4;
     --vacation-accent: #22c55e;
     --vacation-text: #166534;
+    --sick-bg: #f5f3ff;
+    --sick-accent: #8b5cf6;
+    --sick-text: #6d28d9;
     --worked-bg: #4a90d9;
     --worked-text: #ffffff;
     --shift0-bg: #2563eb;
@@ -384,12 +398,30 @@ li {
     box-shadow: 0 2px 6px rgba(45, 55, 150, .25);
 }
 
+.brand-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
 .top-bar h1 {
     margin: 0;
     font-size: 16px;
     font-weight: 600;
     letter-spacing: .1px;
     color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Podtytul tylko na desktopie (patrz @media min-width:1024px) - na telefonie i tak brakuje
+   miejsca na dodatkowa linie obok logo, nazwy apki i 4 ikon w naglowku. */
+.brand-subtitle {
+    display: none;
+    margin: 1px 0 0;
+    font-size: 12px;
+    color: var(--text-faint);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -527,6 +559,12 @@ li {
     font-weight: 600;
 }
 
+.cal-cell--sick {
+    background: var(--sick-bg);
+    color: var(--sick-text);
+    font-weight: 600;
+}
+
 .cal-cell--off {
     background: var(--night-badge-bg);
     color: var(--night-badge-text);
@@ -537,9 +575,25 @@ li {
     outline-offset: -2px;
 }
 
+/* Flaga w rogu = ten dzien wypada "w Polsce" wg skonfigurowanego cyklu zjazdow,
+   niezaleznie od koloru tla komorki (zmiana, weekend, urlop...). Rysowana czystym CSS
+   (dwa paski kolorow), a nie emoji flagi - Windows nie renderuje wiekszosci flag emoji
+   jako grafiki (pokazuje literowy kod kraju), wiec CSS daje spojny wyglad na kazdym OS. */
+.cal-cell--poland-home::after {
+    content: "";
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    width: 13px;
+    height: 9px;
+    border-radius: 2px;
+    background: linear-gradient(to bottom, #ffffff 50%, #dc143c 50%);
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, .35);
+}
+
 .cal-cell--future {
     opacity: 0.35;
-    cursor: default;
+    cursor: pointer;
 }
 
 .cal-cell--range-mid {
@@ -663,6 +717,15 @@ dialog::-webkit-scrollbar-thumb {
     color: var(--vacation-text);
 }
 
+.day-card--sick {
+    background: var(--sick-bg);
+    border-left: 3px solid var(--sick-accent);
+}
+
+.day-card--sick .day-card-header strong {
+    color: var(--sick-text);
+}
+
 .day-card-header {
     display: flex;
     align-items: center;
@@ -772,6 +835,26 @@ dialog::backdrop {
 .poland-status-flag {
     font-size: 28px;
     line-height: 1;
+    flex-shrink: 0;
+}
+
+/* Flagi PL/DE rysowane czystym CSS zamiast emoji - patrz komentarz przy
+   .cal-cell--poland-home::after w kalendarzu (ten sam problem z Windowsem). */
+.poland-status-flag.psf--pl,
+.poland-status-flag.psf--de {
+    display: block;
+    width: 34px;
+    height: 24px;
+    border-radius: 3px;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, .35);
+}
+
+.poland-status-flag.psf--pl {
+    background: linear-gradient(to bottom, #ffffff 50%, #dc143c 50%);
+}
+
+.poland-status-flag.psf--de {
+    background: linear-gradient(to bottom, #000000 33.33%, #dd0000 33.33% 66.66%, #ffce00 66.66%);
 }
 
 .poland-status-body {
@@ -895,6 +978,15 @@ dialog::backdrop {
     background: var(--day-card-bg);
 }
 
+.quick-actions-footer {
+    margin: 8px 4px 2px;
+    padding-top: 8px;
+    border-top: 1px solid var(--divider);
+    font-size: 12px;
+    color: var(--text-faint);
+    text-align: center;
+}
+
 #addTodayShiftBtn {
     margin-top: 12px;
     background: var(--worked-bg);
@@ -976,6 +1068,86 @@ dialog::backdrop {
     margin-top: 4px;
 }
 
+.sick-leave-summary-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.sick-leave-summary-row .link-btn {
+    margin-top: 0;
+    flex-shrink: 0;
+}
+
+#sickLeaveHistoryBody h3 {
+    font-size: 13px;
+    margin: 8px 0 3px;
+}
+
+#sickLeaveHistoryBody .changelog-list {
+    margin: 4px 0 8px;
+}
+
+.sick-history-month {
+    margin-top: 6px;
+    padding: 6px 10px;
+    background: var(--day-card-bg);
+    border-radius: 8px;
+}
+
+.sick-history-month + .sick-history-month {
+    margin-top: 6px;
+}
+
+.sick-history-month summary {
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--text);
+    list-style: none;
+}
+
+.sick-history-month summary::-webkit-details-marker {
+    display: none;
+}
+
+.sick-history-month summary::before {
+    content: "▸";
+    display: inline-block;
+    width: 12px;
+    color: var(--sick-text);
+    transition: transform .15s ease;
+}
+
+.sick-history-month[open] summary::before {
+    transform: rotate(90deg);
+}
+
+.sick-history-month .changelog-list {
+    max-height: 180px;
+    overflow-y: auto;
+    margin-bottom: 0;
+    padding-right: 6px;
+}
+
+.sick-history-month .changelog-list li {
+    margin-top: 4px;
+}
+
+.sick-history-month .changelog-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.sick-history-month .changelog-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.sick-history-month .changelog-list::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 999px;
+}
+
 .quick-stats {
     display: flex;
     gap: 10px;
@@ -988,6 +1160,18 @@ dialog::backdrop {
     border-radius: 10px;
     padding: 10px 12px;
     text-align: center;
+}
+
+.stat-card--clickable {
+    cursor: pointer;
+}
+
+.stat-card--clickable:hover {
+    background: var(--day-card-bg);
+}
+
+.stat-card--warning .stat-value {
+    color: var(--danger-text);
 }
 
 .stat-label {
@@ -1029,7 +1213,8 @@ dialog::backdrop {
     border-bottom: 1px solid var(--divider);
 }
 
-.dialog-tab {
+.dialog-tab,
+.config-tab {
     width: auto;
     margin-top: 0;
     padding: 8px 12px;
@@ -1041,14 +1226,20 @@ dialog::backdrop {
     cursor: pointer;
 }
 
-.dialog-tab.is-active {
+.dialog-tab.is-active,
+.config-tab.is-active {
     color: var(--worked-bg);
     border-bottom-color: var(--worked-bg);
     font-weight: 600;
 }
 
-.dialog-tab-panel[hidden] {
+.dialog-tab-panel[hidden],
+.config-tab-panel[hidden] {
     display: none;
+}
+
+.config-tab-panel .hint:first-child {
+    margin-top: 0;
 }
 
 /* W okienku Konto kazdy formularz (e-mail, haslo, strefa niebezpieczna) to osobny modul oddzielony linia */
@@ -1086,8 +1277,12 @@ dialog::backdrop {
 #weekHoursForm select,
 #changeEmailForm input,
 #changePasswordForm input,
+#employeeNumberForm input,
 #polandCycleForm input,
-#exportPolandScheduleForm select {
+#vacationAllowanceForm input,
+#sickLeaveForm input,
+#exportPolandScheduleForm select,
+#exportMonthForm select {
     width: 100%;
     padding: 10px;
     font-size: 16px;
@@ -1167,6 +1362,11 @@ dialog::backdrop {
         font-size: 26px;
         font-weight: 800;
         letter-spacing: -.2px;
+    }
+
+    .brand-subtitle {
+        display: block;
+        font-size: 13px;
     }
 
     /* "Wysepka" ze statusem PL/DE, przeniesiona przez JS do prawej strony naglowka */

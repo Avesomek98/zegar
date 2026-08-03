@@ -1,4 +1,4 @@
-const CACHE_NAME = "godziny-pracy-v1.4";
+const CACHE_NAME = "godziny-pracy-v1.5";
 const ASSETS = [
     "./",
     "./index.html",
@@ -12,7 +12,9 @@ const ASSETS = [
 ];
 
 // Pliki, ktore rzadko sie zmieniaja - moga byc serwowane z cache jako pierwsze.
-const CACHE_FIRST = ["/icons/", "/manifest.json"];
+// /fonts/ to font PDF (kilkaset KB, uzywany tylko przy eksporcie) - raz pobrany nie musi
+// sciagac sie ponownie przy kazdym eksporcie.
+const CACHE_FIRST = ["/icons/", "/manifest.json", "/fonts/"];
 
 self.addEventListener("install", (event) => {
     event.waitUntil(
