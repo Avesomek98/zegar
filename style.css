@@ -1068,16 +1068,8 @@ dialog::backdrop {
     margin-top: 4px;
 }
 
-.sick-leave-summary-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-}
-
-.sick-leave-summary-row .link-btn {
-    margin-top: 0;
-    flex-shrink: 0;
+#sickLeaveMenu .secondary-btn + .secondary-btn {
+    margin-top: 8px;
 }
 
 #sickLeaveHistoryBody h3 {

@@ -365,11 +365,17 @@
 <dialog id="sickLeaveDialog">
     <h2>Zwolnienie lekarskie</h2>
     <p class="hint">Oznacza dzień jako niedyspozycję (0h), bez wpływu na godziny pracy.</p>
-    <p class="hint sick-leave-summary-row">
-        <span id="sickLeaveSummary"></span>
-        <button type="button" id="openSickLeaveHistoryBtn" class="link-btn">📋 Historia</button>
-    </p>
-    <form id="sickLeaveForm">
+    <p id="sickLeaveSummary" class="hint"></p>
+
+    <div id="sickLeaveMenu">
+        <button type="button" id="showAddSickLeaveBtn" class="secondary-btn">+ Dodaj zwolnienie lekarskie</button>
+        <button type="button" id="openSickLeaveHistoryBtn" class="secondary-btn">📋 Zobacz historię zwolnień</button>
+        <div class="dialog-actions">
+            <button type="button" id="closeSickLeaveMenuBtn">Zamknij</button>
+        </div>
+    </div>
+
+    <form id="sickLeaveForm" style="display:none;">
         <p class="hint">Stuknij dzień początkowy, potem końcowy (ten sam dzień 2× dla jednego dnia).</p>
         <div class="week-range-header">
             <button type="button" id="sickLeaveRangePrevBtn" class="icon-btn" aria-label="Poprzedni miesiąc">‹</button>
@@ -549,6 +555,7 @@
     <ul class="changelog-list">
         <li>Nowość: kliknięcie pustego dnia w kalendarzu otwiera menu wyboru akcji — godziny pracy, urlop, zwolnienie lekarskie albo wyjazd do Polski. Urlop, zwolnienie i wyjazd można planować też na przyszłość; godziny pracy nadal tylko dla dni, które już się odbyły.</li>
         <li>Nowość: zwolnienie lekarskie — nowa opcja w szybkich akcjach, zakres dni z kalendarza (jak urlop), opcjonalna notatka z powodem, osobny fioletowy kolor w kalendarzu, okno "Historia zwolnień" z podsumowaniem rocznym i szczegółami rozwijanymi wg miesiąca.</li>
+        <li>Poprawka: okienko "Zwolnienie lekarskie" otwiera się teraz na widoku menu (podsumowanie + przyciski "Dodaj zwolnienie lekarskie" / "Zobacz historię") — kalendarz i notatka pokazują się dopiero po kliknięciu "Dodaj", zamiast od razu przy otwarciu.</li>
         <li>Nowość: okno 🛠️ Konfiguracja (szybkie akcje) z zakładkami Numer / Zjazdy / Urlop — zastąpiło zakładkę "Zjazdy do Polski" w Ustawieniach.</li>
         <li>Nowość: numer pracownika — widoczny w nagłówku eksportowanych raportów (PDF/CSV/Excel), w stopce szybkich akcji i w oknie Konto.</li>
         <li>Nowość: limit dni urlopu na rok i kafelek "Pozostały urlop" na głównym ekranie, liczony na bieżąco z dni urlopu wstawionych w kalendarzu.</li>
@@ -557,7 +564,7 @@
         <li>Usunięte z szybkich akcji: "Dodaj dzień ręcznie" i "Wyjazd do Polski" — dostępne teraz przez menu po kliknięciu dnia w kalendarzu.</li>
         <li>Eksport miesiąca: własne okno z wyborem miesiąca (niezależnym od Historii) i formatu pliku — CSV, Excel (.xlsx) albo PDF; w pliku dodatkowo liczba dni urlopu i zwolnienia lekarskiego.</li>
         <li>Eksport zjazdów do Polski: doszła opcja "najbliższy miesiąc"; uwzględnia teraz zaplanowane urlopy (wydłużają pobyt w zestawieniu) i pokazuje w kolumnie "Powód", kiedy dany pobyt wynika z urlopu.</li>
-        <li>PDF: układ A4 pionowo, własny font z pełnym wsparciem polskich znaków, zawijanie tekstu w komórkach, osobna sekcja "Podsumowanie" pod tabelą, automatyczne przechodzenie na kolejne strony.</li>
+        <li>PDF: układ A4 pionowo, własny font z pełnym wsparciem polskich znaków, zawijanie tekstu w komórkach, osobna sekcja "Podsumowanie" pod tabelą, automatyczne przechodzenie na kolejne strony, logo i podtytuł aplikacji w nagłówku raportu.</li>
         <li>Poprawka: błędny e-mail/hasło i inne komunikaty logowania po polsku zamiast po angielsku.</li>
         <li>Flagi PL/DE (karta statusu w nagłówku) i mała flaga dni "w Polsce" w kalendarzu rysowane teraz w CSS zamiast emoji — Windows nie renderuje większości flag emoji jako grafiki.</li>
         <li>Na telefonie: moduł "Dzisiejsza zmiana" przeniesiony wyżej, nad szybkie akcje.</li>

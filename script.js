@@ -390,6 +390,9 @@ const closeVacationBtn = document.getElementById("closeVacationBtn");
 const sickLeaveBtn = document.getElementById("sickLeaveBtn");
 const sickLeaveDialog = document.getElementById("sickLeaveDialog");
 const sickLeaveSummary = document.getElementById("sickLeaveSummary");
+const sickLeaveMenu = document.getElementById("sickLeaveMenu");
+const showAddSickLeaveBtn = document.getElementById("showAddSickLeaveBtn");
+const closeSickLeaveMenuBtn = document.getElementById("closeSickLeaveMenuBtn");
 const sickLeaveForm = document.getElementById("sickLeaveForm");
 const sickLeaveRangeCalendar = document.getElementById("sickLeaveRangeCalendar");
 const sickLeaveRangePrevBtn = document.getElementById("sickLeaveRangePrevBtn");
@@ -1330,6 +1333,8 @@ dayActionVacationBtn.onclick = () => {
 dayActionSickLeaveBtn.onclick = () => {
     dayActionDialog.close();
     renderSickLeaveSummary();
+    sickLeaveMenu.style.display = "none";
+    sickLeaveForm.style.display = "";
     sickLeaveNoteInput.value = "";
     sickLeaveRangePicker.setRange(dayActionDate, dayActionDate);
     sickLeaveDialog.showModal();
@@ -1542,15 +1547,47 @@ async function createPdfDocument(orientation) {
     return doc;
 }
 
-// Rysuje profesjonalnie wygladajacy naglowek raportu: nazwa apki, tytul, cienka linia pod spodem.
-// Zwraca Y, od ktorego mozna rysowac dalsza tresc (np. tabele).
-function drawPdfReportHeader(doc, marginX, title) {
-    const pageWidth = doc.internal.pageSize.getWidth();
-    let y = 42;
+// Ten sam podtytul, co obok logo w naglowku apki na desktopie (patrz index.html .brand-subtitle).
+const APP_SUBTITLE = "Wszystko o Twoim czasie pracy w jednym miejscu";
 
-    doc.setFontSize(17);
+// Logo pobierane raz i trzymane jako data URL - kolejne eksporty w tej samej sesji nie
+// odpytuja juz sieci/cache po nie ponownie.
+let appLogoDataUrlPromise = null;
+async function getAppLogoDataUrl() {
+    if (!appLogoDataUrlPromise) {
+        appLogoDataUrlPromise = fetch("icons/icon-192.png")
+            .then((res) => res.blob())
+            .then((blob) => new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            }))
+            .catch((err) => {
+                console.error(err);
+                return null;
+            });
+    }
+    return appLogoDataUrlPromise;
+}
+
+// Rysuje profesjonalnie wygladajacy naglowek raportu: logo, nazwa apki, podtytul (ten sam co
+// w naglowku apki), tytul raportu, cienka linia pod spodem. Zwraca Y, od ktorego mozna
+// rysowac dalsza tresc (np. tabele).
+async function drawPdfReportHeader(doc, marginX, title) {
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const logoSize = 28;
+    const textX = marginX + logoSize + 10;
+    let y = 28;
+
+    const logoDataUrl = await getAppLogoDataUrl();
+    if (logoDataUrl) {
+        doc.addImage(logoDataUrl, "PNG", marginX, y - 18, logoSize, logoSize);
+    }
+
+    doc.setFontSize(16);
     doc.setTextColor(30, 33, 45);
-    doc.text("Kalendarz Pracy", marginX, y);
+    doc.text("Kalendarz Pracy", textX, y);
 
     if (employeeNumberCache) {
         doc.setFontSize(10.5);
@@ -1559,10 +1596,15 @@ function drawPdfReportHeader(doc, marginX, title) {
         doc.setTextColor(30, 33, 45);
     }
 
-    y += 18;
+    y += 13;
+    doc.setFontSize(8.5);
+    doc.setTextColor(140, 145, 160);
+    doc.text(APP_SUBTITLE, textX, y);
+
+    y += 19;
     doc.setFontSize(11.5);
     doc.setTextColor(100, 105, 120);
-    doc.text(title, marginX, y);
+    doc.text(title, textX, y);
     doc.setTextColor(0, 0, 0);
 
     y += 10;
@@ -1816,7 +1858,7 @@ async function buildMonthPdfBlob(reportData, monthLabel) {
     const marginX = 36;
     const pageWidth = doc.internal.pageSize.getWidth();
 
-    let y = drawPdfReportHeader(doc, marginX, `Zestawienie godzin pracy — ${monthLabel}`);
+    let y = await drawPdfReportHeader(doc, marginX, `Zestawienie godzin pracy — ${monthLabel}`);
 
     // Dzien tygodnia i Od/Do dostaja wiecej miejsca - "poniedzialek" oraz "06:00" nie miescily
     // sie wczesniej w jednej linii i lamaly sie w polowie slowa/liczby.
@@ -2266,8 +2308,16 @@ openSickLeaveHistoryBtn.onclick = () => {
 
 closeSickLeaveHistoryBtn.onclick = () => sickLeaveHistoryDialog.close();
 
-sickLeaveBtn.onclick = () => {
-    renderSickLeaveSummary();
+// Dialog otwiera sie na widoku "menu" (podsumowanie + 2 przyciski) - kalendarz i notatka
+// pokazuja sie dopiero po kliknieciu "+ Dodaj zwolnienie lekarskie", nie od razu.
+function showSickLeaveMenu() {
+    sickLeaveMenu.style.display = "";
+    sickLeaveForm.style.display = "none";
+}
+
+function showAddSickLeaveForm() {
+    sickLeaveMenu.style.display = "none";
+    sickLeaveForm.style.display = "";
     sickLeaveNoteInput.value = "";
     if (!sickLeaveRangePicker.state.start) {
         const today = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
@@ -2275,10 +2325,20 @@ sickLeaveBtn.onclick = () => {
     } else {
         sickLeaveRangePicker.render();
     }
+}
+
+sickLeaveBtn.onclick = () => {
+    renderSickLeaveSummary();
+    showSickLeaveMenu();
     sickLeaveDialog.showModal();
 };
 
-closeSickLeaveBtn.onclick = () => sickLeaveDialog.close();
+showAddSickLeaveBtn.onclick = () => showAddSickLeaveForm();
+closeSickLeaveMenuBtn.onclick = () => sickLeaveDialog.close();
+
+// "Anuluj" w formularzu wraca do widoku menu (nie zamyka calego okienka) - "Zamknij" w menu
+// zamyka okienko calkowicie.
+closeSickLeaveBtn.onclick = () => showSickLeaveMenu();
 
 sickLeaveForm.onsubmit = async (event) => {
     event.preventDefault();
@@ -2813,7 +2873,7 @@ async function buildPolandSchedulePdfBlob(rows, subtitle) {
     const marginX = 36;
     const pageWidth = doc.internal.pageSize.getWidth();
 
-    const y = drawPdfReportHeader(doc, marginX, subtitle);
+    const y = await drawPdfReportHeader(doc, marginX, subtitle);
 
     const usableWidth = pageWidth - marginX * 2;
     const columns = [
