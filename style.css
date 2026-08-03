@@ -452,6 +452,20 @@ li {
     border-radius: 8px;
 }
 
+/* Konto/odswiez/motyw/ustawienia jako wlasne SVG (outline, currentColor) zamiast emoji -
+   spojny wyglad na kazdym systemie i motywie, zamiast losowego stylu fontu emoji danej platformy. */
+.icon-btn--svg {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.icon-btn--svg svg {
+    width: 19px;
+    height: 19px;
+    display: block;
+}
+
 .month-picker {
     width: 100%;
     padding: 10px;
@@ -1426,6 +1440,11 @@ dialog::backdrop {
         font-size: 21px;
         border-radius: 999px;
         transition: background .12s ease;
+    }
+
+    .top-actions .icon-btn--svg svg {
+        width: 21px;
+        height: 21px;
     }
 
     .top-actions .icon-btn:hover {
