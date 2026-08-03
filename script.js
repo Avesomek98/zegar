@@ -379,6 +379,10 @@ const closePolandTripBtn = document.getElementById("closePolandTripBtn");
 
 const vacationBtn = document.getElementById("vacationBtn");
 const vacationDialog = document.getElementById("vacationDialog");
+const vacationSummary = document.getElementById("vacationSummary");
+const vacationMenu = document.getElementById("vacationMenu");
+const showAddVacationBtn = document.getElementById("showAddVacationBtn");
+const closeVacationMenuBtn = document.getElementById("closeVacationMenuBtn");
 const vacationForm = document.getElementById("vacationForm");
 const vacationRangeCalendar = document.getElementById("vacationRangeCalendar");
 const vacationRangePrevBtn = document.getElementById("vacationRangePrevBtn");
@@ -386,6 +390,10 @@ const vacationRangeNextBtn = document.getElementById("vacationRangeNextBtn");
 const vacationRangeMonthLabel = document.getElementById("vacationRangeMonthLabel");
 const vacationRangeSummary = document.getElementById("vacationRangeSummary");
 const closeVacationBtn = document.getElementById("closeVacationBtn");
+const openVacationHistoryBtn = document.getElementById("openVacationHistoryBtn");
+const vacationHistoryDialog = document.getElementById("vacationHistoryDialog");
+const vacationHistoryBody = document.getElementById("vacationHistoryBody");
+const closeVacationHistoryBtn = document.getElementById("closeVacationHistoryBtn");
 
 const sickLeaveBtn = document.getElementById("sickLeaveBtn");
 const sickLeaveDialog = document.getElementById("sickLeaveDialog");
@@ -427,6 +435,7 @@ let monthsIndexCache = new Map();
 let selectedMonthKey = null;
 let activeShiftCache = null; // { start, end, label } | null
 let vacationDatesCache = new Set(); // Set<"YYYY-MM-DD"> dni oznaczonych jako Urlop
+let vacationRecordsCache = []; // [{ date }], najnowsze pierwsze - do okienka Historia urlopu
 let sickLeaveDatesCache = new Set(); // Set<"YYYY-MM-DD"> dni oznaczonych jako zwolnienie lekarskie
 let sickLeaveRecordsCache = []; // [{ date, reason }], najnowsze pierwsze - do okienka Historia zwolnien
 let polandCycleCache = null; // { anchor: Date, cycleDays: number, homeDays: number } | null
@@ -436,7 +445,6 @@ let employeeNumberCache = null; // numer pracownika (string, zeby zachowac wioda
 const NIGHT_START_HOUR = 20;
 const NIGHT_END_HOUR = 6;
 const DEFAULT_BREAK_MINUTES = 45;
-const BREAK_HOUR = 2; // przerwa jest realnie brana o 2:00 w nocy, gdy zmiana obejmuje te pore
 
 // Zwolnienie lekarskie rozpoznajemy po prefiksie notatki - "Zwolnienie lekarskie" (bez powodu)
 // albo "Zwolnienie lekarskie: <powod>" (gdy uzytkownik poda opcjonalna notatke).
@@ -912,34 +920,12 @@ function netHours(session) {
     return Math.max(0, session.hours - session.breakMinutes / 60);
 }
 
-// Przerwa jest realnie brana o 2:00 w nocy - jesli zmiana obejmuje te godzine, zwraca
-// dwa przepracowane odcinki [start,end] z wycieta dokladnie ta przerwa. W przeciwnym razie
-// (zmiana nie siega 2:00, np. dzienna) zwraca null - nie da sie dokladnie umiejscowic przerwy.
-function netWorkedIntervals(session) {
-    const { start, end, breakMinutes } = session;
-    if (breakMinutes <= 0) return [[start, end]];
-
-    const breakStart = new Date(start.getFullYear(), start.getMonth(), start.getDate(), BREAK_HOUR, 0, 0, 0);
-    if (breakStart <= start) breakStart.setDate(breakStart.getDate() + 1);
-    const breakEnd = new Date(breakStart.getTime() + breakMinutes * 60 * 1000);
-
-    if (breakStart >= start && breakEnd <= end) {
-        return [[start, breakStart], [breakEnd, end]];
-    }
-    return null;
-}
-
-// Godziny nocne/niedzielne licza sie normalnie z surowego zakresu [start, end], ale z wycieta
-// przerwa (patrz netWorkedIntervals) - inaczej moglyby przekroczyc rzeczywiste godziny netto.
-// Gdy nie da sie dokladnie umiejscowic przerwy w zmianie (np. zmiana dzienna), przycinamy
-// proporcjonalnie do udzialu przerwy w calej (brutto) zmianie - to i tak wtedy zwykle 0.
+// Godziny nocne/niedzielne licza sie z surowego (brutto) zakresu [start, end] - nie probujemy
+// zgadywac, o ktorej dokladnie porze zmiany faktycznie wypada przerwa, bo to nie ma znaczenia.
+// Przerwa jest odejmowana tylko raz, od calkowitego wyniku (patrz netHours) - moze wiec zdarzyc
+// sie, ze np. godziny nocne (z brutto) wyjda nominalnie wyzsze niz netto calej zmiany.
 function overlapNetHours(session, overlapFn) {
-    const intervals = netWorkedIntervals(session);
-    if (intervals) {
-        return intervals.reduce((sum, [s, e]) => sum + (e > s ? overlapFn(s, e) : 0), 0);
-    }
-    if (session.hours <= 0) return 0;
-    return overlapFn(session.start, session.end) * (netHours(session) / session.hours);
+    return overlapFn(session.start, session.end);
 }
 
 async function resetAllData() {
@@ -1029,6 +1015,19 @@ function buildVacationDates(entries) {
         }
     });
     return dates;
+}
+
+// Pelna lista dni urlopu (tylko data - notatka jest zawsze "Urlop", bez wariantow) do
+// okienka "Historia urlopu" - w odroznieniu od vacationDatesCache (tylko klucze dat).
+function buildVacationRecords(entries) {
+    const records = [];
+    entries.forEach((entry) => {
+        if (entry.note === "Urlop") {
+            records.push({ date: new Date(entry.start_time) });
+        }
+    });
+    records.sort((a, b) => b.date - a.date);
+    return records;
 }
 
 function buildSickLeaveDates(entries) {
@@ -1326,6 +1325,8 @@ dayActionHoursBtn.onclick = () => {
 
 dayActionVacationBtn.onclick = () => {
     dayActionDialog.close();
+    vacationMenu.style.display = "none";
+    vacationForm.style.display = "";
     vacationRangePicker.setRange(dayActionDate, dayActionDate);
     vacationDialog.showModal();
 };
@@ -1948,6 +1949,7 @@ function refreshHistoryView(entries) {
     dayTotalsCache = buildDayTotals(entries);
     monthsIndexCache = buildMonthsIndex(entries);
     vacationDatesCache = buildVacationDates(entries);
+    vacationRecordsCache = buildVacationRecords(entries);
     sickLeaveDatesCache = buildSickLeaveDates(entries);
     sickLeaveRecordsCache = buildSickLeaveRecords(entries);
     renderQuickStats();
@@ -2154,17 +2156,16 @@ polandTripForm.onsubmit = async (event) => {
     await deleteSessionsForDay(tripDay);
     const tripStart = new Date(tripDay);
     tripStart.setHours(6, 0, 0, 0);
+    const tripEnd = new Date(tripDay);
+    tripEnd.setHours(12, 0, 0, 0);
     const tripBreakMinutes = 15;
-    // Brutto = 6h netto + przerwa, zeby po odjeciu przerwy wyszlo dokladnie 6h.
-    const tripGrossMs = (6 * 60 + tripBreakMinutes) * 60 * 1000;
-    const tripEnd = new Date(tripStart.getTime() + tripGrossMs);
-    const tripGrossHours = tripGrossMs / (1000 * 60 * 60);
+    const tripGrossHours = (tripEnd.getTime() - tripStart.getTime()) / (1000 * 60 * 60);
     await saveEntry({
         start_time: tripStart.toISOString(),
         end_time: tripEnd.toISOString(),
         hours: Number(tripGrossHours.toFixed(2)),
         break_minutes: tripBreakMinutes,
-        note: "Wyjazd do Polski – skrócony dzień (6h netto)"
+        note: "Wyjazd do Polski – skrócony dzień (6:00–12:00)"
     });
 
     await deleteSessionsForDay(dayOff);
@@ -2184,17 +2185,47 @@ polandTripForm.onsubmit = async (event) => {
     polandTripDialog.close();
 };
 
-vacationBtn.onclick = () => {
+function renderVacationSummary() {
+    const remaining = remainingVacationDays();
+    if (remaining !== null) {
+        vacationSummary.textContent = `Pozostały urlop w ${new Date().getFullYear()} roku: ${remaining} ${remaining === 1 ? "dzień" : "dni"}.`;
+        return;
+    }
+    const count = vacationDatesCache.size;
+    vacationSummary.textContent = count === 0
+        ? "Nie masz jeszcze zapisanych dni urlopu."
+        : `Łącznie dni urlopu: ${count}.`;
+}
+
+// Dialog otwiera sie na widoku "menu" (podsumowanie + 2 przyciski) - kalendarz pokazuje sie
+// dopiero po kliknieciu "+ Dodaj urlop", tak samo jak przy zwolnieniu lekarskim.
+function showVacationMenu() {
+    vacationMenu.style.display = "";
+    vacationForm.style.display = "none";
+}
+
+function showAddVacationForm() {
+    vacationMenu.style.display = "none";
+    vacationForm.style.display = "";
     if (!vacationRangePicker.state.start) {
         const today = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
         vacationRangePicker.setRange(today, today);
     } else {
         vacationRangePicker.render();
     }
+}
+
+vacationBtn.onclick = () => {
+    renderVacationSummary();
+    showVacationMenu();
     vacationDialog.showModal();
 };
 
-closeVacationBtn.onclick = () => vacationDialog.close();
+showAddVacationBtn.onclick = () => showAddVacationForm();
+closeVacationMenuBtn.onclick = () => vacationDialog.close();
+
+// "Anuluj" w formularzu wraca do widoku menu (nie zamyka calego okienka).
+closeVacationBtn.onclick = () => showVacationMenu();
 
 vacationForm.onsubmit = async (event) => {
     event.preventDefault();
@@ -2226,6 +2257,79 @@ vacationForm.onsubmit = async (event) => {
     submitBtn.disabled = false;
     vacationDialog.close();
 };
+
+function renderVacationHistory() {
+    if (vacationRecordsCache.length === 0) {
+        vacationHistoryBody.innerHTML = `<p class="hint">Nie masz jeszcze zapisanych dni urlopu.</p>`;
+        return;
+    }
+
+    // Rocznie liczymy tez ile z dni "zabralo pule" (bez sobot/niedziel i dni w Polsce z cyklu) -
+    // ta sama zasada co w podsumowaniu miesiaca i na kafelku "Pozostaly urlop".
+    const yearStats = new Map(); // year -> { total, chargeable }
+    vacationRecordsCache.forEach(({ date }) => {
+        const year = date.getFullYear();
+        const stats = yearStats.get(year) || { total: 0, chargeable: 0 };
+        stats.total += 1;
+        if (isVacationChargeableDate(date)) stats.chargeable += 1;
+        yearStats.set(year, stats);
+    });
+    const years = [...yearStats.keys()].sort((a, b) => b - a);
+
+    const summaryHtml = years
+        .map((year) => {
+            const { total, chargeable } = yearStats.get(year);
+            return `<strong>${year}</strong> — ${total} ${total === 1 ? "dzień" : "dni"} (${chargeable} z puli)`;
+        })
+        .join(" · ");
+
+    const monthGroups = new Map(); // "YYYY-MM" -> { date, records: [] }
+    vacationRecordsCache.forEach((record) => {
+        const mKey = monthKey(record.date);
+        if (!monthGroups.has(mKey)) {
+            monthGroups.set(mKey, { date: record.date, records: [] });
+        }
+        monthGroups.get(mKey).records.push(record);
+    });
+
+    const detailsHtml = [...monthGroups.keys()]
+        .sort()
+        .reverse()
+        .map((mKey) => {
+            const group = monthGroups.get(mKey);
+            const monthLabel = `${MONTH_NAMES[group.date.getMonth()]} ${group.date.getFullYear()}`;
+            const itemsHtml = group.records
+                .slice()
+                .sort((a, b) => a.date - b.date)
+                .map(({ date }) => {
+                    const dow = CAL_WEEKDAY_LETTERS[(date.getDay() + 6) % 7];
+                    const note = isVacationChargeableDate(date) ? "" : ` <span class="hint">— nie z puli</span>`;
+                    return `<li><strong>${date.getDate()}</strong> <span class="hint">(${dow})</span>${note}</li>`;
+                })
+                .join("");
+
+            return `
+                <details class="history-month">
+                    <summary>${monthLabel} (${group.records.length} ${group.records.length === 1 ? "dzień" : "dni"})</summary>
+                    <ul class="changelog-list">${itemsHtml}</ul>
+                </details>
+            `;
+        })
+        .join("");
+
+    vacationHistoryBody.innerHTML = `
+        <p class="hint">${summaryHtml}</p>
+        <h3>Szczegóły</h3>
+        ${detailsHtml}
+    `;
+}
+
+openVacationHistoryBtn.onclick = () => {
+    renderVacationHistory();
+    vacationHistoryDialog.showModal();
+};
+
+closeVacationHistoryBtn.onclick = () => vacationHistoryDialog.close();
 
 function renderSickLeaveSummary() {
     const count = sickLeaveDatesCache.size;
@@ -2286,7 +2390,7 @@ function renderSickLeaveHistory() {
                 .join("");
 
             return `
-                <details class="sick-history-month">
+                <details class="history-month">
                     <summary>${monthLabel} (${group.records.length} ${group.records.length === 1 ? "dzień" : "dni"})</summary>
                     <ul class="changelog-list">${itemsHtml}</ul>
                 </details>

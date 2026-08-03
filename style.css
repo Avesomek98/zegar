@@ -1068,31 +1068,36 @@ dialog::backdrop {
     margin-top: 4px;
 }
 
-#sickLeaveMenu .secondary-btn + .secondary-btn {
+#sickLeaveMenu .secondary-btn + .secondary-btn,
+#vacationMenu .secondary-btn + .secondary-btn {
     margin-top: 8px;
 }
 
-#sickLeaveHistoryBody h3 {
+#sickLeaveHistoryBody h3,
+#vacationHistoryBody h3 {
     font-size: 13px;
     margin: 8px 0 3px;
 }
 
-#sickLeaveHistoryBody .changelog-list {
+#sickLeaveHistoryBody .changelog-list,
+#vacationHistoryBody .changelog-list {
     margin: 4px 0 8px;
 }
 
-.sick-history-month {
+/* Wspolny styl rozwijanych sekcji miesiaca w oknach "Historia" (zwolnienia i urlopu) -
+   kolor trojkata rozwijania rozni sie kontekstem (fioletowy/zielony), patrz nizej. */
+.history-month {
     margin-top: 6px;
     padding: 6px 10px;
     background: var(--day-card-bg);
     border-radius: 8px;
 }
 
-.sick-history-month + .sick-history-month {
+.history-month + .history-month {
     margin-top: 6px;
 }
 
-.sick-history-month summary {
+.history-month summary {
     cursor: pointer;
     font-weight: 600;
     font-size: 13px;
@@ -1100,42 +1105,50 @@ dialog::backdrop {
     list-style: none;
 }
 
-.sick-history-month summary::-webkit-details-marker {
+.history-month summary::-webkit-details-marker {
     display: none;
 }
 
-.sick-history-month summary::before {
+.history-month summary::before {
     content: "▸";
     display: inline-block;
     width: 12px;
-    color: var(--sick-text);
+    color: var(--text-faint);
     transition: transform .15s ease;
 }
 
-.sick-history-month[open] summary::before {
+#sickLeaveHistoryBody .history-month summary::before {
+    color: var(--sick-text);
+}
+
+#vacationHistoryBody .history-month summary::before {
+    color: var(--vacation-accent);
+}
+
+.history-month[open] summary::before {
     transform: rotate(90deg);
 }
 
-.sick-history-month .changelog-list {
+.history-month .changelog-list {
     max-height: 180px;
     overflow-y: auto;
     margin-bottom: 0;
     padding-right: 6px;
 }
 
-.sick-history-month .changelog-list li {
+.history-month .changelog-list li {
     margin-top: 4px;
 }
 
-.sick-history-month .changelog-list::-webkit-scrollbar {
+.history-month .changelog-list::-webkit-scrollbar {
     width: 6px;
 }
 
-.sick-history-month .changelog-list::-webkit-scrollbar-track {
+.history-month .changelog-list::-webkit-scrollbar-track {
     background: transparent;
 }
 
-.sick-history-month .changelog-list::-webkit-scrollbar-thumb {
+.history-month .changelog-list::-webkit-scrollbar-thumb {
     background: var(--border);
     border-radius: 999px;
 }

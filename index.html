@@ -341,13 +341,19 @@
 
 <dialog id="vacationDialog">
     <h2>Urlop</h2>
-    <p class="hint">
-        Oznaczy każdy dzień w zakresie jako dzień wolny (0h) z notatką
-        "Urlop". Nadpisze istniejące wpisy w tym zakresie.
-    </p>
-    <form id="vacationForm">
-        <label class="field-label">Zakres dni</label>
-        <p class="hint">Stuknij dzień początkowy, potem dzień końcowy — oba w tym samym kalendarzu.</p>
+    <p class="hint">Oznacza dzień jako wolny (0h) z notatką "Urlop". Nadpisze istniejące wpisy w tym zakresie.</p>
+    <p id="vacationSummary" class="hint"></p>
+
+    <div id="vacationMenu">
+        <button type="button" id="showAddVacationBtn" class="secondary-btn">+ Dodaj urlop</button>
+        <button type="button" id="openVacationHistoryBtn" class="secondary-btn">📋 Zobacz historię urlopu</button>
+        <div class="dialog-actions">
+            <button type="button" id="closeVacationMenuBtn">Zamknij</button>
+        </div>
+    </div>
+
+    <form id="vacationForm" style="display:none;">
+        <p class="hint">Stuknij dzień początkowy, potem dzień końcowy (ten sam dzień 2× dla jednego dnia).</p>
         <div class="week-range-header">
             <button type="button" id="vacationRangePrevBtn" class="icon-btn" aria-label="Poprzedni miesiąc">‹</button>
             <span id="vacationRangeMonthLabel"></span>
@@ -360,6 +366,14 @@
             <button type="submit">Zapisz</button>
         </div>
     </form>
+</dialog>
+
+<dialog id="vacationHistoryDialog">
+    <h2>Historia urlopu</h2>
+    <div id="vacationHistoryBody"></div>
+    <div class="dialog-actions">
+        <button type="button" id="closeVacationHistoryBtn">Zamknij</button>
+    </div>
 </dialog>
 
 <dialog id="sickLeaveDialog">
@@ -440,8 +454,8 @@
 <dialog id="polandTripDialog">
     <h2>Wyjazd do Polski</h2>
     <p class="hint">
-        Ustawi wybrany dzień (czwartek) na 6 godzin pracy bez przerwy
-        i oznaczy kolejny dzień (piątek) jako dzień wolny. Nadpisze
+        Ustawi wybrany dzień (czwartek) na godziny 6:00–12:00 z 15-minutową przerwą
+        (5h45min netto) i oznaczy kolejny dzień (piątek) jako dzień wolny. Nadpisze
         istniejące wpisy dla obu dni.
     </p>
     <form id="polandTripForm">
@@ -498,8 +512,9 @@
     <ul class="changelog-list">
         <li><strong>Brutto</strong> = "do" minus "od". <strong>Netto</strong> = brutto minus przerwa (przerwa jest niepłatna).</li>
         <li>Domyślna przerwa to 45 minut, edytowalna przy każdym wpisie.</li>
-        <li><strong>Godziny nocne</strong> to część zmiany wypadająca między 20:00 a 6:00. Jeśli zmiana obejmuje godzinę 2:00 w nocy, aplikacja zakłada, że wtedy właśnie jest przerwa, i wycina ją dokładnie z tego miejsca — dzięki temu godziny nocne nigdy nie przekraczają godzin netto.</li>
+        <li><strong>Godziny nocne</strong> to część zmiany wypadająca między 20:00 a 6:00, liczona z surowych (brutto) godzin "od–do" — bez zgadywania, o której dokładnie porze w trakcie zmiany wypada przerwa.</li>
         <li><strong>Godziny niedzielne</strong> to część zmiany wypadająca kalendarzowo w niedzielę (00:00–24:00), liczone tą samą zasadą.</li>
+        <li>Przerwa jest odejmowana tylko raz, od całości (brutto → netto) — nie jest osobno odejmowana od godzin nocnych/niedzielnych, więc te wartości liczone od brutto mogą nominalnie przewyższać netto całej zmiany.</li>
     </ul>
 
     <h3>Kalendarz i Historia</h3>
