@@ -312,7 +312,10 @@ body {
     color: var(--text-muted);
 }
 
-.pin-card input {
+/* :not([type="checkbox"]) - inaczej checkbox zgody na polityke prywatnosci (tez w .pin-card)
+   dziedziczylby width:100%, robiac z niego niewidzialny, ogromny blok zamiast malego kwadracika,
+   co psulo caly uklad wiersza zgody (patrz .checkbox-label w #authPrivacyConsentRow). */
+.pin-card input:not([type="checkbox"]) {
     width: 100%;
     padding: 13px 14px;
     font-size: 16px;
@@ -342,6 +345,13 @@ body {
 
 .pin-card .link-btn {
     margin-top: 14px;
+}
+
+/* Ten link siedzi WEWNATRZ .checkbox-label (obok checkboxa zgody), nie samodzielnie pod polami
+   formularza jak inne .link-btn w tej karcie - dziedziczony margin-top:14px zbija go w dol
+   wzgledem checkboxa i tekstu "Akceptuje", mimo align-items:center na rodzicu. */
+#openPrivacyFromAuthBtn {
+    margin-top: 0;
 }
 
 .pin-card .link-btn--secondary {
@@ -994,6 +1004,7 @@ dialog::backdrop {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
+    justify-content: center;
     gap: 8px 10px;
     padding: 0;
     border: none;
@@ -1325,6 +1336,50 @@ dialog::backdrop {
     border-radius: 999px;
 }
 
+/* Rozwijane pytania w oknie "Pomoc" - te sama idea co .history-month (details/summary),
+   ale wlasna klasa, bo semantycznie to FAQ, nie miesiace historii; nieco wieksza czcionka
+   i bez ograniczenia wysokosci wewnatrz, bo odpowiedzi sa krotkie. */
+.help-item {
+    margin-top: 8px;
+    padding: 10px 12px;
+    background: var(--day-card-bg);
+    border-radius: 10px;
+}
+
+.help-item:first-of-type {
+    margin-top: 10px;
+}
+
+.help-item summary {
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--text);
+    list-style: none;
+}
+
+.help-item summary::-webkit-details-marker {
+    display: none;
+}
+
+.help-item summary::before {
+    content: "▸";
+    display: inline-block;
+    width: 14px;
+    color: var(--worked-bg);
+    transition: transform .15s ease;
+}
+
+.help-item[open] summary::before {
+    transform: rotate(90deg);
+}
+
+.help-item p {
+    margin: 8px 0 0;
+    font-size: 14px;
+    color: var(--text-muted);
+}
+
 /* "Dzisiejsza zmiana" + statystyki (Dzis / W tym miesiacu / Pozostaly urlop) to jeden
    polaczony modul - wspolna karta z gradientem, zamiast dwoch oddzielnych blokow. */
 .today-module {
@@ -1434,6 +1489,21 @@ dialog::backdrop {
     align-items: center;
     justify-content: center;
     gap: 6px;
+}
+
+/* Konfiguracja ma 4 zakladki - "Twoje szablony" jest za dluga zeby zmiescic sie w jednym
+   rzedzie obok pozostalych trzech (3+1 wygladalo krzywo, "zlane"). Zamiast liczyc na
+   nieprzewidywalny flex-wrap, wymuszamy rowna siatke 2x2 i mniej "pigulkowy" promien rogow,
+   ktory lepiej pasuje do kwadratowego, dwurzedowego uktladu niz pelny pill (999px). */
+#configDialog .dialog-tabs {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 3px;
+    border-radius: 16px;
+}
+
+#configDialog .config-tab {
+    border-radius: 10px;
 }
 
 .config-tab .qa-icon {
@@ -1599,7 +1669,8 @@ dialog::backdrop {
     flex-shrink: 0;
 }
 
-.preset-row-btn[data-preset-delete] {
+.preset-row-btn[data-preset-delete],
+.preset-row-btn[data-poland-extra-delete] {
     color: var(--danger-text);
 }
 
@@ -1745,6 +1816,12 @@ dialog::backdrop {
         transition: background .12s ease, transform .08s ease;
     }
 
+    /* Na desktopie odswiezenie strony to zwykly skrot przegladarki (F5/Ctrl+R) - przycisk
+       mial sens tylko jako obejscie braku takiej opcji w PWA na iPhonie, tam zostaje. */
+    #refreshBtn {
+        display: none;
+    }
+
     .top-actions .icon-btn--svg svg {
         width: 17px;
         height: 17px;
@@ -1861,8 +1938,11 @@ dialog::backdrop {
         box-shadow: 0 0 0 3px var(--accent-soft);
     }
 
+    /* Na desktopie jest dosc miejsca, zeby pole godzin + Zastosuj + Dodaj dzien mieszczily sie
+       w jednym rzedzie (bez wymuszania pelnej szerokosci jak na telefonie) - dzieki temu
+       "Dodaj dzien" nie ladowal osamotniony na wlasnym rzedzie w trybie "Wlasne godziny". */
     .custom-shift-fields {
-        flex: 1 0 100%;
+        flex: 1 1 auto;
         margin-top: 0;
     }
 

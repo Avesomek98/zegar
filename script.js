@@ -81,11 +81,14 @@ function updateAuthModeUI() {
         authTitle.textContent = "Zaloguj się";
         authSubmitBtn.textContent = "Zaloguj się";
         authToggleBtn.textContent = "Nie masz konta? Zarejestruj się";
+        authPrivacyConsentRow.style.display = "none";
     } else {
         authTitle.textContent = "Zarejestruj się";
         authSubmitBtn.textContent = "Zarejestruj się";
         authToggleBtn.textContent = "Masz już konto? Zaloguj się";
+        authPrivacyConsentRow.style.display = "flex";
     }
+    authPrivacyConsent.checked = false;
     showAuthMessage("");
 }
 
@@ -97,6 +100,12 @@ authToggleBtn.onclick = () => {
 authForm.onsubmit = async (event) => {
     event.preventDefault();
     showAuthMessage("");
+
+    if (authMode === "register" && !authPrivacyConsent.checked) {
+        showAuthMessage("Musisz zaakceptować politykę prywatności, żeby założyć konto.", false);
+        return;
+    }
+
     authSubmitBtn.disabled = true;
 
     const email = authEmail.value.trim();
@@ -357,6 +366,13 @@ const closeChangelogBtn = document.getElementById("closeChangelogBtn");
 const helpBtn = document.getElementById("helpBtn");
 const helpDialog = document.getElementById("helpDialog");
 const closeHelpBtn = document.getElementById("closeHelpBtn");
+const privacyBtn = document.getElementById("privacyBtn");
+const authPrivacyBtn = document.getElementById("authPrivacyBtn");
+const openPrivacyFromAuthBtn = document.getElementById("openPrivacyFromAuthBtn");
+const privacyDialog = document.getElementById("privacyDialog");
+const closePrivacyBtn = document.getElementById("closePrivacyBtn");
+const authPrivacyConsentRow = document.getElementById("authPrivacyConsentRow");
+const authPrivacyConsent = document.getElementById("authPrivacyConsent");
 
 const editDayDialog = document.getElementById("editDayDialog");
 const editDayTitle = document.getElementById("editDayTitle");
@@ -390,6 +406,7 @@ const dayActionHoursBtn = document.getElementById("dayActionHoursBtn");
 const dayActionVacationBtn = document.getElementById("dayActionVacationBtn");
 const dayActionSickLeaveBtn = document.getElementById("dayActionSickLeaveBtn");
 const dayActionPolandTripBtn = document.getElementById("dayActionPolandTripBtn");
+const dayActionPolandExtraBtn = document.getElementById("dayActionPolandExtraBtn");
 const closeDayActionBtn = document.getElementById("closeDayActionBtn");
 let dayActionDate = null;
 
@@ -397,6 +414,17 @@ const polandTripDialog = document.getElementById("polandTripDialog");
 const polandTripForm = document.getElementById("polandTripForm");
 const polandTripDate = document.getElementById("polandTripDate");
 const closePolandTripBtn = document.getElementById("closePolandTripBtn");
+
+const polandExtraDialog = document.getElementById("polandExtraDialog");
+const polandExtraList = document.getElementById("polandExtraList");
+const polandExtraForm = document.getElementById("polandExtraForm");
+const polandExtraRangeCalendar = document.getElementById("polandExtraRangeCalendar");
+const polandExtraRangePrevBtn = document.getElementById("polandExtraRangePrevBtn");
+const polandExtraRangeNextBtn = document.getElementById("polandExtraRangeNextBtn");
+const polandExtraRangeMonthLabel = document.getElementById("polandExtraRangeMonthLabel");
+const polandExtraRangeSummary = document.getElementById("polandExtraRangeSummary");
+const polandExtraMessage = document.getElementById("polandExtraMessage");
+const closePolandExtraBtn = document.getElementById("closePolandExtraBtn");
 
 const vacationBtn = document.getElementById("vacationBtn");
 const vacationDialog = document.getElementById("vacationDialog");
@@ -464,6 +492,7 @@ let vacationAllowanceCache = null; // liczba dni urlopu przyznanych na biezacy r
 let employeeNumberCache = null; // numer pracownika (string, zeby zachowac wiodace zera) | null
 let customPresetsCache = []; // [{ label, start, end }] - wlasne szablony godzin uzytkownika (Konfiguracja -> Twoje szablony)
 let customPresetEditingIndex = null; // index w customPresetsCache edytowany w formularzu, albo null (tryb dodawania)
+let polandExtraRangesCache = []; // [{ start: "YYYY-MM-DD", end: "YYYY-MM-DD" }] - dodatkowe (poza cyklem) pobyty w Polsce
 
 const NIGHT_START_HOUR = 20;
 const NIGHT_END_HOUR = 6;
@@ -532,10 +561,31 @@ refreshBtn.onclick = () => {
     window.location.reload();
 };
 
-changelogBtn.onclick = () => changelogDialog.showModal();
+// <dialog> pamieta swoja poprzednia pozycje przewiniecia miedzy otwarciami (to zwykly
+// scrollTop, nie resetuje sie sam przy showModal) - dla dlugich, tekstowych okienek (Pomoc,
+// changelog, polityka prywatnosci) zawsze chcemy zaczynac od gory, a nie tam gdzie ostatnio
+// user skonczyl czytac.
+function openDialogFromTop(dialog) {
+    dialog.showModal();
+    dialog.scrollTop = 0;
+}
 
-helpBtn.onclick = () => helpDialog.showModal();
+changelogBtn.onclick = () => openDialogFromTop(changelogDialog);
+
+helpBtn.onclick = () => openDialogFromTop(helpDialog);
 closeHelpBtn.onclick = () => helpDialog.close();
+
+privacyBtn.onclick = () => openDialogFromTop(privacyDialog);
+authPrivacyBtn.onclick = () => openDialogFromTop(privacyDialog);
+closePrivacyBtn.onclick = () => privacyDialog.close();
+
+// stopPropagation, zeby klikniecie linku "polityke prywatnosci" (zagniezdzonego w <label>
+// checkboxa zgody) tylko otwieralo okienko, a nie ROWNIEZ przelaczalo checkbox przez
+// domyslne zachowanie <label> (klikniecie gdziekolwiek w labelu przelacza powiazany input).
+openPrivacyFromAuthBtn.onclick = (event) => {
+    event.stopPropagation();
+    openDialogFromTop(privacyDialog);
+};
 
 const currentYear = String(new Date().getFullYear());
 document.getElementById("year").textContent = currentYear;
@@ -634,7 +684,9 @@ applyCustomShiftBtn.onclick = async () => {
 
 // Wlasne presety uzytkownika (Konfiguracja -> Twoje szablony) trzymane sa w kolumnie "schedule" (jsonb),
 // ktora nie byla dotad przez nic uzywana - unikamy w ten sposob migracji schematu bazy.
-async function refreshCustomPresetsCache() {
+// customPresetsCache i polandExtraRangesCache dziela jedna kolumne "schedule" (jsonb) - zapis
+// jednego MUSI wyslac tez aktualny stan drugiego, inaczej nadpisalby go pustym/starym stanem.
+async function refreshScheduleCache() {
     const { data, error } = await supabase
         .from("app_settings")
         .select("schedule")
@@ -646,22 +698,41 @@ async function refreshCustomPresetsCache() {
         return;
     }
     customPresetsCache = Array.isArray(data?.schedule?.customPresets) ? data.schedule.customPresets : [];
+    polandExtraRangesCache = Array.isArray(data?.schedule?.extraPolandRanges) ? data.schedule.extraPolandRanges : [];
 }
 
-async function saveCustomPresets(presets) {
+async function saveScheduleColumn(next) {
     const { error } = await supabase
         .from("app_settings")
         .upsert(
-            { user_id: currentUserId, schedule: { customPresets: presets }, updated_at: new Date().toISOString() },
+            { user_id: currentUserId, schedule: next, updated_at: new Date().toISOString() },
             { onConflict: "user_id" }
         );
 
     if (error) {
         console.error(error);
+        return false;
+    }
+    return true;
+}
+
+async function saveCustomPresets(presets) {
+    const ok = await saveScheduleColumn({ customPresets: presets, extraPolandRanges: polandExtraRangesCache });
+    if (!ok) {
         setStatusMessage(customPresetMessage, "Nie udało się zapisać szablonu.", false);
         return false;
     }
     customPresetsCache = presets;
+    return true;
+}
+
+async function saveExtraPolandRanges(ranges) {
+    const ok = await saveScheduleColumn({ customPresets: customPresetsCache, extraPolandRanges: ranges });
+    if (!ok) {
+        setStatusMessage(polandExtraMessage, "Nie udało się zapisać zakresu.", false);
+        return false;
+    }
+    polandExtraRangesCache = ranges;
     return true;
 }
 
@@ -1485,7 +1556,9 @@ dayActionVacationBtn.onclick = () => {
     dayActionDialog.close();
     vacationMenu.style.display = "none";
     vacationForm.style.display = "";
-    vacationRangePicker.setRange(dayActionDate, dayActionDate);
+    // end=null (nie dayActionDate) - zeby pierwsze nastepne stuknięcie w kalendarzu ustawialo
+    // dzien koncowy (rozszerzajac zakres), zamiast zaczynac nowy wybor od zera (patrz setRange).
+    vacationRangePicker.setRange(dayActionDate, null);
     vacationDialog.showModal();
 };
 
@@ -1495,7 +1568,7 @@ dayActionSickLeaveBtn.onclick = () => {
     sickLeaveMenu.style.display = "none";
     sickLeaveForm.style.display = "";
     sickLeaveNoteInput.value = "";
-    sickLeaveRangePicker.setRange(dayActionDate, dayActionDate);
+    sickLeaveRangePicker.setRange(dayActionDate, null);
     sickLeaveDialog.showModal();
 };
 
@@ -1503,6 +1576,14 @@ dayActionPolandTripBtn.onclick = () => {
     dayActionDialog.close();
     polandTripDate.value = dateKey(dayActionDate);
     polandTripDialog.showModal();
+};
+
+dayActionPolandExtraBtn.onclick = () => {
+    dayActionDialog.close();
+    setStatusMessage(polandExtraMessage, "");
+    renderPolandExtraList();
+    polandExtraRangePicker.setRange(dayActionDate, null);
+    polandExtraDialog.showModal();
 };
 
 closeDayActionBtn.onclick = () => dayActionDialog.close();
@@ -2852,6 +2933,84 @@ const sickLeaveRangePicker = createRangePicker({
     allowFuture: true
 });
 
+const polandExtraRangePicker = createRangePicker({
+    calendarEl: polandExtraRangeCalendar,
+    prevBtn: polandExtraRangePrevBtn,
+    nextBtn: polandExtraRangeNextBtn,
+    monthLabelEl: polandExtraRangeMonthLabel,
+    summaryEl: polandExtraRangeSummary,
+    allowFuture: true
+});
+
+function renderPolandExtraList() {
+    if (!polandExtraRangesCache.length) {
+        polandExtraList.innerHTML = '<p class="hint">Nie masz jeszcze żadnych dodatkowych pobytów.</p>';
+        return;
+    }
+    polandExtraList.innerHTML = [...polandExtraRangesCache]
+        .map((r, i) => ({ r, i }))
+        .sort((a, b) => (a.r.start < b.r.start ? 1 : -1))
+        .map(({ r, i }) => {
+            const [sy, sm, sd] = r.start.split("-").map(Number);
+            const [ey, em, ed] = r.end.split("-").map(Number);
+            const startLabel = new Date(sy, sm - 1, sd).toLocaleDateString("pl-PL", { day: "numeric", month: "short" });
+            const endLabel = new Date(ey, em - 1, ed).toLocaleDateString("pl-PL", { day: "numeric", month: "short", year: "numeric" });
+            return `
+                <div class="preset-row">
+                    <span class="preset-row-label">${startLabel} – ${endLabel}</span>
+                    <button type="button" class="preset-row-btn" data-poland-extra-delete="${i}" title="Usuń">✕</button>
+                </div>
+            `;
+        })
+        .join("");
+}
+
+function refreshAfterPolandExtraChange() {
+    renderPolandExtraList();
+    renderPolandStatus();
+    renderMonthCalendar(selectedMonthKey);
+}
+
+polandExtraList.addEventListener("click", async (event) => {
+    const deleteBtn = event.target.closest("[data-poland-extra-delete]");
+    if (!deleteBtn) return;
+    const idx = Number(deleteBtn.dataset.polandExtraDelete);
+    if (!confirm("Na pewno usunąć ten zakres?")) return;
+
+    const next = polandExtraRangesCache.filter((_, i) => i !== idx);
+    deleteBtn.disabled = true;
+    const ok = await saveExtraPolandRanges(next);
+    deleteBtn.disabled = false;
+    if (!ok) return;
+
+    refreshAfterPolandExtraChange();
+    setStatusMessage(polandExtraMessage, "Usunięto.", true);
+});
+
+polandExtraForm.onsubmit = async (event) => {
+    event.preventDefault();
+    const { start, end } = polandExtraRangePicker.state;
+    if (!start || !end) {
+        alert("Zaznacz zakres w kalendarzu (dla jednego dnia stuknij go dwukrotnie).");
+        return;
+    }
+
+    const next = [...polandExtraRangesCache, { start: dateKey(start), end: dateKey(end) }];
+    const submitBtn = polandExtraForm.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    const ok = await saveExtraPolandRanges(next);
+    submitBtn.disabled = false;
+    if (!ok) return;
+
+    polandExtraRangePicker.state.start = null;
+    polandExtraRangePicker.state.end = null;
+    polandExtraRangePicker.render();
+    refreshAfterPolandExtraChange();
+    setStatusMessage(polandExtraMessage, "Zapisano.", true);
+};
+
+closePolandExtraBtn.onclick = () => polandExtraDialog.close();
+
 weekHoursBtn.onclick = () => {
     const { start, end } = previousWeekRange();
     weekRangePicker.setRange(start, end);
@@ -2913,6 +3072,10 @@ function daysBetween(a, b) {
 // wypada w Polsce wg skonfigurowanego cyklu zjazdow - uzywane do zaznaczania w kalendarzu
 // miesiaca dni "w domu", niezaleznie od tego, czy zapisano dla nich jakiekolwiek godziny pracy.
 function isDateInPolandCycle(date) {
+    // Dodatkowy (poza cyklem) pobyt w Polsce liczy sie tak samo jak zwykly zjazd - flaga w
+    // kalendarzu i zwolnienie z puli urlopowej (patrz isVacationChargeableDate nizej) dzialaja
+    // identycznie, niezaleznie od tego, czy dzien "w Polsce" wynika z cyklu czy z tego zakresu.
+    if (isDateInExtraPolandRange(date)) return true;
     if (!polandCycleCache) return false;
     const { anchor, cycleDays, homeDays } = polandCycleCache;
     const anchorMidnight = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate());
@@ -2920,6 +3083,11 @@ function isDateInPolandCycle(date) {
     const daysSinceAnchor = daysBetween(anchorMidnight, dateMidnight);
     const cyclePos = ((daysSinceAnchor % cycleDays) + cycleDays) % cycleDays;
     return cyclePos < homeDays;
+}
+
+function isDateInExtraPolandRange(date) {
+    const key = dateKey(date);
+    return polandExtraRangesCache.some((r) => key >= r.start && key <= r.end);
 }
 
 // Dzien urlopu zabiera pule urlopowa tylko jesli i tak bylby dniem roboczym - czyli nie jest
@@ -3005,6 +3173,23 @@ function renderPolandStatus() {
             ? "Dziś wracasz do Niemiec"
             : `Wracasz do Niemiec za ${daysUntilReturn} ${daysUntilReturn === 1 ? "dzień" : "dni"} (urlop)`;
         updateVacationCountdown(todayMidnight, { suppress: true });
+        return;
+    }
+
+    // Dodatkowy (poza cyklem) pobyt w Polsce - nadpisuje status tak samo jak zwykly zjazd,
+    // dziala tez wtedy, gdy cykl w ogole nie jest skonfigurowany.
+    const extraRange = polandExtraRangesCache.find((r) => todayKey >= r.start && todayKey <= r.end);
+    if (extraRange) {
+        const [ey, em, ed] = extraRange.end.split("-").map(Number);
+        const returnMidnight = new Date(ey, em - 1, ed + 1);
+        const daysUntilReturn = daysBetween(todayMidnight, returnMidnight);
+
+        setPolandStatusFlag("pl");
+        polandStatusText.textContent = "Jesteś w Polsce (dodatkowy wyjazd)";
+        polandCountdownText.textContent = daysUntilReturn <= 0
+            ? "Dziś wracasz do Niemiec"
+            : `Wracasz do Niemiec za ${daysUntilReturn} ${daysUntilReturn === 1 ? "dzień" : "dni"} (dodatkowy wyjazd)`;
+        updateVacationCountdown(todayMidnight);
         return;
     }
 
@@ -3241,7 +3426,7 @@ async function initApp() {
     // vacationDatesCache - wolana wczesniej pokazalaby zly status w dniu, ktory akurat jest urlopem.
     const [, , , , , history] = await Promise.all([
         refreshPolandCycleCache(),
-        refreshCustomPresetsCache(),
+        refreshScheduleCache(),
         refreshActiveShiftCache(),
         refreshVacationAllowanceCache(),
         refreshEmployeeNumberCache(),
