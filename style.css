@@ -1430,6 +1430,15 @@ dialog::backdrop {
     color: var(--text-muted);
     cursor: pointer;
     transition: background .12s ease, color .12s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.config-tab .qa-icon {
+    width: 16px;
+    height: 16px;
 }
 
 .dialog-tab.is-active,

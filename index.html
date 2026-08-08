@@ -216,10 +216,10 @@
     <h2>Konfiguracja</h2>
 
     <div class="dialog-tabs">
-        <button type="button" class="config-tab is-active" data-config-tab="employee">👤 Numer</button>
-        <button type="button" class="config-tab" data-config-tab="poland">🇵🇱 Zjazdy</button>
-        <button type="button" class="config-tab" data-config-tab="vacation">🏖️ Urlop</button>
-        <button type="button" class="config-tab" data-config-tab="presets">⏱️ Presety</button>
+        <button type="button" class="config-tab is-active" data-config-tab="employee"><svg class="qa-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.5"/><path d="M4.5 20c0-3.5 3.5-6 7.5-6s7.5 2.5 7.5 6"/></svg>Numer</button>
+        <button type="button" class="config-tab" data-config-tab="poland"><svg class="qa-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v18M5 4h11l-2 3 2 3H5"/></svg>Zjazdy</button>
+        <button type="button" class="config-tab" data-config-tab="vacation"><svg class="qa-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>Urlop</button>
+        <button type="button" class="config-tab" data-config-tab="presets"><svg class="qa-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 1.5"/><path d="M10 2h4"/></svg>Twoje szablony</button>
     </div>
 
     <div class="config-tab-panel" data-config-tab-panel="employee">
@@ -265,7 +265,7 @@
     </div>
 
     <div class="config-tab-panel" data-config-tab-panel="presets" hidden>
-        <p class="hint">Twoje własne szablony godzin — pokazują się w "Dzisiejsza zmiana" obok gotowych zmian.</p>
+        <p class="hint">Twoje własne szablony godzin — pokazują się w "Dzisiejsza zmiana", "Edytuj dzień" i "Dodaj cały tydzień".</p>
         <div id="customPresetsList"></div>
         <form id="customPresetForm">
             <label class="field-label" for="customPresetLabelInput">Nazwa (opcjonalnie)</label>
@@ -276,7 +276,7 @@
             <input type="time" id="customPresetEndInput" required>
             <div class="dialog-actions">
                 <button type="button" id="cancelCustomPresetEditBtn" style="display:none;">Anuluj edycję</button>
-                <button type="submit" id="customPresetSubmitBtn">+ Dodaj preset</button>
+                <button type="submit" id="customPresetSubmitBtn">+ Dodaj szablon</button>
             </div>
         </form>
         <p id="customPresetMessage" class="hint auth-message" style="display:none;"></p>
@@ -605,9 +605,16 @@
         <li>Zmodernizowane dialogi: segmentowe zakładki, gradientowe przyciski, spójne obramowanie pól przy zaznaczeniu.</li>
         <li>Ten sam redesign (gradienty, karty-moduły, dialogi) wprowadzony też na telefonie — układ jednokolumnowy bez zmian, zmienił się tylko wygląd.</li>
         <li>Ikony w menu szybkich akcji (panel boczny i okno wyboru akcji dla dnia) zamienione z emoji na własne ikony SVG, spójne z resztą nagłówka.</li>
-        <li>Nowość: własne presety godzin — zakładka Konfiguracja → ⏱️ Presety pozwala dodawać, edytować i usuwać własne szablony godzin. Widoczne w "Dzisiejsza zmiana", "Edytuj dzień" i "Dodaj cały tydzień".</li>
+        <li>Nowość: własne szablony godzin — zakładka Konfiguracja → ⏱️ Twoje szablony pozwala dodawać, edytować i usuwać własne szablony godzin. Widoczne w "Dzisiejsza zmiana", "Edytuj dzień" i "Dodaj cały tydzień".</li>
         <li>"Dzisiejsza zmiana" domyślnie proponuje teraz ręczne wpisanie godzin ("Własne godziny") zamiast sztywnego, wbudowanego szablonu.</li>
         <li>Poprawka: usunięty stary mechanizm przenoszący "Dzisiejszą zmianę" między panelami na telefonie/komputerze — kolidował z nowym, połączonym modułem.</li>
+        <li>Ikony zakładek w oknie "Konfiguracja" też zamienione z emoji na SVG; "Presety" przemianowane na "Twoje szablony".</li>
+        <li>Poprawka bezpieczeństwa: nazwa własnego szablonu godzin, notatka zwolnienia lekarskiego i notatka sesji mogły wcześniej wstrzyknąć własny kod (XSS) — teraz są bezpiecznie escapowane wszędzie, gdzie się wyświetlają.</li>
+        <li>Poprawka: edycja szablonu godzin w trakcie usuwania innego szablonu mogła nadpisać niewłaściwy wpis.</li>
+        <li>Poprawka: dodawanie urlopu/zwolnienia/całego tygodnia/wyjazdu do Polski przerywa się teraz i zostawia okno otwarte, jeśli zapis któregoś dnia się nie uda, zamiast po cichu zamykać okno jakby wszystko się zapisało.</li>
+        <li>Poprawka: podgląd "ile dni urlopu zostanie" nie liczy już podwójnie dni, które już są zapisane jako urlop.</li>
+        <li>Poprawka: status Polska/Niemcy przy cyklu z 1 dniem w Polsce oraz przy starcie aplikacji w dniu urlopu.</li>
+        <li>Szybszy start aplikacji — zapytania do bazy przy starcie lecą równolegle zamiast po kolei.</li>
     </ul>
 
     <h3>v1.5 &middot; 2026-08-03</h3>

@@ -6,6 +6,19 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let currentUserId = null;
 let appStarted = false;
 
+// Wszystkie miejsca, ktore wstawiaja tekst wpisany przez uzytkownika (nazwa presetu, notatka
+// zwolnienia/sesji...) do innerHTML, MUSZA przepuscic go przez ta funkcje - inaczej ktos moze
+// wpisac np. "<img src=x onerror=...>" jako nazwe i wykonac wlasny JS przy kazdym renderze.
+function escapeHtml(value) {
+    return String(value ?? "").replace(/[&<>"']/g, (ch) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+    }[ch]));
+}
+
 const authForm = document.getElementById("authForm");
 const authTitle = document.getElementById("authTitle");
 const authEmail = document.getElementById("authEmail");
@@ -449,7 +462,7 @@ let sickLeaveRecordsCache = []; // [{ date, reason }], najnowsze pierwsze - do o
 let polandCycleCache = null; // { anchor: Date, cycleDays: number, homeDays: number } | null
 let vacationAllowanceCache = null; // liczba dni urlopu przyznanych na biezacy rok | null (nieustawiony)
 let employeeNumberCache = null; // numer pracownika (string, zeby zachowac wiodace zera) | null
-let customPresetsCache = []; // [{ label, start, end }] - wlasne szablony godzin uzytkownika (Konfiguracja -> Presety)
+let customPresetsCache = []; // [{ label, start, end }] - wlasne szablony godzin uzytkownika (Konfiguracja -> Twoje szablony)
 let customPresetEditingIndex = null; // index w customPresetsCache edytowany w formularzu, albo null (tryb dodawania)
 
 const NIGHT_START_HOUR = 20;
@@ -561,12 +574,12 @@ async function saveActiveShift(shift) {
 
 // Dzisiejsza zmiana NIE pokazuje juz sztywnych, wbudowanych presetow (SHIFT_PRESETS) -
 // tylko wlasne godziny (domyslnie) i wlasne presety uzytkownika, jesli jakies zapisal
-// w Konfiguracji -> Presety. To samo dotyczy szablonow w "Edytuj dzien" i "Dodaj caly
+// w Konfiguracji -> Twoje szablony. To samo dotyczy szablonow w "Edytuj dzien" i "Dodaj caly
 // tydzien" (patrz buildCustomPresetOptionsHtml nizej). SHIFT_PRESETS zyje dalej tylko
 // w kolorowaniu kalendarza (matchShiftPresetIndex) - tam sie nic nie zmienia.
 function populateActiveShiftSelect() {
     const customPresetOptions = customPresetsCache
-        .map((p, i) => `<option value="custom-${i}">${p.label}</option>`)
+        .map((p, i) => `<option value="custom-${i}">${escapeHtml(p.label)}</option>`)
         .join("");
     activeShiftSelect.innerHTML = `${customPresetOptions}<option value="custom">Własne godziny</option>`;
 
@@ -619,7 +632,7 @@ applyCustomShiftBtn.onclick = async () => {
     applyCustomShiftBtn.disabled = false;
 };
 
-// Wlasne presety uzytkownika (Konfiguracja -> Presety) trzymane sa w kolumnie "schedule" (jsonb),
+// Wlasne presety uzytkownika (Konfiguracja -> Twoje szablony) trzymane sa w kolumnie "schedule" (jsonb),
 // ktora nie byla dotad przez nic uzywana - unikamy w ten sposob migracji schematu bazy.
 async function refreshCustomPresetsCache() {
     const { data, error } = await supabase
@@ -645,7 +658,7 @@ async function saveCustomPresets(presets) {
 
     if (error) {
         console.error(error);
-        setStatusMessage(customPresetMessage, "Nie udało się zapisać presetu.", false);
+        setStatusMessage(customPresetMessage, "Nie udało się zapisać szablonu.", false);
         return false;
     }
     customPresetsCache = presets;
@@ -654,13 +667,13 @@ async function saveCustomPresets(presets) {
 
 function renderCustomPresetsList() {
     if (!customPresetsCache.length) {
-        customPresetsList.innerHTML = '<p class="hint">Nie masz jeszcze żadnych własnych presetów.</p>';
+        customPresetsList.innerHTML = '<p class="hint">Nie masz jeszcze żadnych własnych szablonów.</p>';
         return;
     }
     customPresetsList.innerHTML = customPresetsCache
         .map((p, i) => `
             <div class="preset-row">
-                <span class="preset-row-label">${p.label} (${p.start}–${p.end})</span>
+                <span class="preset-row-label">${escapeHtml(p.label)} (${p.start}–${p.end})</span>
                 <div>
                     <button type="button" class="preset-row-btn" data-preset-edit="${i}" title="Edytuj">✏️</button>
                     <button type="button" class="preset-row-btn" data-preset-delete="${i}" title="Usuń">✕</button>
@@ -673,7 +686,7 @@ function renderCustomPresetsList() {
 function resetCustomPresetForm() {
     customPresetEditingIndex = null;
     customPresetForm.reset();
-    customPresetSubmitBtn.textContent = "+ Dodaj preset";
+    customPresetSubmitBtn.textContent = "+ Dodaj szablon";
     cancelCustomPresetEditBtn.style.display = "none";
 }
 
@@ -702,14 +715,17 @@ customPresetsList.addEventListener("click", async (event) => {
     const deleteBtn = event.target.closest("[data-preset-delete]");
     if (deleteBtn) {
         const idx = Number(deleteBtn.dataset.presetDelete);
-        if (!confirm("Na pewno usunąć ten preset?")) return;
+        if (!confirm("Na pewno usunąć ten szablon?")) return;
         const next = customPresetsCache.filter((_, i) => i !== idx);
         deleteBtn.disabled = true;
         const ok = await saveCustomPresets(next);
         deleteBtn.disabled = false;
         if (!ok) return;
 
-        if (customPresetEditingIndex === idx) resetCustomPresetForm();
+        // Kazde usuniecie przeindeksowuje tablice, wiec zapisany "editing index" (jesli w ogole
+        // jest otwarta edycja) juz nie wskazuje na ten sam preset - zawsze anulujemy edycje,
+        // zamiast tylko wtedy gdy usuwany index rowna sie edytowanemu.
+        if (customPresetEditingIndex !== null) resetCustomPresetForm();
         renderCustomPresetsList();
         populateActiveShiftSelect();
         setStatusMessage(customPresetMessage, "Usunięto.", true);
@@ -1005,7 +1021,9 @@ async function saveEntry(entry) {
     if (error) {
         console.error(error);
         alert("Nie udało się zapisać wpisu w bazie.");
+        return false;
     }
+    return true;
 }
 
 function dayBounds(date) {
@@ -1030,13 +1048,23 @@ async function deleteSessionsForDay(date) {
     return true;
 }
 
+// Nadpisuje jeden dzien (usun stare wpisy -> zapisz nowy, jesli podano). Zwraca false przy
+// pierwszym bledzie zapisu do bazy, zeby wywolujaca petla (urlop/L4/caly tydzien/wyjazd do PL)
+// mogla przerwac dalsze zapisy zamiast po cichu kontynuowac po nieudanym dniu.
+async function saveDayEntry(date, entry) {
+    const deleted = await deleteSessionsForDay(date);
+    if (!deleted) return false;
+    if (!entry) return true;
+    return saveEntry(entry);
+}
+
 async function replaceDaySession(date, start, end, breakMinutes) {
     const deleted = await deleteSessionsForDay(date);
     if (!deleted) return false;
 
     const hours = (end - start) / 1000 / 60 / 60;
     if (hours > 0) {
-        await saveEntry({
+        return saveEntry({
             start_time: start.toISOString(),
             end_time: end.toISOString(),
             hours: Number(hours.toFixed(2)),
@@ -1512,7 +1540,7 @@ function buildDaySessionsHtml(day) {
                 ? ""
                 : `<div class="session-meta">brutto ${session.hours.toFixed(2)} godz. &middot; −${session.breakMinutes} min przerwy</div>`;
             const noteRow = session.note
-                ? `<div class="session-note">📝 ${session.note}</div>`
+                ? `<div class="session-note">📝 ${escapeHtml(session.note)}</div>`
                 : "";
 
             return `
@@ -2158,11 +2186,11 @@ accountLogoutBtn.onclick = async () => {
 // editingDate = data dnia, ktory faktycznie istnieje w bazie (do skasowania/przeniesienia).
 // null oznacza tryb "dodaj nowy dzien" - nic nie trzeba usuwac przed zapisem.
 // Szablony w "Edytuj dzien" i "Dodaj caly tydzien" to wlasne presety uzytkownika
-// (Konfiguracja -> Presety), nie wbudowane SHIFT_PRESETS - budowane na nowo przy kazdym
+// (Konfiguracja -> Twoje szablony), nie wbudowane SHIFT_PRESETS - budowane na nowo przy kazdym
 // otwarciu okna, zeby zawsze pokazywac aktualna liste.
 function buildCustomPresetOptionsHtml() {
     return customPresetsCache
-        .map((p, i) => `<option value="${i}">${p.label}</option>`)
+        .map((p, i) => `<option value="${i}">${escapeHtml(p.label)}</option>`)
         .join("");
 }
 
@@ -2225,19 +2253,18 @@ editDayForm.onsubmit = async (event) => {
     const submitBtn = editDayForm.querySelector('button[type="submit"]');
     submitBtn.disabled = true;
 
+    let ok = true;
     if (editingDate && dateKey(editingDate) !== dateKey(targetDate)) {
-        await deleteSessionsForDay(editingDate);
+        ok = await deleteSessionsForDay(editingDate);
     }
-    await replaceDaySession(targetDate, start, end, breakMinutes);
+    if (ok) ok = await replaceDaySession(targetDate, start, end, breakMinutes);
 
-    if (editDayMarkTripOff.checked) {
+    if (ok && editDayMarkTripOff.checked) {
         const nextDay = new Date(targetDate);
         nextDay.setDate(nextDay.getDate() + 1);
-        await deleteSessionsForDay(nextDay);
-        const nextDayStart = new Date(nextDay.getFullYear(), nextDay.getMonth(), nextDay.getDate(), 0, 0, 0, 0);
-        await saveEntry({
-            start_time: nextDayStart.toISOString(),
-            end_time: nextDayStart.toISOString(),
+        ok = await saveDayEntry(nextDay, {
+            start_time: new Date(nextDay.getFullYear(), nextDay.getMonth(), nextDay.getDate(), 0, 0, 0, 0).toISOString(),
+            end_time: new Date(nextDay.getFullYear(), nextDay.getMonth(), nextDay.getDate(), 0, 0, 0, 0).toISOString(),
             hours: 0,
             break_minutes: 0,
             note: "Dzień wolny (wyjazd do Polski)"
@@ -2247,6 +2274,7 @@ editDayForm.onsubmit = async (event) => {
     selectedMonthKey = monthKey(targetDate);
     refreshHistoryView(await loadHistory());
     submitBtn.disabled = false;
+    if (!ok) return;
     editDayDialog.close();
 };
 
@@ -2288,14 +2316,13 @@ polandTripForm.onsubmit = async (event) => {
     const submitBtn = polandTripForm.querySelector('button[type="submit"]');
     submitBtn.disabled = true;
 
-    await deleteSessionsForDay(tripDay);
     const tripStart = new Date(tripDay);
     tripStart.setHours(6, 0, 0, 0);
     const tripEnd = new Date(tripDay);
     tripEnd.setHours(12, 0, 0, 0);
     const tripBreakMinutes = 15;
     const tripGrossHours = (tripEnd.getTime() - tripStart.getTime()) / (1000 * 60 * 60);
-    await saveEntry({
+    let ok = await saveDayEntry(tripDay, {
         start_time: tripStart.toISOString(),
         end_time: tripEnd.toISOString(),
         hours: Number(tripGrossHours.toFixed(2)),
@@ -2303,20 +2330,24 @@ polandTripForm.onsubmit = async (event) => {
         note: "Wyjazd do Polski – skrócony dzień (6:00–12:00)"
     });
 
-    await deleteSessionsForDay(dayOff);
-    const dayOffStart = new Date(dayOff);
-    dayOffStart.setHours(0, 0, 0, 0);
-    await saveEntry({
-        start_time: dayOffStart.toISOString(),
-        end_time: dayOffStart.toISOString(),
-        hours: 0,
-        break_minutes: 0,
-        note: "Dzień wolny (wyjazd do Polski)"
-    });
+    if (ok) {
+        const dayOffStart = new Date(dayOff);
+        dayOffStart.setHours(0, 0, 0, 0);
+        ok = await saveDayEntry(dayOff, {
+            start_time: dayOffStart.toISOString(),
+            end_time: dayOffStart.toISOString(),
+            hours: 0,
+            break_minutes: 0,
+            note: "Dzień wolny (wyjazd do Polski)"
+        });
+    }
 
     selectedMonthKey = monthKey(tripDay);
     refreshHistoryView(await loadHistory());
     submitBtn.disabled = false;
+    // Przy bledzie deleteSessionsForDay/saveEntry juz pokazaly alert - zostawiamy okno otwarte,
+    // zeby bylo widac ze cos nie wyszlo, zamiast zamykac je tak jak przy pelnym sukcesie.
+    if (!ok) return;
     polandTripDialog.close();
 };
 
@@ -2374,10 +2405,10 @@ vacationForm.onsubmit = async (event) => {
     submitBtn.disabled = true;
 
     const day = new Date(rangeStart);
-    while (day <= rangeEnd) {
-        await deleteSessionsForDay(day);
+    let ok = true;
+    while (ok && day <= rangeEnd) {
         const dayStart = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 0, 0, 0, 0);
-        await saveEntry({
+        ok = await saveDayEntry(day, {
             start_time: dayStart.toISOString(),
             end_time: dayStart.toISOString(),
             hours: 0,
@@ -2390,6 +2421,9 @@ vacationForm.onsubmit = async (event) => {
     selectedMonthKey = monthKey(rangeStart);
     refreshHistoryView(await loadHistory());
     submitBtn.disabled = false;
+    // Przerwane w polowie zakresu przez blad zapisu (saveDayEntry juz pokazal alert) -
+    // zostawiamy okno otwarte zamiast udawac, ze caly zakres sie zapisal.
+    if (!ok) return;
     vacationDialog.close();
 };
 
@@ -2520,7 +2554,7 @@ function renderSickLeaveHistory() {
                 .sort((a, b) => a.date - b.date)
                 .map(({ date, reason }) => {
                     const dow = CAL_WEEKDAY_LETTERS[(date.getDay() + 6) % 7];
-                    return `<li><strong>${date.getDate()}</strong> <span class="hint">(${dow})</span>${reason ? ` — ${reason}` : ""}</li>`;
+                    return `<li><strong>${date.getDate()}</strong> <span class="hint">(${dow})</span>${reason ? ` — ${escapeHtml(reason)}` : ""}</li>`;
                 })
                 .join("");
 
@@ -2594,10 +2628,10 @@ sickLeaveForm.onsubmit = async (event) => {
     submitBtn.disabled = true;
 
     const day = new Date(rangeStart);
-    while (day <= rangeEnd) {
-        await deleteSessionsForDay(day);
+    let ok = true;
+    while (ok && day <= rangeEnd) {
         const dayStart = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 0, 0, 0, 0);
-        await saveEntry({
+        ok = await saveDayEntry(day, {
             start_time: dayStart.toISOString(),
             end_time: dayStart.toISOString(),
             hours: 0,
@@ -2610,6 +2644,7 @@ sickLeaveForm.onsubmit = async (event) => {
     selectedMonthKey = monthKey(rangeStart);
     refreshHistoryView(await loadHistory());
     submitBtn.disabled = false;
+    if (!ok) return;
     sickLeaveDialog.close();
 };
 
@@ -2773,10 +2808,18 @@ function formatVacationRangeSummary(start, end) {
 
     let totalDays = 0;
     let chargeableDays = 0;
+    let newChargeableDays = 0;
     const cursor = new Date(start);
     while (cursor <= end) {
         totalDays += 1;
-        if (isVacationChargeableDate(cursor)) chargeableDays += 1;
+        if (isVacationChargeableDate(cursor)) {
+            chargeableDays += 1;
+            // Dni juz zapisane jako urlop nie zabiora pon ownie z puli przy ponownym zapisie tego
+            // samego zakresu (nadpisanie, nie dodanie) - liczymy do "zostanie" tylko nowe dni,
+            // zeby remainingVacationDays() (ktora juz uwzglednia wszystkie zapisane dni) nie
+            // odjela tych samych dni dwa razy.
+            if (!vacationDatesCache.has(dateKey(cursor))) newChargeableDays += 1;
+        }
         cursor.setDate(cursor.getDate() + 1);
     }
 
@@ -2785,7 +2828,7 @@ function formatVacationRangeSummary(start, end) {
 
     const remaining = remainingVacationDays();
     if (remaining !== null) {
-        text += ` · zostanie ${remaining - chargeableDays} dni`;
+        text += ` · zostanie ${remaining - newChargeableDays} dni`;
     }
     return text;
 }
@@ -2841,7 +2884,8 @@ weekHoursForm.onsubmit = async (event) => {
     submitBtn.disabled = true;
 
     const day = new Date(rangeStart);
-    while (day <= rangeEnd) {
+    let ok = true;
+    while (ok && day <= rangeEnd) {
         const dow = day.getDay();
         if (!(skipWeekends && (dow === 0 || dow === 6))) {
             const start = new Date(day.getFullYear(), day.getMonth(), day.getDate(), sh, smi, 0, 0);
@@ -2849,7 +2893,7 @@ weekHoursForm.onsubmit = async (event) => {
             if (end <= start) {
                 end.setDate(end.getDate() + 1);
             }
-            await replaceDaySession(new Date(day), start, end, breakMinutes);
+            ok = await replaceDaySession(new Date(day), start, end, breakMinutes);
         }
         day.setDate(day.getDate() + 1);
     }
@@ -2857,6 +2901,7 @@ weekHoursForm.onsubmit = async (event) => {
     selectedMonthKey = monthKey(rangeStart);
     refreshHistoryView(await loadHistory());
     submitBtn.disabled = false;
+    if (!ok) return;
     weekHoursDialog.close();
 };
 
@@ -2974,7 +3019,12 @@ function renderPolandStatus() {
     const { anchor, cycleDays, homeDays } = polandCycleCache;
     const anchorArrival = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate(), POLAND_TRIP_TRANSITION_HOUR, 0, 0);
     const cycleDurationMs = cycleDays * 24 * 60 * 60 * 1000;
-    const homeDurationMs = Math.max(0, homeDays - 1) * 24 * 60 * 60 * 1000;
+    // "homeDays - 1" bo pobyt liczymy od wieczora przyjazdu do wieczora wyjazdu (patrz komentarz
+    // przy POLAND_TRIP_TRANSITION_HOUR) - dla homeDays=1 dawaloby to 0ms, przez co status w
+    // naglowku nigdy nie pokazalby "Jestes w Polsce", mimo ze isDateInPolandCycle() (kalendarz,
+    // pula urlopowa) i tak liczy ten jeden dzien jako "w domu". Math.min(1, homeDays) gwarantuje
+    // co najmniej jeden pelny dzien pobytu, zeby oba miejsca sie nie rozjezdzaly.
+    const homeDurationMs = Math.max(Math.min(1, homeDays), homeDays - 1) * 24 * 60 * 60 * 1000;
     const msSinceAnchorArrival = today.getTime() - anchorArrival.getTime();
     const cyclePosMs = ((msSinceAnchorArrival % cycleDurationMs) + cycleDurationMs) % cycleDurationMs;
     const inPolandByCycle = cyclePosMs < homeDurationMs;
@@ -3184,17 +3234,21 @@ polandStatusCard.onclick = () => {
 closePolandScheduleBtn.onclick = () => polandScheduleDialog.close();
 
 async function initApp() {
-    await refreshPolandCycleCache();
-    renderPolandStatus();
+    // Te zapytania sa od siebie niezalezne (osobne kolumny tej samej tabeli app_settings +
+    // niezalezna tabela work_sessions), wiec odpalamy je rownolegle zamiast czekac po kolei na
+    // kazde z osobna - jeden zbiorczy czas oczekiwania zamiast sumy wszystkich. renderPolandStatus()
+    // wolamy dopiero po zakonczeniu wszystkiego (wewnatrz refreshHistoryView), bo sprawdza tez
+    // vacationDatesCache - wolana wczesniej pokazalaby zly status w dniu, ktory akurat jest urlopem.
+    const [, , , , , history] = await Promise.all([
+        refreshPolandCycleCache(),
+        refreshCustomPresetsCache(),
+        refreshActiveShiftCache(),
+        refreshVacationAllowanceCache(),
+        refreshEmployeeNumberCache(),
+        loadHistory()
+    ]);
 
-    await refreshCustomPresetsCache();
-    await refreshActiveShiftCache();
     populateActiveShiftSelect();
-
-    await refreshVacationAllowanceCache();
-
-    await refreshEmployeeNumberCache();
     renderEmployeeNumberFooter();
-
-    refreshHistoryView(await loadHistory());
+    refreshHistoryView(history);
 }

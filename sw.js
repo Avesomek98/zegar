@@ -1,4 +1,4 @@
-const CACHE_NAME = "godziny-pracy-v1.5";
+const CACHE_NAME = "godziny-pracy-v1.6";
 const ASSETS = [
     "./",
     "./index.html",
@@ -52,7 +52,10 @@ self.addEventListener("fetch", (event) => {
                     cached ||
                     fetch(event.request).then((response) => {
                         const copy = response.clone();
-                        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+                        // waitUntil, zeby zapis do cache nie byl "odpalony i zapomniany" - bez tego
+                        // przegladarka moze ubic workera zaraz po zwroceniu response, zanim
+                        // cache.put() zdazy sie zapisac, i cichutko zgubic ten wpis.
+                        event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy)));
                         return response;
                     })
                 );
@@ -67,7 +70,7 @@ self.addEventListener("fetch", (event) => {
         fetch(event.request)
             .then((response) => {
                 const copy = response.clone();
-                caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+                event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy)));
                 return response;
             })
             .catch(() => caches.match(event.request))
