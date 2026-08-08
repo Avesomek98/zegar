@@ -51,6 +51,11 @@
     --shift3-bg: #0d9488;
     --sunday-work-bg: #db2777;
     --sunday-work-text: #ffffff;
+
+    /* Uzywane tylko w desktopowym układzie (@media min-width:1024px) - miekki podklad akcentu
+       pod hover/aktywne elementy nawigacji oraz mocniejszy cien "unoszenia" dla kart na hover. */
+    --accent-soft: rgba(37, 99, 235, .08);
+    --shadow-elevated: 0 10px 30px rgba(15, 23, 42, .10);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -105,6 +110,9 @@
         --shift3-bg: #2dd4bf;
         --sunday-work-bg: #ec4899;
         --sunday-work-text: #ffffff;
+
+        --accent-soft: rgba(79, 140, 255, .16);
+        --shadow-elevated: 0 10px 34px rgba(0, 0, 0, .55);
     }
 }
 
@@ -150,6 +158,9 @@
     --shift3-bg: #2dd4bf;
     --sunday-work-bg: #ec4899;
     --sunday-work-text: #ffffff;
+
+    --accent-soft: rgba(79, 140, 255, .16);
+    --shadow-elevated: 0 10px 34px rgba(0, 0, 0, .55);
 }
 
 :root[data-theme="light"] {
@@ -194,6 +205,9 @@
     --shift3-bg: #0d9488;
     --sunday-work-bg: #db2777;
     --sunday-work-text: #ffffff;
+
+    --accent-soft: rgba(37, 99, 235, .08);
+    --shadow-elevated: 0 10px 30px rgba(15, 23, 42, .10);
 }
 
 body {
@@ -209,10 +223,6 @@ body {
 .container {
     max-width: 500px;
     margin: auto;
-    background: var(--card-bg);
-    padding: 20px;
-    border-radius: 12px;
-    box-shadow: 0 0 10px var(--shadow);
 }
 
 .container,
@@ -370,11 +380,24 @@ li {
     margin-top: 10px;
 }
 
+/* Kazdy modul (naglowek, panel boczny/szybkie akcje, glowna kolumna) to osobne "okno":
+   wlasne tlo z delikatnym gradientem, ramka i zaokraglenie - .container jest teraz
+   tylko niewidocznym kontenerem, patrz reset .container wyzej. */
+.top-bar,
+.app-sidebar,
+.app-main {
+    background: var(--card-bg);
+    border: 1px solid var(--divider);
+    border-radius: 14px;
+    padding: 16px;
+}
+
 .top-bar {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 8px;
+    background: linear-gradient(135deg, var(--card-bg) 0%, var(--stat-bg) 130%);
 }
 
 /* Na telefonie ta "wysepka" jest i tak pusta (JS przenosi ja tu dopiero na desktopie) -
@@ -434,11 +457,17 @@ li {
     flex-shrink: 0;
 }
 
-/* Kompaktowe ikony w naglowku na telefonie - cztery przyciski + logo + nazwa apki
-   musza sie zmiescic na waskim ekranie. Na desktopie i tak nadpisane wiekszym rozmiarem. */
+/* Ikony w naglowku (Konto/Odswiez/Motyw/Ustawienia) jako male, okragle przyciski -
+   spojne na telefonie i desktopie, tylko rozmiar sie rozni (patrz @media min-width:1024px). */
 .top-actions .icon-btn {
-    padding: 6px 8px;
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     font-size: 18px;
+    border-radius: 999px;
 }
 
 .icon-btn {
@@ -450,6 +479,16 @@ li {
     color: var(--text);
     border: 1px solid var(--border);
     border-radius: 8px;
+    transition: background .12s ease, transform .08s ease;
+}
+
+.icon-btn:hover {
+    background: var(--accent-soft);
+    border-color: transparent;
+}
+
+.icon-btn:active {
+    transform: scale(.92);
 }
 
 /* Konto/odswiez/motyw/ustawienia jako wlasne SVG (outline, currentColor) zamiast emoji -
@@ -535,6 +574,8 @@ li {
     color: var(--worked-text);
     font-weight: 700;
     box-shadow: 0 1px 4px rgba(0, 0, 0, .2);
+    /* Polysk na kolorowych komorkach - ta sama gradientowa "szklana" nakladka niezaleznie od koloru tla wariantu */
+    background-image: linear-gradient(135deg, rgba(255, 255, 255, .28), rgba(255, 255, 255, 0) 65%);
 }
 
 .cal-cell--worked {
@@ -657,24 +698,36 @@ li {
     font-size: 18px;
 }
 
-/* Kalendarz i historia to teraz jedno wspolne "okno" (karta), zamiast dwoch osobnych */
+/* Kalendarz i Historia to dwa osobne "okna" - stackowane na telefonie (patrz nizej),
+   obok siebie na desktopie (@media min-width:1024px). Kazde ma wlasne tlo/ramke/cien,
+   zamiast jednej wspolnej karty z linia dzielaca. */
 .history-window {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
     margin-top: 20px;
-    background: var(--stat-bg);
+}
+
+.calendar-section,
+.history-section {
+    background: linear-gradient(160deg, var(--stat-bg) 0%, var(--card-bg) 150%);
     border: 1px solid var(--divider);
-    border-radius: 12px;
+    border-radius: 14px;
     padding: 16px;
-    box-shadow: 0 2px 10px var(--shadow);
+    margin-top: 0;
+    transition: box-shadow .15s ease;
+}
+
+.calendar-section:hover,
+.calendar-section:focus-within,
+.history-section:hover,
+.history-section:focus-within {
+    box-shadow: var(--shadow-elevated);
 }
 
 .calendar-section h2 {
     margin-top: 0;
-}
-
-.history-section {
-    margin-top: 20px;
-    padding-top: 20px;
-    border-top: 1px solid var(--divider);
+    font-size: 18px;
 }
 
 #history {
@@ -707,6 +760,12 @@ dialog::-webkit-scrollbar-thumb {
     padding: 10px 12px;
     background: var(--day-card-bg);
     border-radius: 10px;
+    transition: box-shadow .12s ease;
+}
+
+.day-card:hover,
+.day-card:active {
+    box-shadow: 0 4px 14px var(--shadow);
 }
 
 .day-card:first-child {
@@ -809,7 +868,7 @@ dialog {
     max-height: 85vh;
     overflow-y: auto;
     border: none;
-    border-radius: 12px;
+    border-radius: 16px;
     padding: 20px;
     background: var(--card-bg);
     color: var(--text);
@@ -818,6 +877,7 @@ dialog {
 
 dialog::backdrop {
     background: var(--backdrop);
+    backdrop-filter: blur(3px);
 }
 
 .hint {
@@ -841,9 +901,18 @@ dialog::backdrop {
     gap: 12px;
     margin-top: 15px;
     padding: 12px 14px;
-    background: var(--stat-bg);
     border-radius: 10px;
     cursor: pointer;
+    transition: transform .12s ease, box-shadow .12s ease;
+}
+
+.poland-status-card:not(.poland-status-card--vacation) {
+    background: linear-gradient(135deg, var(--stat-bg) 0%, var(--card-bg) 140%);
+}
+
+.poland-status-card:hover,
+.poland-status-card:active {
+    box-shadow: var(--shadow-elevated);
 }
 
 .poland-status-flag {
@@ -918,31 +987,47 @@ dialog::backdrop {
     margin-top: 20px;
 }
 
+/* "Dzisiejsza zmiana" jest teraz czescia wspolnego modulu .today-module (patrz nizej) -
+   sam wiersz jest tylko ukladem flex (etykieta na calej szerokosci, potem select + przycisk
+   obok siebie), bez wlasnego tla/ramki - te niesie .today-module. */
 .active-shift-row {
-    background: var(--stat-bg);
-    border: 1px solid var(--divider);
-    border-radius: 12px;
-    padding: 12px 14px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 10px;
+    padding: 0;
+    border: none;
+    background: none;
 }
 
 .active-shift-row .field-label {
-    margin-bottom: 4px;
+    flex: 1 0 100%;
+    margin-bottom: 0;
 }
 
 #activeShiftSelect {
-    width: 100%;
+    flex: 1 1 200px;
+    width: auto;
     padding: 10px;
     font-size: 15px;
     border-radius: 8px;
     border: 1px solid var(--border);
     background: var(--input-bg);
     color: var(--text);
+    transition: border-color .15s ease, box-shadow .15s ease;
+}
+
+#activeShiftSelect:focus {
+    outline: none;
+    border-color: var(--worked-bg);
+    box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 .custom-shift-fields {
     display: flex;
     gap: 8px;
-    margin-top: 8px;
+    margin-top: 0;
+    flex: 1 0 100%;
     flex-wrap: wrap;
 }
 
@@ -967,7 +1052,7 @@ dialog::backdrop {
     display: flex;
     flex-direction: column;
     gap: 4px;
-    background: var(--stat-bg);
+    background: linear-gradient(135deg, var(--stat-bg) 0%, var(--card-bg) 140%);
     border: 1px solid var(--divider);
     border-radius: 12px;
     padding: 8px;
@@ -986,10 +1071,27 @@ dialog::backdrop {
     color: var(--text);
     cursor: pointer;
     transition: background .12s ease;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Ikony menu akcji (panel boczny + okno wyboru akcji dla dnia) - wlasne SVG (outline, currentColor)
+   zamiast emoji, spojne z ikonami w naglowku (patrz .icon-btn--svg). */
+.qa-icon {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
 }
 
 .quick-actions button:hover {
-    background: var(--day-card-bg);
+    background: linear-gradient(90deg, var(--accent-soft), transparent);
+    box-shadow: inset 3px 0 0 var(--worked-bg);
+}
+
+.quick-actions button:active {
+    background: var(--accent-soft);
+    box-shadow: inset 3px 0 0 var(--worked-bg);
 }
 
 .quick-actions-footer {
@@ -1002,12 +1104,23 @@ dialog::backdrop {
 }
 
 #addTodayShiftBtn {
-    margin-top: 12px;
-    background: var(--worked-bg);
+    flex: 0 0 auto;
+    width: auto;
+    margin-top: 0;
+    padding: 12px 22px;
+    background: linear-gradient(135deg, #4f8cff, #2d3796);
     color: var(--worked-text);
     border: none;
     border-radius: 8px;
     font-weight: 700;
+    box-shadow: 0 4px 14px rgba(45, 55, 150, .3);
+    transition: transform .1s ease, box-shadow .1s ease;
+}
+
+#addTodayShiftBtn:hover,
+#addTodayShiftBtn:active {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(45, 55, 150, .38);
 }
 
 .session-note {
@@ -1019,12 +1132,41 @@ dialog::backdrop {
 
 .dialog-actions {
     display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
     gap: 10px;
     margin-top: 15px;
 }
 
 .dialog-actions button {
+    width: auto;
     margin-top: 0;
+    padding: 11px 18px;
+    font-size: 14px;
+    border-radius: 8px;
+}
+
+.dialog-actions button[type="submit"] {
+    background: linear-gradient(135deg, #4f8cff, #2d3796);
+    color: #ffffff;
+    border: none;
+    font-weight: 600;
+    transition: filter .12s ease;
+}
+
+.dialog-actions button[type="submit"]:hover,
+.dialog-actions button[type="submit"]:active {
+    filter: brightness(1.08);
+}
+
+.dialog-actions button[type="button"]:not(.danger-btn) {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+}
+
+.dialog-actions button[type="button"]:not(.danger-btn):hover {
+    background: var(--day-card-bg);
 }
 
 .app-footer {
@@ -1085,6 +1227,22 @@ dialog::backdrop {
 #sickLeaveMenu .secondary-btn + .secondary-btn,
 #vacationMenu .secondary-btn + .secondary-btn {
     margin-top: 8px;
+}
+
+/* Menu "Urlop" / "Zwolnienie lekarskie" (+ Dodaj / Zobacz historie) - te same "okienkowe"
+   karty z gradientem jak reszta modulow, zamiast plaskiej przerywanej ramki */
+#vacationMenu .secondary-btn,
+#sickLeaveMenu .secondary-btn {
+    background: linear-gradient(135deg, var(--stat-bg) 0%, var(--card-bg) 140%);
+    border: 1px solid var(--divider);
+    text-align: left;
+    transition: box-shadow .12s ease, border-color .12s ease;
+}
+
+#vacationMenu .secondary-btn:hover,
+#sickLeaveMenu .secondary-btn:hover {
+    box-shadow: var(--shadow-elevated);
+    border-color: var(--worked-bg);
 }
 
 #sickLeaveHistoryBody h3,
@@ -1167,6 +1325,27 @@ dialog::backdrop {
     border-radius: 999px;
 }
 
+/* "Dzisiejsza zmiana" + statystyki (Dzis / W tym miesiacu / Pozostaly urlop) to jeden
+   polaczony modul - wspolna karta z gradientem, zamiast dwoch oddzielnych blokow. */
+.today-module {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    background: linear-gradient(135deg, var(--stat-bg) 0%, var(--card-bg) 140%);
+    border: 1px solid var(--divider);
+    border-radius: 14px;
+    padding: 14px 16px;
+    transition: box-shadow .15s ease;
+}
+
+.today-module:focus-within {
+    box-shadow: var(--shadow-elevated);
+}
+
+.today-module .quick-stats {
+    margin-top: 0;
+}
+
 .quick-stats {
     display: flex;
     gap: 10px;
@@ -1175,18 +1354,20 @@ dialog::backdrop {
 
 .stat-card {
     flex: 1;
-    background: var(--stat-bg);
+    background: linear-gradient(160deg, var(--stat-bg) 0%, var(--card-bg) 150%);
     border-radius: 10px;
     padding: 10px 12px;
     text-align: center;
+    transition: transform .12s ease, box-shadow .12s ease;
 }
 
 .stat-card--clickable {
     cursor: pointer;
 }
 
-.stat-card--clickable:hover {
-    background: var(--day-card-bg);
+.stat-card--clickable:hover,
+.stat-card--clickable:active {
+    box-shadow: var(--shadow-elevated);
 }
 
 .stat-card--warning .stat-value {
@@ -1224,32 +1405,39 @@ dialog::backdrop {
     border: 1px solid var(--danger-border);
 }
 
+/* Segmentowa (pill) zakladka zamiast podkreslenia - jeden spojny styl na telefonie i desktopie */
 .dialog-tabs {
     display: flex;
     flex-wrap: wrap;
-    gap: 4px;
+    gap: 2px;
     margin: 16px 0;
-    border-bottom: 1px solid var(--divider);
+    background: var(--stat-bg);
+    border-radius: 999px;
+    padding: 3px;
 }
 
 .dialog-tab,
 .config-tab {
     width: auto;
+    flex: 1;
     margin-top: 0;
     padding: 8px 12px;
     font-size: 14px;
+    text-align: center;
     background: none;
     border: none;
-    border-bottom: 2px solid transparent;
+    border-radius: 999px;
     color: var(--text-muted);
     cursor: pointer;
+    transition: background .12s ease, color .12s ease;
 }
 
 .dialog-tab.is-active,
 .config-tab.is-active {
+    background: var(--card-bg);
     color: var(--worked-bg);
-    border-bottom-color: var(--worked-bg);
     font-weight: 600;
+    box-shadow: 0 1px 4px var(--shadow);
 }
 
 .dialog-tab-panel[hidden],
@@ -1268,6 +1456,38 @@ dialog::backdrop {
     margin-top: 20px;
     padding-top: 20px;
     border-top: 1px solid var(--divider);
+}
+
+/* "Zmien e-mail" / "Zmien haslo" - jedyne przyciski submit poza .dialog-actions, tez dostaja akcentowy gradient */
+#changeEmailForm button[type="submit"],
+#changePasswordForm button[type="submit"] {
+    background: linear-gradient(135deg, #4f8cff, #2d3796);
+    color: #ffffff;
+    border: none;
+    font-weight: 600;
+    transition: filter .12s ease;
+}
+
+#changeEmailForm button[type="submit"]:hover,
+#changePasswordForm button[type="submit"]:hover {
+    filter: brightness(1.08);
+}
+
+/* "Wyloguj sie" - solidna ramka zamiast przerywanej .secondary-btn (wygladala jak niedokonczony
+   placeholder), hover/tap podpowiada czerwienia, ze to znaczaca akcja, bez pelnego alarmu jak .danger-btn */
+#logoutBtn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-weight: 600;
+    transition: background .12s ease, border-color .12s ease, color .12s ease;
+}
+
+#logoutBtn:hover,
+#logoutBtn:active {
+    background: var(--day-card-bg);
+    border-color: var(--danger-border);
+    color: var(--danger-text);
 }
 
 .field-label {
@@ -1300,6 +1520,7 @@ dialog::backdrop {
 #polandCycleForm input,
 #vacationAllowanceForm input,
 #sickLeaveForm input,
+#customPresetForm input,
 #exportPolandScheduleForm select,
 #exportMonthForm select {
     width: 100%;
@@ -1311,43 +1532,100 @@ dialog::backdrop {
     color: var(--text);
     border: 1px solid var(--border);
     border-radius: 6px;
+    transition: border-color .15s ease, box-shadow .15s ease;
 }
 
-/* Na telefonie caly ekran to jedna karta (.container) - ponizsze reguly dziela ja na wyrazne "moduly":
-   naglowek/panel akcji oddzielony linia, dalsze moduly (szybkie akcje, kalendarz, historia) maja
-   wlasne tlo i sam odstep, bez linii - jak osobne okna */
+#editDayForm input:focus,
+#editDayForm select:focus,
+#weekHoursForm input:focus,
+#weekHoursForm select:focus,
+#changeEmailForm input:focus,
+#changePasswordForm input:focus,
+#employeeNumberForm input:focus,
+#polandCycleForm input:focus,
+#vacationAllowanceForm input:focus,
+#sickLeaveForm input:focus,
+#customPresetForm input:focus,
+#exportPolandScheduleForm select:focus,
+#exportMonthForm select:focus,
+.month-picker:focus {
+    outline: none;
+    border-color: var(--worked-bg);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.preset-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 12px;
+    margin-top: 8px;
+    background: var(--day-card-bg);
+    border-radius: 8px;
+}
+
+.preset-row:first-child {
+    margin-top: 0;
+}
+
+.preset-row-label {
+    font-size: 14px;
+    color: var(--text);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.preset-row-btn {
+    width: auto;
+    margin-top: 0;
+    padding: 4px 8px;
+    font-size: 14px;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.preset-row-btn[data-preset-delete] {
+    color: var(--danger-text);
+}
+
+/* Na telefonie naglowek, panel szybkich akcji i glowna kolumna to trzy osobne "okna"
+   ulozone jedno pod drugim, oddzielone samym odstepem (bez linii) - patrz karty wyzej. */
 @media (max-width: 1023px) {
     .app-sidebar {
-        margin-top: 32px;
-        padding-top: 32px;
-        border-top: 1px solid var(--divider);
+        margin-top: 16px;
     }
 
     .app-main {
-        margin-top: 32px;
+        margin-top: 16px;
     }
 }
 
-/* ===== Uklad pod desktop/laptop. ===== */
+/* ===== Uklad pod desktop/laptop - nowoczesny, kompaktowy design (telefon bez zmian, patrz max-width:1023px wyzej). ===== */
 @media (min-width: 1024px) {
     body {
-        padding: 32px;
+        padding: 28px;
         background:
-            radial-gradient(circle at 12% 0%, rgba(79, 140, 255, .08), transparent 45%),
-            radial-gradient(circle at 100% 15%, rgba(45, 55, 150, .06), transparent 45%),
+            radial-gradient(circle at 12% 0%, rgba(79, 140, 255, .10), transparent 45%),
+            radial-gradient(circle at 100% 15%, rgba(45, 55, 150, .07), transparent 45%),
             var(--bg);
     }
 
     :root[data-auth-ok] .container {
-        max-width: 1200px;
+        max-width: 1180px;
         margin: 0 auto;
         display: grid;
-        grid-template-columns: 300px 1fr;
+        grid-template-columns: 260px 1fr;
         grid-template-areas:
             "topbar  topbar"
             "sidebar main";
-        column-gap: 36px;
-        row-gap: 36px;
+        column-gap: 20px;
+        row-gap: 20px;
         align-items: start;
         background: none;
         box-shadow: none;
@@ -1355,37 +1633,38 @@ dialog::backdrop {
         border-radius: 0;
     }
 
-    /* Plaskie karty z cienka linia zamiast ciezkiego cienia - stylistyka jak X/Twitter (podzial liniami, nie "unoszeniem") */
+    /* Kazdy modul to osobne "okno": wlasne tlo (delikatny gradient), ramka i cien na hover */
     .top-bar,
     .app-sidebar,
     .app-main {
         background: var(--card-bg);
-        border-radius: 16px;
+        border-radius: 14px;
         border: 1px solid var(--divider);
         box-shadow: none;
     }
 
-    /* Naglowek wyraznie oddzielony od reszty: wiekszy odstep do tresci ponizej */
     .top-bar {
         grid-area: topbar;
-        padding: 22px 30px;
+        padding: 12px 18px;
         justify-content: flex-start;
+        background: linear-gradient(135deg, var(--card-bg) 0%, var(--stat-bg) 130%);
     }
 
     .brand-logo {
-        width: 52px;
-        height: 52px;
+        width: 36px;
+        height: 36px;
+        border-radius: 9px;
     }
 
     .top-bar h1 {
-        font-size: 26px;
+        font-size: 17px;
         font-weight: 800;
         letter-spacing: -.2px;
     }
 
     .brand-subtitle {
         display: block;
-        font-size: 13px;
+        font-size: 11px;
     }
 
     /* "Wysepka" ze statusem PL/DE, przeniesiona przez JS do prawej strony naglowka */
@@ -1393,117 +1672,346 @@ dialog::backdrop {
         display: flex;
         align-items: center;
         margin-left: auto;
-        margin-right: 18px;
+        margin-right: 12px;
     }
 
     .top-bar-poland-slot .poland-status-row {
         margin-top: 0;
         flex-wrap: nowrap;
+        gap: 8px;
     }
 
     .top-bar-poland-slot .poland-status-card {
         margin-top: 0;
-        padding: 12px 20px;
-        gap: 12px;
-        border: 1px solid var(--border);
-        transition: background .12s ease;
+        padding: 7px 14px;
+        gap: 10px;
+        border: 1px solid transparent;
+        border-radius: 999px;
+        transition: background .12s ease, border-color .12s ease, transform .12s ease;
     }
 
-    .top-bar-poland-slot .poland-status-card:hover {
-        background: var(--day-card-bg);
+    .top-bar-poland-slot .poland-status-card:not(.poland-status-card--vacation) {
+        background: linear-gradient(135deg, var(--stat-bg) 0%, var(--card-bg) 140%);
+    }
+
+    .top-bar-poland-slot .poland-status-card:not(.poland-status-card--vacation):hover {
+        background: var(--accent-soft);
+        border-color: var(--worked-bg);
+        transform: translateY(-1px);
     }
 
     .top-bar-poland-slot .poland-status-flag {
-        font-size: 26px;
+        font-size: 19px;
+    }
+
+    .top-bar-poland-slot .poland-status-flag.psf--pl,
+    .top-bar-poland-slot .poland-status-flag.psf--de {
+        width: 25px;
+        height: 18px;
     }
 
     .top-bar-poland-slot .poland-status-body strong {
-        font-size: 16px;
+        font-size: 13px;
     }
 
     .top-bar-poland-slot .poland-status-body .hint {
-        font-size: 14px;
+        font-size: 11px;
     }
 
     .app-main h2 {
         margin-top: 0;
-        font-size: 20px;
+        font-size: 16px;
+        font-weight: 700;
     }
 
     .top-actions .icon-btn {
-        width: 46px;
-        height: 46px;
+        width: 34px;
+        height: 34px;
         padding: 0;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        font-size: 21px;
+        font-size: 17px;
         border-radius: 999px;
-        transition: background .12s ease;
+        transition: background .12s ease, transform .08s ease;
     }
 
     .top-actions .icon-btn--svg svg {
-        width: 21px;
-        height: 21px;
+        width: 17px;
+        height: 17px;
     }
 
     .top-actions .icon-btn:hover {
-        background: var(--day-card-bg);
+        background: var(--accent-soft);
+        border-color: transparent;
+        transform: scale(1.06);
     }
 
+    .top-actions .icon-btn:active {
+        transform: scale(.92);
+    }
+
+    /* Panel boczny przyklejony podczas przewijania glownej kolumny - zawsze pod reka */
     .app-sidebar {
         grid-area: sidebar;
         display: flex;
         flex-direction: column;
         gap: 0;
-        padding: 20px;
+        padding: 12px;
         align-self: start;
+        position: sticky;
+        top: 20px;
     }
 
-    .app-main {
-        grid-area: main;
-        min-width: 0;
-        padding: 26px 28px;
+    .app-sidebar > * + * {
+        margin-top: 12px;
+    }
+
+    .poland-status-row {
+        gap: 8px;
+        margin-top: 0;
+    }
+
+    .poland-status-card {
+        padding: 9px 11px;
+        border-radius: 10px;
+        transition: transform .12s ease, box-shadow .12s ease;
+    }
+
+    .poland-status-card:not(.poland-status-card--vacation) {
+        background: linear-gradient(135deg, var(--stat-bg) 0%, var(--card-bg) 140%);
+    }
+
+    .poland-status-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-elevated);
+    }
+
+    .poland-status-flag {
+        font-size: 20px;
+    }
+
+    .poland-status-body strong {
+        font-size: 14px;
+    }
+
+    .poland-status-body .hint {
+        font-size: 13px;
+    }
+
+    /* "Dzisiejsza zmiana" + statystyki (Dzis / W tym miesiacu / Pozostaly urlop) to JEDEN
+       polaczony modul - wspolna karta zamiast dwoch oddzielnych blokow, a przycisk "Dodaj dzien"
+       siedzi obok selecta zamiast rozciagac sie na cala szerokosc strony. */
+    .today-module {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        background: linear-gradient(135deg, var(--stat-bg) 0%, var(--card-bg) 140%);
+        border: 1px solid var(--divider);
+        border-radius: 14px;
+        padding: 14px 16px;
+        transition: box-shadow .15s ease;
+    }
+
+    .today-module:focus-within {
+        box-shadow: var(--shadow-elevated);
+    }
+
+    .active-shift-row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px 10px;
+        padding: 0;
+        border: none;
+        background: none;
     }
 
     .active-shift-row .field-label {
+        flex: 1 0 100%;
         text-transform: uppercase;
-        font-size: 11px;
-        letter-spacing: .04em;
-        font-weight: 600;
+        font-size: 10px;
+        letter-spacing: .06em;
+        font-weight: 700;
         color: var(--text-faint);
+        margin-bottom: 0;
+    }
+
+    #activeShiftSelect {
+        flex: 1 1 220px;
+        width: auto;
+        padding: 8px 10px;
+        font-size: 13px;
+        border-radius: 8px;
+        transition: border-color .15s ease, box-shadow .15s ease;
     }
 
     #activeShiftSelect:focus {
         outline: none;
         border-color: var(--worked-bg);
-        box-shadow: 0 0 0 3px rgba(79, 140, 255, .15);
+        box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+
+    .custom-shift-fields {
+        flex: 1 0 100%;
+        margin-top: 0;
+    }
+
+    #addTodayShiftBtn {
+        flex: 0 0 auto;
+        width: auto;
+        margin-top: 0;
+        padding: 9px 20px;
+        font-size: 14px;
+        border-radius: 8px;
+        background: linear-gradient(135deg, #4f8cff, #2d3796);
+        box-shadow: 0 4px 14px rgba(45, 55, 150, .3);
+        transition: transform .1s ease, box-shadow .1s ease;
+    }
+
+    #addTodayShiftBtn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 18px rgba(45, 55, 150, .38);
+    }
+
+    #addTodayShiftBtn:active {
+        transform: translateY(0);
+    }
+
+    .quick-actions {
+        gap: 2px;
+        padding: 6px;
+        border-radius: 10px;
+        background: linear-gradient(135deg, var(--stat-bg) 0%, var(--card-bg) 140%);
+    }
+
+    .quick-actions button {
+        padding: 12px 14px;
+        font-size: 15px;
+        border-radius: 8px;
+        transition: background .15s ease, transform .1s ease, box-shadow .15s ease;
+    }
+
+    .quick-actions button:hover {
+        background: linear-gradient(90deg, var(--accent-soft), transparent);
+        box-shadow: inset 3px 0 0 var(--worked-bg);
+        transform: translateX(2px);
+    }
+
+    .quick-actions-footer {
+        font-size: 12px;
+    }
+
+    .secondary-btn {
+        padding: 11px 14px;
+        font-size: 14px;
+        border-radius: 8px;
+    }
+
+    /* Glowna kolumna: statystyki, kalendarz, historia */
+    .app-main {
+        grid-area: main;
+        min-width: 0;
+        padding: 18px 20px;
+    }
+
+    .today-module .quick-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+        gap: 8px;
+        margin-top: 0;
     }
 
     .stat-card {
+        padding: 10px 12px;
+        border-radius: 10px;
+        text-align: left;
+        background: linear-gradient(160deg, var(--stat-bg) 0%, var(--card-bg) 150%);
         transition: transform .12s ease, box-shadow .12s ease;
+    }
+
+    .stat-card--clickable:hover {
+        transform: translateY(-3px);
+        box-shadow: var(--shadow-elevated);
+    }
+
+    .stat-label {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: .05em;
+    }
+
+    .stat-value {
+        font-size: 18px;
+        margin-top: 3px;
+    }
+
+    .month-picker {
+        max-width: 220px;
+        padding: 8px 10px;
+        font-size: 13px;
+        border-radius: 8px;
+        transition: border-color .15s ease, box-shadow .15s ease;
     }
 
     .month-picker:focus {
         outline: none;
         border-color: var(--worked-bg);
-        box-shadow: 0 0 0 3px rgba(79, 140, 255, .15);
+        box-shadow: 0 0 0 3px var(--accent-soft);
     }
 
+    /* Kalendarz i Historia jako dwa osobne "okna" obok siebie (nie jedna wspolna karta) -
+       kazde ma wlasne tlo z delikatnym gradientem, ramke i cien na hover. */
     .history-window {
-        max-width: 640px;
-        margin-left: auto;
-        margin-right: auto;
+        display: grid;
+        grid-template-columns: minmax(300px, 380px) 1fr;
+        align-items: start;
+        gap: 18px;
+        max-width: none;
+        margin: 14px 0 0;
+        padding: 0;
+        background: none;
+        border: none;
+        box-shadow: none;
+        border-radius: 0;
+    }
+
+    .calendar-section,
+    .history-section {
+        background: linear-gradient(160deg, var(--stat-bg) 0%, var(--card-bg) 150%);
+        border: 1px solid var(--divider);
+        border-radius: 14px;
+        padding: 16px;
+        margin-top: 0;
+        transition: box-shadow .15s ease, transform .15s ease;
+    }
+
+    .calendar-section:hover,
+    .history-section:hover {
+        box-shadow: var(--shadow-elevated);
+        transform: translateY(-2px);
+    }
+
+    .calendar-section .hint {
+        font-size: 12px;
     }
 
     .month-calendar {
         max-width: 100%;
-        gap: 7px;
+        gap: 5px;
+        margin-top: 12px;
+        margin-bottom: 10px;
+    }
+
+    .cal-weekday {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: .04em;
     }
 
     .cal-cell {
-        font-size: 15px;
-        border-radius: 9px;
+        font-size: 13px;
+        border-radius: 8px;
     }
 
     .cal-cell:not(.cal-cell--empty) {
@@ -1512,21 +2020,232 @@ dialog::backdrop {
     }
 
     .cal-cell:not(.cal-cell--empty):hover {
-        transform: scale(1.05);
-        box-shadow: 0 3px 10px var(--shadow);
+        transform: scale(1.08);
+        box-shadow: 0 4px 14px var(--shadow);
         z-index: 1;
     }
 
+    /* Polysk na kolorowych komorkach (zmiany, niedziela pracujaca) - ta sama gradientowa
+       "szklana" nakladka niezaleznie od koloru tla danego wariantu. */
+    .cal-cell--worked,
+    .cal-cell--preset-0,
+    .cal-cell--preset-1,
+    .cal-cell--preset-2,
+    .cal-cell--preset-3,
+    .cal-cell--sunday-work {
+        background-image: linear-gradient(135deg, rgba(255, 255, 255, .28), rgba(255, 255, 255, 0) 65%);
+    }
+
+    #history {
+        max-height: 46vh;
+    }
+
     .day-card {
-        transition: box-shadow .12s ease;
+        margin-top: 8px;
+        padding: 8px 10px;
+        border-radius: 8px;
+        transition: box-shadow .12s ease, transform .12s ease;
     }
 
     .day-card:hover {
-        box-shadow: 0 3px 10px var(--shadow);
+        box-shadow: var(--shadow-elevated);
+        transform: translateY(-1px);
+    }
+
+    .day-card-header {
+        font-size: 13px;
+    }
+
+    .session-row {
+        font-size: 13px;
+        margin-top: 4px;
+    }
+
+    /* Dialogi: kompaktowe, zaokraglone, z segmentowa (pill) zakladka zamiast podkreslenia */
+    dialog {
+        width: min(460px, 90vw);
+        border-radius: 16px;
+        padding: 20px;
+    }
+
+    dialog::backdrop {
+        backdrop-filter: blur(3px);
+    }
+
+    dialog h2 {
+        font-size: 17px;
+        margin: 0 0 4px;
+    }
+
+    .dialog-tabs {
+        background: var(--stat-bg);
+        border-bottom: none;
+        border-radius: 999px;
+        padding: 3px;
+        gap: 2px;
+        margin: 14px 0;
+    }
+
+    .dialog-tab,
+    .config-tab {
+        flex: 1;
+        text-align: center;
+        padding: 7px 10px;
+        font-size: 13px;
+        border-radius: 999px;
+        border-bottom: none;
+        transition: background .12s ease, color .12s ease;
+    }
+
+    .dialog-tab.is-active,
+    .config-tab.is-active {
+        background: var(--card-bg);
+        border-bottom-color: transparent;
+        box-shadow: 0 1px 4px var(--shadow);
+    }
+
+    .dialog-actions {
+        justify-content: flex-end;
+        margin-top: 18px;
+    }
+
+    .dialog-actions button {
+        width: auto;
+        padding: 9px 16px;
+        font-size: 13px;
+        border-radius: 8px;
+    }
+
+    .dialog-actions button[type="submit"] {
+        background: linear-gradient(135deg, #4f8cff, #2d3796);
+        color: #ffffff;
+        border: none;
+        font-weight: 600;
+        transition: filter .12s ease;
+    }
+
+    .dialog-actions button[type="submit"]:hover {
+        filter: brightness(1.08);
+    }
+
+    .dialog-actions button[type="button"]:not(.danger-btn) {
+        background: none;
+        border: 1px solid var(--border);
+        color: var(--text-muted);
+    }
+
+    .dialog-actions button[type="button"]:not(.danger-btn):hover {
+        background: var(--day-card-bg);
+    }
+
+    /* "Zmien e-mail" / "Zmien haslo" - jedyne przyciski submit poza .dialog-actions, tez maja dostac akcentowy gradient */
+    #changeEmailForm button[type="submit"],
+    #changePasswordForm button[type="submit"] {
+        background: linear-gradient(135deg, #4f8cff, #2d3796);
+        color: #ffffff;
+        border: none;
+        font-weight: 600;
+        font-size: 14px;
+        padding: 11px;
+        border-radius: 8px;
+        transition: filter .12s ease;
+    }
+
+    #changeEmailForm button[type="submit"]:hover,
+    #changePasswordForm button[type="submit"]:hover {
+        filter: brightness(1.08);
+    }
+
+    /* "Wyloguj sie" (Ustawienia -> Konto) - solidna ramka zamiast przerywanej .secondary-btn (wygladala jak niedokonczony placeholder),
+       hover podpowiada czerwienia, ze to znaczaca akcja, bez pelnego alarmu jak .danger-btn (usuwanie konta) */
+    #logoutBtn {
+        background: none;
+        border: 1px solid var(--border);
+        color: var(--text-muted);
+        font-weight: 600;
+        transition: background .12s ease, border-color .12s ease, color .12s ease;
+    }
+
+    #logoutBtn:hover {
+        background: var(--day-card-bg);
+        border-color: var(--danger-border);
+        color: var(--danger-text);
+    }
+
+    /* Menu "Urlop" / "Zwolnienie lekarskie" (+ Dodaj / Zobacz historie) - te same "okienkowe" karty z gradientem i hover jak reszta modulow */
+    #vacationMenu .secondary-btn,
+    #sickLeaveMenu .secondary-btn {
+        background: linear-gradient(135deg, var(--stat-bg) 0%, var(--card-bg) 140%);
+        border: 1px solid var(--divider);
+        text-align: left;
+        transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+    }
+
+    #vacationMenu .secondary-btn:hover,
+    #sickLeaveMenu .secondary-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-elevated);
+        border-color: var(--worked-bg);
+    }
+
+    #editDayForm input[type="date"],
+    #editDayForm input[type="time"],
+    #editDayForm input[type="number"],
+    #editDayForm select,
+    #weekHoursForm input[type="date"],
+    #weekHoursForm input[type="time"],
+    #weekHoursForm input[type="number"],
+    #weekHoursForm select,
+    #changeEmailForm input,
+    #changePasswordForm input,
+    #employeeNumberForm input,
+    #polandCycleForm input,
+    #vacationAllowanceForm input,
+    #sickLeaveForm input,
+    #customPresetForm input,
+    #exportPolandScheduleForm select,
+    #exportMonthForm select {
+        font-size: 14px;
+        padding: 9px 11px;
+        border-radius: 8px;
+        transition: border-color .15s ease, box-shadow .15s ease;
+    }
+
+    #editDayForm input:focus,
+    #editDayForm select:focus,
+    #weekHoursForm input:focus,
+    #weekHoursForm select:focus,
+    #changeEmailForm input:focus,
+    #changePasswordForm input:focus,
+    #employeeNumberForm input:focus,
+    #polandCycleForm input:focus,
+    #vacationAllowanceForm input:focus,
+    #sickLeaveForm input:focus,
+    #customPresetForm input:focus,
+    #exportPolandScheduleForm select:focus,
+    #exportMonthForm select:focus {
+        outline: none;
+        border-color: var(--worked-bg);
+        box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+
+    .field-label {
+        font-size: 13px;
+    }
+
+    .hint {
+        font-size: 13px;
+    }
+
+    .pin-card {
+        max-width: 380px;
+        padding: 40px 32px;
+        border-radius: 22px;
+        box-shadow: var(--shadow-elevated);
     }
 
     .app-footer {
-        max-width: 1200px;
-        margin: 20px auto 0;
+        max-width: 1180px;
+        margin: 16px auto 0;
     }
 }

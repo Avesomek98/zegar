@@ -308,6 +308,14 @@ const vacationAllowanceForm = document.getElementById("vacationAllowanceForm");
 const vacationAllowanceInput = document.getElementById("vacationAllowanceInput");
 const vacationAllowanceMessage = document.getElementById("vacationAllowanceMessage");
 const vacationAllowanceYear = document.getElementById("vacationAllowanceYear");
+const customPresetsList = document.getElementById("customPresetsList");
+const customPresetForm = document.getElementById("customPresetForm");
+const customPresetLabelInput = document.getElementById("customPresetLabelInput");
+const customPresetStartInput = document.getElementById("customPresetStartInput");
+const customPresetEndInput = document.getElementById("customPresetEndInput");
+const customPresetMessage = document.getElementById("customPresetMessage");
+const customPresetSubmitBtn = document.getElementById("customPresetSubmitBtn");
+const cancelCustomPresetEditBtn = document.getElementById("cancelCustomPresetEditBtn");
 
 // Dotkniecie/klikniecie gdziekolwiek w polu daty ma od razu otwierac kalendarz,
 // nie tylko klikniecie w ikonke po prawej stronie.
@@ -441,6 +449,8 @@ let sickLeaveRecordsCache = []; // [{ date, reason }], najnowsze pierwsze - do o
 let polandCycleCache = null; // { anchor: Date, cycleDays: number, homeDays: number } | null
 let vacationAllowanceCache = null; // liczba dni urlopu przyznanych na biezacy rok | null (nieustawiony)
 let employeeNumberCache = null; // numer pracownika (string, zeby zachowac wiodace zera) | null
+let customPresetsCache = []; // [{ label, start, end }] - wlasne szablony godzin uzytkownika (Konfiguracja -> Presety)
+let customPresetEditingIndex = null; // index w customPresetsCache edytowany w formularzu, albo null (tryb dodawania)
 
 const NIGHT_START_HOUR = 20;
 const NIGHT_END_HOUR = 6;
@@ -505,26 +515,6 @@ function placePolandStatusCard(isDesktop) {
 placePolandStatusCard(desktopLayoutQuery.matches);
 desktopLayoutQuery.addEventListener("change", (event) => placePolandStatusCard(event.matches));
 
-// Na telefonie "Dzisiejsza zmiana" ma byc widoczna od razu, wyzej niz szybkie akcje -
-// przenosimy ja do panelu bocznego (nad "quick-actions"). Na desktopie wraca na swoje
-// pierwotne miejsce w kolumnie glownej (nad statystykami i kalendarzem).
-const appMain = document.querySelector(".app-main");
-const activeShiftRow = document.querySelector(".active-shift-row");
-const quickActionsCard = document.querySelector(".quick-actions");
-
-function placeActiveShiftRow(isDesktop) {
-    if (isDesktop) {
-        if (activeShiftRow.parentElement !== appMain) {
-            appMain.insertBefore(activeShiftRow, appMain.firstChild);
-        }
-    } else if (activeShiftRow.nextElementSibling !== quickActionsCard) {
-        appSidebar.insertBefore(activeShiftRow, quickActionsCard);
-    }
-}
-
-placeActiveShiftRow(desktopLayoutQuery.matches);
-desktopLayoutQuery.addEventListener("change", (event) => placeActiveShiftRow(event.matches));
-
 refreshBtn.onclick = () => {
     window.location.reload();
 };
@@ -569,22 +559,28 @@ async function saveActiveShift(shift) {
     activeShiftCache = shift;
 }
 
+// Dzisiejsza zmiana NIE pokazuje juz sztywnych, wbudowanych presetow (SHIFT_PRESETS) -
+// tylko wlasne godziny (domyslnie) i wlasne presety uzytkownika, jesli jakies zapisal
+// w Konfiguracji -> Presety. To samo dotyczy szablonow w "Edytuj dzien" i "Dodaj caly
+// tydzien" (patrz buildCustomPresetOptionsHtml nizej). SHIFT_PRESETS zyje dalej tylko
+// w kolorowaniu kalendarza (matchShiftPresetIndex) - tam sie nic nie zmienia.
 function populateActiveShiftSelect() {
-    const presetOptions = SHIFT_PRESETS
-        .map((p, i) => `<option value="${i}">${p.label}</option>`)
+    const customPresetOptions = customPresetsCache
+        .map((p, i) => `<option value="custom-${i}">${p.label}</option>`)
         .join("");
-    activeShiftSelect.innerHTML = `${presetOptions}<option value="custom">Własne godziny</option>`;
+    activeShiftSelect.innerHTML = `${customPresetOptions}<option value="custom">Własne godziny</option>`;
 
+    // Domyslnie (dopoki nic nie zapisano) proponujemy wpisanie godzin recznie, a nie gotowy szablon.
     if (!activeShiftCache) {
-        activeShiftSelect.value = "0";
-        customShiftFields.style.display = "none";
+        activeShiftSelect.value = "custom";
+        customShiftFields.style.display = "flex";
         return;
     }
 
-    const idx = SHIFT_PRESETS.findIndex((p) => p.start === activeShiftCache.start && p.end === activeShiftCache.end);
+    const customIdx = customPresetsCache.findIndex((p) => p.start === activeShiftCache.start && p.end === activeShiftCache.end);
 
-    if (idx >= 0) {
-        activeShiftSelect.value = String(idx);
+    if (customIdx >= 0) {
+        activeShiftSelect.value = `custom-${customIdx}`;
         customShiftFields.style.display = "none";
     } else {
         activeShiftSelect.value = "custom";
@@ -601,9 +597,11 @@ activeShiftSelect.onchange = async () => {
     }
 
     customShiftFields.style.display = "none";
-    const preset = SHIFT_PRESETS[activeShiftSelect.value];
+
+    const preset = customPresetsCache[Number(activeShiftSelect.value.slice("custom-".length))];
+    if (!preset) return;
     activeShiftSelect.disabled = true;
-    await saveActiveShift(preset ? { start: preset.start, end: preset.end, label: preset.label } : null);
+    await saveActiveShift({ start: preset.start, end: preset.end, label: preset.label });
     activeShiftSelect.disabled = false;
 };
 
@@ -619,6 +617,133 @@ applyCustomShiftBtn.onclick = async () => {
     applyCustomShiftBtn.disabled = true;
     await saveActiveShift(shift);
     applyCustomShiftBtn.disabled = false;
+};
+
+// Wlasne presety uzytkownika (Konfiguracja -> Presety) trzymane sa w kolumnie "schedule" (jsonb),
+// ktora nie byla dotad przez nic uzywana - unikamy w ten sposob migracji schematu bazy.
+async function refreshCustomPresetsCache() {
+    const { data, error } = await supabase
+        .from("app_settings")
+        .select("schedule")
+        .eq("user_id", currentUserId)
+        .maybeSingle();
+
+    if (error) {
+        console.error(error);
+        return;
+    }
+    customPresetsCache = Array.isArray(data?.schedule?.customPresets) ? data.schedule.customPresets : [];
+}
+
+async function saveCustomPresets(presets) {
+    const { error } = await supabase
+        .from("app_settings")
+        .upsert(
+            { user_id: currentUserId, schedule: { customPresets: presets }, updated_at: new Date().toISOString() },
+            { onConflict: "user_id" }
+        );
+
+    if (error) {
+        console.error(error);
+        setStatusMessage(customPresetMessage, "Nie udało się zapisać presetu.", false);
+        return false;
+    }
+    customPresetsCache = presets;
+    return true;
+}
+
+function renderCustomPresetsList() {
+    if (!customPresetsCache.length) {
+        customPresetsList.innerHTML = '<p class="hint">Nie masz jeszcze żadnych własnych presetów.</p>';
+        return;
+    }
+    customPresetsList.innerHTML = customPresetsCache
+        .map((p, i) => `
+            <div class="preset-row">
+                <span class="preset-row-label">${p.label} (${p.start}–${p.end})</span>
+                <div>
+                    <button type="button" class="preset-row-btn" data-preset-edit="${i}" title="Edytuj">✏️</button>
+                    <button type="button" class="preset-row-btn" data-preset-delete="${i}" title="Usuń">✕</button>
+                </div>
+            </div>
+        `)
+        .join("");
+}
+
+function resetCustomPresetForm() {
+    customPresetEditingIndex = null;
+    customPresetForm.reset();
+    customPresetSubmitBtn.textContent = "+ Dodaj preset";
+    cancelCustomPresetEditBtn.style.display = "none";
+}
+
+function populateCustomPresetsPanel() {
+    resetCustomPresetForm();
+    setStatusMessage(customPresetMessage, "");
+    renderCustomPresetsList();
+}
+
+customPresetsList.addEventListener("click", async (event) => {
+    const editBtn = event.target.closest("[data-preset-edit]");
+    if (editBtn) {
+        const idx = Number(editBtn.dataset.presetEdit);
+        const preset = customPresetsCache[idx];
+        if (!preset) return;
+        customPresetEditingIndex = idx;
+        customPresetLabelInput.value = preset.label;
+        customPresetStartInput.value = preset.start;
+        customPresetEndInput.value = preset.end;
+        customPresetSubmitBtn.textContent = "Zapisz zmiany";
+        cancelCustomPresetEditBtn.style.display = "";
+        setStatusMessage(customPresetMessage, "");
+        return;
+    }
+
+    const deleteBtn = event.target.closest("[data-preset-delete]");
+    if (deleteBtn) {
+        const idx = Number(deleteBtn.dataset.presetDelete);
+        if (!confirm("Na pewno usunąć ten preset?")) return;
+        const next = customPresetsCache.filter((_, i) => i !== idx);
+        deleteBtn.disabled = true;
+        const ok = await saveCustomPresets(next);
+        deleteBtn.disabled = false;
+        if (!ok) return;
+
+        if (customPresetEditingIndex === idx) resetCustomPresetForm();
+        renderCustomPresetsList();
+        populateActiveShiftSelect();
+        setStatusMessage(customPresetMessage, "Usunięto.", true);
+    }
+});
+
+cancelCustomPresetEditBtn.onclick = () => {
+    resetCustomPresetForm();
+    setStatusMessage(customPresetMessage, "");
+};
+
+customPresetForm.onsubmit = async (event) => {
+    event.preventDefault();
+    const start = customPresetStartInput.value;
+    const end = customPresetEndInput.value;
+    if (!start || !end) return;
+    const label = customPresetLabelInput.value.trim() || `${start}–${end}`;
+
+    const next = [...customPresetsCache];
+    if (customPresetEditingIndex !== null) {
+        next[customPresetEditingIndex] = { label, start, end };
+    } else {
+        next.push({ label, start, end });
+    }
+
+    customPresetSubmitBtn.disabled = true;
+    const ok = await saveCustomPresets(next);
+    customPresetSubmitBtn.disabled = false;
+    if (!ok) return;
+
+    resetCustomPresetForm();
+    renderCustomPresetsList();
+    populateActiveShiftSelect();
+    setStatusMessage(customPresetMessage, "Zapisano.", true);
 };
 
 async function refreshVacationAllowanceCache() {
@@ -747,6 +872,7 @@ function openConfigDialog(tab = "employee") {
     populateEmployeeNumberForm();
     populatePolandCycleForm();
     populateVacationAllowanceForm();
+    populateCustomPresetsPanel();
     configDialog.showModal();
 }
 
@@ -2031,12 +2157,17 @@ accountLogoutBtn.onclick = async () => {
 
 // editingDate = data dnia, ktory faktycznie istnieje w bazie (do skasowania/przeniesienia).
 // null oznacza tryb "dodaj nowy dzien" - nic nie trzeba usuwac przed zapisem.
-const editDayPresetOptions = SHIFT_PRESETS
-    .map((p, i) => `<option value="${i}">${p.label}</option>`)
-    .join("");
+// Szablony w "Edytuj dzien" i "Dodaj caly tydzien" to wlasne presety uzytkownika
+// (Konfiguracja -> Presety), nie wbudowane SHIFT_PRESETS - budowane na nowo przy kazdym
+// otwarciu okna, zeby zawsze pokazywac aktualna liste.
+function buildCustomPresetOptionsHtml() {
+    return customPresetsCache
+        .map((p, i) => `<option value="${i}">${p.label}</option>`)
+        .join("");
+}
 
 editDayPreset.onchange = () => {
-    const preset = SHIFT_PRESETS[editDayPreset.value];
+    const preset = customPresetsCache[editDayPreset.value];
     if (!preset) return;
     editDayStart.value = preset.start;
     editDayEnd.value = preset.end;
@@ -2053,7 +2184,7 @@ function openEditDialog({ original, date, start, end, breakMinutes, dateEditable
     deleteDayBtn.style.display = original ? "" : "none";
     editDayDateInput.value = dateKey(date);
     editDayDateInput.max = dateKey(new Date());
-    editDayPreset.innerHTML = `<option value="">— wybierz —</option>${editDayPresetOptions}`;
+    editDayPreset.innerHTML = `<option value="">— wybierz —</option>${buildCustomPresetOptionsHtml()}`;
     editDayStart.value = start ? timeInputValue(start) : "";
     editDayEnd.value = end ? timeInputValue(end) : "";
     editDayBreak.value = breakMinutes;
@@ -2494,7 +2625,7 @@ function previousWeekRange() {
 }
 
 weekHoursPreset.onchange = () => {
-    const preset = SHIFT_PRESETS[weekHoursPreset.value];
+    const preset = customPresetsCache[weekHoursPreset.value];
     if (!preset) return;
     weekHoursStart.value = preset.start;
     weekHoursEnd.value = preset.end;
@@ -2681,7 +2812,7 @@ const sickLeaveRangePicker = createRangePicker({
 weekHoursBtn.onclick = () => {
     const { start, end } = previousWeekRange();
     weekRangePicker.setRange(start, end);
-    weekHoursPreset.innerHTML = `<option value="">— wybierz —</option>${editDayPresetOptions}`;
+    weekHoursPreset.innerHTML = `<option value="">— wybierz —</option>${buildCustomPresetOptionsHtml()}`;
     if (activeShiftCache) {
         weekHoursStart.value = activeShiftCache.start;
         weekHoursEnd.value = activeShiftCache.end;
@@ -3056,6 +3187,7 @@ async function initApp() {
     await refreshPolandCycleCache();
     renderPolandStatus();
 
+    await refreshCustomPresetsCache();
     await refreshActiveShiftCache();
     populateActiveShiftSelect();
 
