@@ -1082,7 +1082,7 @@ dialog::backdrop {
     transition: transform .12s ease, box-shadow .12s ease;
 }
 
-.poland-status-card:not(.poland-status-card--vacation) {
+.poland-status-card:not(.poland-status-card--vacation):not(.poland-status-card--sick) {
     background: linear-gradient(135deg, var(--stat-bg) 0%, var(--card-bg) 140%);
 }
 
@@ -1146,8 +1146,14 @@ dialog::backdrop {
 }
 
 .poland-status-card--vacation {
-    cursor: default;
     background: var(--vacation-bg);
+}
+
+/* Dedykowana karta "nadchodzacy urlop" nie jest klikalna (w przeciwienstwie do glownej karty
+   statusu, ktora dostaje ta sama klase .poland-status-card--vacation gdy TRWA urlop, ale
+   zostaje klikalna) - zawezone do ID, zeby nie nadpisywac kursora na glownej karcie. */
+#polandVacationCard {
+    cursor: default;
 }
 
 .poland-status-card--vacation .poland-status-body strong {
@@ -1156,6 +1162,18 @@ dialog::backdrop {
 
 .poland-status-card--vacation .poland-status-body .hint {
     color: var(--vacation-text);
+}
+
+.poland-status-card--sick {
+    background: var(--sick-bg);
+}
+
+.poland-status-card--sick .poland-status-body strong {
+    color: var(--sick-text);
+}
+
+.poland-status-card--sick .poland-status-body .hint {
+    color: var(--sick-text);
 }
 
 /* Kazdy modul panelu bocznego (status, zmiana, statystyki) to osobne "okno" oddzielone samym odstepem, bez linii */
@@ -1953,11 +1971,11 @@ dialog::backdrop {
         transition: background .12s ease, border-color .12s ease, transform .12s ease;
     }
 
-    .top-bar-poland-slot .poland-status-card:not(.poland-status-card--vacation) {
+    .top-bar-poland-slot .poland-status-card:not(.poland-status-card--vacation):not(.poland-status-card--sick) {
         background: linear-gradient(135deg, var(--stat-bg) 0%, var(--card-bg) 140%);
     }
 
-    .top-bar-poland-slot .poland-status-card:not(.poland-status-card--vacation):hover {
+    .top-bar-poland-slot .poland-status-card:not(.poland-status-card--vacation):not(.poland-status-card--sick):hover {
         background: var(--accent-soft);
         border-color: var(--worked-bg);
         transform: translateY(-1px);
@@ -2047,7 +2065,7 @@ dialog::backdrop {
         transition: transform .12s ease, box-shadow .12s ease;
     }
 
-    .poland-status-card:not(.poland-status-card--vacation) {
+    .poland-status-card:not(.poland-status-card--vacation):not(.poland-status-card--sick) {
         background: linear-gradient(135deg, var(--stat-bg) 0%, var(--card-bg) 140%);
     }
 

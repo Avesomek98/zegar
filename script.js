@@ -584,6 +584,10 @@ const DEFAULT_BREAK_MINUTES = 45;
 // Zwolnienie lekarskie rozpoznajemy po prefiksie notatki - "Zwolnienie lekarskie" (bez powodu)
 // albo "Zwolnienie lekarskie: <powod>" (gdy uzytkownik poda opcjonalna notatke).
 const SICK_LEAVE_NOTE_PREFIX = "Zwolnienie lekarskie";
+// Skrocony dzien wyjazdu (6:00-12:00) tworzony przez "Wyjazd do Polski" - rozpoznajemy tak samo
+// po prefiksie notatki, zeby w legendzie/kalendarzu nie wpadal do ogolnego kubelka "Godziny
+// pracy (bez szablonu)" tylko dostal wlasna, czytelna kategorie.
+const POLAND_TRIP_NOTE_PREFIX = "Wyjazd do Polski";
 
 const THEME_KEY = "theme";
 
@@ -920,6 +924,9 @@ function renderCalendarLegend(state) {
 
     if (state.worked) {
         items.push(`<span class="legend-item"><span class="legend-swatch legend-swatch--worked"></span>Godziny pracy${state.presetIndexes.size ? " (bez szablonu)" : ""}</span>`);
+    }
+    if (state.polandTrip) {
+        items.push('<span class="legend-item"><span class="legend-swatch legend-swatch--worked"></span>Wyjazd do Polski</span>');
     }
     if (state.sundayWork) {
         items.push('<span class="legend-item"><span class="legend-swatch legend-swatch--sunday-work"></span>Praca w niedzielę</span>');
@@ -1667,7 +1674,7 @@ function populateMonthPicker(months) {
 const CAL_WEEKDAY_LETTERS = ["Pn", "Wt", "Śr", "Cz", "Pt", "So", "Nd"];
 
 function emptyLegendState() {
-    return { presetIndexes: new Set(), worked: false, sundayWork: false, vacation: false, sick: false, off: false, weekend: false, customColor: false };
+    return { presetIndexes: new Set(), worked: false, sundayWork: false, vacation: false, sick: false, off: false, weekend: false, customColor: false, polandTrip: false };
 }
 
 let lastLegendState = emptyLegendState();
@@ -1742,6 +1749,9 @@ function renderMonthCalendar(key) {
                     // tlumaczy, co ta kropka znaczy, niezaleznie od tego ilu kolorow uzyto.
                     cell.classList.add(`cal-cell--preset-${workedSession.color}`, "cal-cell--custom-color");
                     legendState.customColor = true;
+                } else if (workedSession && workedSession.note && workedSession.note.startsWith(POLAND_TRIP_NOTE_PREFIX)) {
+                    cell.classList.add("cal-cell--worked");
+                    legendState.polandTrip = true;
                 } else {
                     const presetIdx = workedSession ? matchCustomPresetIndex(workedSession) : -1;
                     const colorKey = presetIdx >= 0 ? presetColorKey(customPresetsCache[presetIdx], presetIdx) : null;
@@ -3463,6 +3473,8 @@ function setPolandStatusFlag(kind) {
     if (kind === "pl" || kind === "de") {
         polandStatusFlag.classList.add(`psf--${kind}`);
         polandStatusFlag.textContent = "";
+    } else if (kind === "sick") {
+        polandStatusFlag.textContent = "🤒";
     } else {
         polandStatusFlag.textContent = "🧭";
     }
@@ -3473,6 +3485,35 @@ function renderPolandStatus() {
     const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
     const todayKey = dateKey(todayMidnight);
 
+    // Czyszczone bezwarunkowo na starcie - wlaczane z powrotem tylko we wlasciwej galezi ponizej,
+    // zeby nie zostawaly "przyklejone" po przejsciu na inny status.
+    polandStatusCard.classList.remove("poland-status-card--sick", "poland-status-card--vacation");
+
+    // Zwolnienie nadpisuje glowna karte tak samo jak urlop (ponizej), zamiast pokazywac sie
+    // obok niej jako druga karta - dwie karty na raz sugerowaly dwa rozne, sprzeczne fakty
+    // (np. "wracasz do Niemiec za 2 dni" obok "zwolnienie, zostalo 5 dni"), a skoro jestes
+    // chory to normalny cykl zjazdow i tak prawdopodobnie sie nie wydarzy. W przeciwienstwie
+    // do urlopu NIE zakladamy tu w jakim kraju jestes - neutralna ikona, nie flaga.
+    // Urlop i zwolnienie nie moga wypasc tego samego dnia (jeden wpis w work_sessions per dzien),
+    // wiec kolejnosc tych dwoch warunkow nie ma znaczenia.
+    if (sickLeaveDatesCache.has(todayKey)) {
+        let cursor = new Date(todayMidnight);
+        let daysRemaining = 0;
+        while (sickLeaveDatesCache.has(dateKey(cursor))) {
+            cursor.setDate(cursor.getDate() + 1);
+            daysRemaining += 1;
+        }
+
+        polandStatusCard.classList.add("poland-status-card--sick");
+        setPolandStatusFlag("sick");
+        polandStatusText.textContent = "Na zwolnieniu lekarskim";
+        polandCountdownText.textContent = daysRemaining === 0
+            ? "Kończy się dziś"
+            : `Pozostało ${daysRemaining} ${daysRemaining === 1 ? "dzień" : "dni"}`;
+        updateVacationCountdown(todayMidnight);
+        return;
+    }
+
     // Urlop = jestes w domu (Polska), niezaleznie od normalnej rotacji.
     if (vacationDatesCache.has(todayKey)) {
         let cursor = new Date(todayMidnight);
@@ -3482,11 +3523,12 @@ function renderPolandStatus() {
             daysUntilReturn += 1;
         }
 
+        polandStatusCard.classList.add("poland-status-card--vacation");
         setPolandStatusFlag("pl");
-        polandStatusText.textContent = "Jesteś w Polsce (urlop)";
+        polandStatusText.textContent = "Jesteś na urlopie";
         polandCountdownText.textContent = daysUntilReturn === 0
-            ? "Dziś wracasz do Niemiec"
-            : `Wracasz do Niemiec za ${daysUntilReturn} ${daysUntilReturn === 1 ? "dzień" : "dni"} (urlop)`;
+            ? "Kończy się dziś"
+            : `Pozostało ${daysUntilReturn} ${daysUntilReturn === 1 ? "dzień" : "dni"}`;
         updateVacationCountdown(todayMidnight, { suppress: true });
         return;
     }
@@ -3567,6 +3609,36 @@ function renderPolandStatus() {
     updateVacationCountdown(todayMidnight, { suppress: isVacationTrip });
 }
 
+// Grupuje pojedyncze dni z danego zbioru (vacationDatesCache / sickLeaveDatesCache to plaskie
+// zbiory pojedynczych dni, nie zakresow) w ciagle bloki i zwraca { start, days } dla kazdego
+// bloku, ktory zaczyna sie po `fromDate` - posortowane chronologicznie. `days` to dlugosc
+// calego bloku (przydatne np. zeby pokazac ile dni trwa dany urlop).
+function futureDateRangeStarts(dateKeySet, fromDate) {
+    const allDates = [...dateKeySet]
+        .map((key) => {
+            const [y, m, d] = key.split("-").map(Number);
+            return new Date(y, m - 1, d);
+        })
+        .sort((a, b) => a - b);
+
+    const blocks = [];
+    let prevDate = null;
+    allDates.forEach((date) => {
+        const isNewBlock = !prevDate || daysBetween(prevDate, date) > 1;
+        if (isNewBlock) {
+            blocks.push({ start: date, days: 1 });
+        } else {
+            blocks[blocks.length - 1].days += 1;
+        }
+        prevDate = date;
+    });
+    return blocks.filter((block) => block.start > fromDate);
+}
+
+// Najblizsze zjazdy do Polski - nie tylko czysty cykl, tez uwzglednia zaplanowany urlop i
+// zwolnienie lekarskie: jesli ktores z nich zaczyna sie wczesniej niz kolejny zjazd z cyklu,
+// pokazuje sie jako osobna pozycja z dopiskiem; zjazd z cyklu, ktory i tak wypada w dniu juz
+// zajetym przez urlop/zwolnienie, jest pomijany (to nie jest wtedy "normalny" zjazd).
 function nextPolandTripDates(count) {
     if (!polandCycleCache) return [];
 
@@ -3577,13 +3649,40 @@ function nextPolandTripDates(count) {
     const cyclePos = ((daysSinceAnchor % cycleDays) + cycleDays) % cycleDays;
     const daysUntilNextTrip = cyclePos === 0 ? 0 : cycleDays - cyclePos;
 
-    const dates = [];
-    for (let i = 0; i < count; i++) {
+    // Generujemy z zapasem (wiecej niz `count`), zeby po odfiltrowaniu zjazdow nadpisanych przez
+    // urlop/zwolnienie i tak zostalo co najmniej `count` pozycji.
+    const cycleCandidates = [];
+    for (let i = 0; i < count * 2; i++) {
         const d = new Date(todayMidnight);
         d.setDate(d.getDate() + daysUntilNextTrip + i * cycleDays);
-        dates.push(d);
+        cycleCandidates.push({ date: d, reason: null });
     }
-    return dates;
+
+    const vacationCandidates = futureDateRangeStarts(vacationDatesCache, todayMidnight)
+        .map(({ start, days }) => ({ date: start, reason: "urlop", days }));
+    const sickCandidates = futureDateRangeStarts(sickLeaveDatesCache, todayMidnight)
+        .map(({ start, days }) => ({ date: start, reason: "zwolnienie", days }));
+
+    const seenKeys = new Set();
+    return [...cycleCandidates, ...vacationCandidates, ...sickCandidates]
+        .filter((item) => {
+            const key = dateKey(item.date);
+            // Zjazd z cyklu, ktory wypada w dniu juz zajetym przez urlop/zwolnienie, pomijamy -
+            // urlop/zwolnienie i tak sie pokaze jako wlasna pozycja (albo juz sie pokazalo,
+            // jesli ten dzien jest poczatkiem bloku).
+            if (!item.reason && (vacationDatesCache.has(key) || sickLeaveDatesCache.has(key))) return false;
+            return true;
+        })
+        .sort((a, b) => a.date - b.date)
+        .filter((item) => {
+            // Zabezpieczenie przed duplikatem tego samego dnia (w praktyce urlop/zwolnienie/zjazd
+            // nie moga wypasc tego samego dnia, bo to jeden wpis per dzien w work_sessions).
+            const key = dateKey(item.date);
+            if (seenKeys.has(key)) return false;
+            seenKeys.add(key);
+            return true;
+        })
+        .slice(0, count);
 }
 
 // Lista pobytow w Polsce (od-do, kalendarzowo) w najblizszych `daysAhead` dniach - do eksportu,
@@ -3723,11 +3822,13 @@ polandStatusCard.onclick = () => {
         openConfigDialog("poland");
         return;
     }
-    const dates = nextPolandTripDates(10);
-    polandScheduleList.innerHTML = dates
-        .map((d, i) => {
-            const label = d.toLocaleDateString("pl-PL", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-            return `<li>${label}${i === 0 ? " — najbliższy" : ""}</li>`;
+    const trips = nextPolandTripDates(10);
+    polandScheduleList.innerHTML = trips
+        .map(({ date, reason, days }, i) => {
+            const label = date.toLocaleDateString("pl-PL", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+            const badge = i === 0 ? " — najbliższy" : "";
+            const daysNote = days ? `, ${days} ${days === 1 ? "dzień" : "dni"}` : "";
+            return `<li>${label}${badge}${reason ? ` (${reason}${daysNote})` : ""}</li>`;
         })
         .join("");
     polandScheduleDialog.showModal();
