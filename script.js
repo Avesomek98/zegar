@@ -413,6 +413,8 @@ const cancelCustomPresetEditBtn = document.getElementById("cancelCustomPresetEdi
 const presetColorPicker = document.getElementById("presetColorPicker");
 const calendarLegend = document.getElementById("calendarLegend");
 const activeShiftColorDot = document.getElementById("activeShiftColorDot");
+const activeShiftColorPicker = document.getElementById("activeShiftColorPicker");
+let activeShiftSelectedColor = null; // null = automatyczny, w #activeShiftColorPicker (Wlasne godziny)
 
 // Dotkniecie/klikniecie gdziekolwiek w polu daty ma od razu otwierac kalendarz,
 // nie tylko klikniecie w ikonke po prawej stronie.
@@ -716,9 +718,28 @@ function updateActiveShiftColorDot() {
             activeShiftColorDot.style.display = "";
             return;
         }
+    } else if (value === "custom" && activeShiftSelectedColor) {
+        activeShiftColorDot.className = `active-shift-color-dot legend-swatch--preset-${activeShiftSelectedColor}`;
+        activeShiftColorDot.style.display = "";
+        return;
     }
     activeShiftColorDot.style.display = "none";
 }
+
+// null = "Automatyczny" - tak jak w #editDayColorPicker.
+function setActiveShiftColorPickerSelection(colorKey) {
+    activeShiftSelectedColor = colorKey || null;
+    [...activeShiftColorPicker.children].forEach((btn) => {
+        btn.classList.toggle("is-selected", (btn.dataset.color || null) === activeShiftSelectedColor);
+    });
+}
+
+activeShiftColorPicker.addEventListener("click", (event) => {
+    const btn = event.target.closest("[data-color]");
+    if (!btn) return;
+    setActiveShiftColorPickerSelection(btn.dataset.color);
+    updateActiveShiftColorDot();
+});
 
 function populateActiveShiftSelect() {
     const customPresetOptions = customPresetsCache
@@ -730,6 +751,7 @@ function populateActiveShiftSelect() {
     if (!activeShiftCache) {
         activeShiftSelect.value = "custom";
         customShiftFields.style.display = "flex";
+        setActiveShiftColorPickerSelection(null);
         updateActiveShiftColorDot();
         return;
     }
@@ -744,6 +766,7 @@ function populateActiveShiftSelect() {
         activeShiftCustomStart.value = activeShiftCache.start;
         activeShiftCustomEnd.value = activeShiftCache.end;
         customShiftFields.style.display = "flex";
+        setActiveShiftColorPickerSelection(activeShiftCache.color);
     }
     updateActiveShiftColorDot();
 }
@@ -770,11 +793,13 @@ applyCustomShiftBtn.onclick = async () => {
     const shift = {
         start: activeShiftCustomStart.value,
         end: activeShiftCustomEnd.value,
-        label: `${activeShiftCustomStart.value}–${activeShiftCustomEnd.value}`
+        label: `${activeShiftCustomStart.value}–${activeShiftCustomEnd.value}`,
+        color: activeShiftSelectedColor
     };
 
     applyCustomShiftBtn.disabled = true;
     await saveActiveShift(shift);
+    updateActiveShiftColorDot();
     applyCustomShiftBtn.disabled = false;
 };
 
@@ -885,6 +910,9 @@ function renderCalendarLegend(state) {
     }
     if (state.weekend) {
         items.push('<span class="legend-item"><span class="legend-swatch legend-swatch--weekend"></span>Weekend</span>');
+    }
+    if (state.customColor) {
+        items.push('<span class="legend-item"><span class="legend-custom-dot-chip"></span>Niestandardowy dzień</span>');
     }
 
     calendarLegend.innerHTML = items.length
@@ -1617,7 +1645,7 @@ function populateMonthPicker(months) {
 const CAL_WEEKDAY_LETTERS = ["Pn", "Wt", "Śr", "Cz", "Pt", "So", "Nd"];
 
 function emptyLegendState() {
-    return { presetIndexes: new Set(), worked: false, sundayWork: false, vacation: false, sick: false, off: false, weekend: false };
+    return { presetIndexes: new Set(), worked: false, sundayWork: false, vacation: false, sick: false, off: false, weekend: false, customColor: false };
 }
 
 let lastLegendState = emptyLegendState();
@@ -1686,9 +1714,12 @@ function renderMonthCalendar(key) {
                     legendState.sundayWork = true;
                 } else if (workedSession && workedSession.color) {
                     // Niestandardowy kolor recznie wybrany dla tego konkretnego dnia (Edytuj dzien) ma
-                    // pierwszenstwo przed dopasowaniem do szablonu - jednorazowy wybor, wiec celowo nie
-                    // trafia do legendy (nie jest to powtarzalna kategoria, ktora warto tam tlumaczyc).
-                    cell.classList.add(`cal-cell--preset-${workedSession.color}`);
+                    // pierwszenstwo przed dopasowaniem do szablonu. Zamiast osobnej pozycji w legendzie
+                    // per kolor (rozjezdzaloby sie z kazdym nowym recznym dniem), kazdy taki dzien
+                    // dostaje mala kropke w rogu komorki - jedna generyczna pozycja w legendzie
+                    // tlumaczy, co ta kropka znaczy, niezaleznie od tego ilu kolorow uzyto.
+                    cell.classList.add(`cal-cell--preset-${workedSession.color}`, "cal-cell--custom-color");
+                    legendState.customColor = true;
                 } else {
                     const presetIdx = workedSession ? matchCustomPresetIndex(workedSession) : -1;
                     const colorKey = presetIdx >= 0 ? presetColorKey(customPresetsCache[presetIdx], presetIdx) : null;
@@ -2441,7 +2472,7 @@ addTodayShiftBtn.onclick = async () => {
     }
 
     addTodayShiftBtn.disabled = true;
-    const ok = await replaceDaySession(today, start, end, activeShiftCache.breakMinutes ?? DEFAULT_BREAK_MINUTES);
+    const ok = await replaceDaySession(today, start, end, activeShiftCache.breakMinutes ?? DEFAULT_BREAK_MINUTES, activeShiftCache.color);
     refreshHistoryView(await loadHistory());
     addTodayShiftBtn.disabled = false;
     if (ok) showToast("Dzień dodany.", "success");

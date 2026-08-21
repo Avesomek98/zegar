@@ -145,6 +145,16 @@
                 <div id="customShiftFields" class="custom-shift-fields" style="display:none;">
                     <input type="time" id="activeShiftCustomStart">
                     <input type="time" id="activeShiftCustomEnd">
+                    <div class="preset-color-picker preset-color-picker--compact" id="activeShiftColorPicker">
+                        <button type="button" class="preset-color-swatch preset-color-swatch--auto is-selected" data-color="" aria-label="Automatyczny"></button>
+                        <button type="button" class="preset-color-swatch preset-color-swatch--blue" data-color="blue" aria-label="Niebieski"></button>
+                        <button type="button" class="preset-color-swatch preset-color-swatch--sky" data-color="sky" aria-label="Błękitny"></button>
+                        <button type="button" class="preset-color-swatch preset-color-swatch--teal" data-color="teal" aria-label="Turkusowy"></button>
+                        <button type="button" class="preset-color-swatch preset-color-swatch--amber" data-color="amber" aria-label="Bursztynowy"></button>
+                        <button type="button" class="preset-color-swatch preset-color-swatch--red" data-color="red" aria-label="Czerwony"></button>
+                        <button type="button" class="preset-color-swatch preset-color-swatch--brown" data-color="brown" aria-label="Brązowy"></button>
+                        <button type="button" class="preset-color-swatch preset-color-swatch--mustard" data-color="mustard" aria-label="Musztardowy"></button>
+                    </div>
                     <button type="button" id="applyCustomShiftBtn" class="secondary-btn">Zastosuj</button>
                 </div>
                 <button type="button" id="addTodayShiftBtn">✓ Dodaj dzień</button>
@@ -672,7 +682,10 @@
         <li>Nowość: <strong>własna przerwa dla każdego szablonu</strong> — zamiast sztywnych 45 minut, każdy szablon ma teraz swój czas przerwy, używany automatycznie w "Dzisiejsza zmiana", "Edytuj dzień" i "Dodaj cały tydzień".</li>
         <li>Nowość: kolorowa kropka przy "Dzisiejsza zmiana" — podgląd koloru, jakim zostanie pomalowany dzisiejszy dzień w kalendarzu po zapisaniu.</li>
         <li>Nowość: w oknie "Edytuj dzień" (dodawanie/edycja godzin) można ręcznie ustawić niestandardowy kolor tylko dla tego jednego dnia — przydatne dla godzin, które nie pasują do żadnego szablonu. Domyślnie zostaje automatyczne dopasowanie, tak jak dotychczas.</li>
+        <li>Nowość: ten sam wybór niestandardowego koloru dostępny też przy "Dzisiejsza zmiana" → "Własne godziny", z podglądem na kolorowej kropce zanim jeszcze klikniesz "Dodaj dzień".</li>
         <li>Poprawka: kolor weekendów w kalendarzu zmieniony z brązowo-pomarańczowego na neutralny, chłodny szary — spójniejszy z resztą palety.</li>
+        <li>Poprawka: tryb "Własne godziny" w "Dzisiejsza zmiana" rozjeżdżał się na komputerze po dodaniu palety kolorów — teraz cały blok (godziny, kolor, "Zastosuj") dostaje własny, czytelny rząd zamiast ciasno dzielić miejsce z resztą.</li>
+        <li>Nowość: dni z ręcznie ustawionym kolorem oznaczone są teraz małą kropką w rogu komórki (żeby nie pomylić ich z kolorem szablonu, gdy przypadkiem się pokrywają) — w legendzie odpowiada im jedna generyczna pozycja "Niestandardowy dzień", zamiast osobnego wiersza dla każdego takiego dnia.</li>
     </ul>
 
     <h3>v1.7 &middot; 2026-08-09</h3>

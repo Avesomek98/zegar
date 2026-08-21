@@ -683,6 +683,21 @@ li {
     box-shadow: 0 0 0 1px rgba(0, 0, 0, .35);
 }
 
+/* Mala kropka w rogu = ten dzien ma recznie wybrany (nie automatycznie dopasowany do
+   szablonu) kolor - patrz "Edytuj dzien" / "Dzisiejsza zmiana" -> "Wlasne godziny". Rogow
+   bottom-left, zeby nie kolidowac z flaga Polski (top-right, ::after powyzej). */
+.cal-cell--custom-color::before {
+    content: "";
+    position: absolute;
+    bottom: 3px;
+    left: 3px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #ffffff;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, .35);
+}
+
 .cal-cell--future {
     opacity: 0.35;
     cursor: pointer;
@@ -755,11 +770,47 @@ li {
 .legend-swatch--off { background: var(--night-badge-text); }
 .legend-swatch--weekend { background: var(--weekend-accent); }
 
+/* Miniatura tej samej kropki co .cal-cell--custom-color::before, na neutralnym tle - zeby
+   bylo widac o co chodzi, mimo ze w legendzie nie ma kolorowego tla komorki pod spodem. */
+.legend-custom-dot-chip {
+    position: relative;
+    width: 11px;
+    height: 11px;
+    border-radius: 4px;
+    background: var(--text-faint);
+    flex: none;
+}
+
+.legend-custom-dot-chip::after {
+    content: "";
+    position: absolute;
+    bottom: 1px;
+    left: 1px;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: #ffffff;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, .35);
+}
+
 .preset-color-picker {
     display: flex;
     flex-wrap: wrap;
     gap: 10px;
     margin: 2px 0 4px;
+}
+
+/* Wariant do ciasnego wiersza "Wlasne godziny" w Dzisiejsza zmiana - mniejsze krazki,
+   zawsze na wlasnej linii (patrz .custom-shift-fields, ktory jest flex-wrap). */
+.preset-color-picker--compact {
+    flex: 1 0 100%;
+    gap: 8px;
+    margin: 0;
+}
+
+.preset-color-picker--compact .preset-color-swatch {
+    width: 24px;
+    height: 24px;
 }
 
 .preset-color-swatch {
@@ -2070,11 +2121,11 @@ dialog::backdrop {
         box-shadow: 0 0 0 3px var(--accent-soft);
     }
 
-    /* Na desktopie jest dosc miejsca, zeby pole godzin + Zastosuj + Dodaj dzien mieszczily sie
-       w jednym rzedzie (bez wymuszania pelnej szerokosci jak na telefonie) - dzieki temu
-       "Dodaj dzien" nie ladowal osamotniony na wlasnym rzedzie w trybie "Wlasne godziny". */
+    /* Pelna szerokosc (jak na telefonie) - z paleta kolorow (8 krazkow) blok "Wlasne godziny"
+       (godziny + kolor + Zastosuj) jest za szeroki, zeby wygodnie dzielic rzad z selectem, wiec
+       dostaje wlasny rzad; "Dodaj dzien" schodzi wtedy pod spod, ale tylko w tym trybie. */
     .custom-shift-fields {
-        flex: 1 1 auto;
+        flex: 1 0 100%;
         margin-top: 0;
     }
 
