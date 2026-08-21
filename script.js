@@ -758,7 +758,7 @@ weekHoursColorPicker.addEventListener("click", (event) => {
 
 function populateActiveShiftSelect() {
     const customPresetOptions = customPresetsCache
-        .map((p, i) => `<option value="custom-${i}">${escapeHtml(p.label)}</option>`)
+        .map((p, i) => `<option value="custom-${i}">${escapeHtml(p.label)} (${p.start}–${p.end})</option>`)
         .join("");
     activeShiftSelect.innerHTML = `${customPresetOptions}<option value="custom">Własne godziny</option>`;
 
