@@ -28,6 +28,12 @@
 </head>
 <body>
 
+<div id="toastEl" class="toast" popover="manual" role="status" aria-live="polite">
+    <span class="toast-icon" id="toastIcon">✓</span>
+    <span class="toast-text" id="toastText"></span>
+    <div class="toast-progress" id="toastProgress"></div>
+</div>
+
 <div id="authGate" class="pin-gate">
     <div class="pin-card">
         <button type="button" id="authThemeToggleBtn" class="icon-btn icon-btn--svg auth-theme-toggle" aria-label="Przełącz motyw">
@@ -62,7 +68,7 @@
         <p id="authMessage" class="hint auth-message" style="display:none;"></p>
 
         <footer class="app-footer auth-footer">
-            <p>Created by Arek &middot; v1.7 &middot; &copy; <span id="authYear"></span></p>
+            <p>Created by Arek &middot; v1.8 &middot; &copy; <span id="authYear"></span></p>
             <p class="version-badge">prototype, not yet released for public use</p>
             <p class="hint">Funkcje i wygląd mogą się zmieniać w trakcie rozwoju.</p>
             <button type="button" id="authPrivacyBtn" class="link-btn">🔒 Polityka prywatności</button>
@@ -161,7 +167,7 @@
 </div>
 
 <footer class="app-footer">
-    <p>Created by Arek &middot; v1.7 &middot; &copy; <span id="year"></span></p>
+    <p>Created by Arek &middot; v1.8 &middot; &copy; <span id="year"></span></p>
     <p class="version-badge">prototype, not yet released for public use</p>
     <p class="hint">Funkcje i wygląd mogą się zmieniać w trakcie rozwoju.</p>
     <button type="button" id="changelogBtn" class="link-btn">Co nowego? (changelog)</button>
@@ -627,6 +633,13 @@
 
 <dialog id="changelogDialog">
     <h2>Co nowego</h2>
+
+    <h3>v1.8 &middot; 2026-08-21</h3>
+    <ul class="changelog-list">
+        <li>Nowość: <strong>powiadomienia (toast)</strong> — pasek u góry ekranu z kolorem (zielony/czerwony) i kurczącym się paskiem czasu, potwierdza sukces albo błąd niemal każdej akcji w apce (dodanie dnia, edycja/usunięcie, cały tydzień, urlop, zwolnienie, wyjazd do Polski, dodatkowy pobyt, zapis ustawień w Konfiguracji, zmiana konta, eksporty) — widoczne też nad otwartym okienkiem, jeśli akcja go nie zamyka.</li>
+        <li>Wszystkie dotychczasowe blokujące okienka błędów (np. "Nie udało się zapisać wpisu w bazie") zastąpione tymi samymi powiadomieniami — nic już nie wymaga kliknięcia "OK", żeby wrócić do pracy.</li>
+        <li>Poprawka: "Usuń dzień" w oknie edycji zamykało okienko nawet wtedy, gdy usunięcie się nie powiodło — teraz zamyka się tylko po udanym usunięciu, tak jak reszta formularzy.</li>
+    </ul>
 
     <h3>v1.7 &middot; 2026-08-09</h3>
     <ul class="changelog-list">

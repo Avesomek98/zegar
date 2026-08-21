@@ -49,6 +49,53 @@ function setStatusMessage(el, text, isSuccess) {
     el.classList.toggle("auth-message--success", Boolean(isSuccess));
 }
 
+const toastEl = document.getElementById("toastEl");
+const toastIcon = document.getElementById("toastIcon");
+const toastText = document.getElementById("toastText");
+const toastProgress = document.getElementById("toastProgress");
+let toastHideTimer = null;
+let toastPopoverTimer = null;
+const supportsPopover = typeof toastEl.showPopover === "function";
+
+// Powiadomienie "udalo sie / nie udalo sie" po akcjach w calej apce (dodanie dnia, urlop,
+// zapis ustawien...). popover="manual" (patrz CSS) zapewnia, ze toast renderuje sie w top layer
+// nad kazdym otwartym <dialog>, wiec dziala tez gdy okienko zostaje otwarte po udanym zapisie.
+function showToast(message, type = "success", duration = type === "error" ? 4200 : 2600) {
+    clearTimeout(toastHideTimer);
+    clearTimeout(toastPopoverTimer);
+
+    toastEl.classList.remove("toast--success", "toast--error");
+    toastEl.classList.add(type === "error" ? "toast--error" : "toast--success");
+    toastIcon.textContent = type === "error" ? "✕" : "✓";
+    toastText.textContent = message;
+
+    if (supportsPopover && !toastEl.matches(":popover-open")) {
+        toastEl.showPopover();
+    }
+
+    toastProgress.style.transition = "none";
+    toastProgress.style.transform = "scaleX(1)";
+    void toastProgress.offsetWidth;
+
+    requestAnimationFrame(() => {
+        toastEl.classList.add("is-visible");
+        toastProgress.style.transition = `transform ${duration}ms linear`;
+        toastProgress.style.transform = "scaleX(0)";
+    });
+
+    toastHideTimer = setTimeout(hideToast, duration);
+}
+
+function hideToast() {
+    clearTimeout(toastHideTimer);
+    toastEl.classList.remove("is-visible");
+    toastPopoverTimer = setTimeout(() => {
+        if (supportsPopover && toastEl.matches(":popover-open")) toastEl.hidePopover();
+    }, 280);
+}
+
+toastEl.onclick = hideToast;
+
 function showAuthMessage(text, isSuccess) {
     setStatusMessage(authMessage, text, isSuccess);
 }
@@ -160,7 +207,7 @@ recoveryForm.onsubmit = async (event) => {
     submitBtn.disabled = false;
 
     if (error) {
-        alert(translateAuthError(error.message));
+        showToast(translateAuthError(error.message), "error");
         return;
     }
 
@@ -172,6 +219,7 @@ recoveryForm.onsubmit = async (event) => {
         appStarted = true;
         initApp();
     }
+    showToast("Hasło ustawione.", "success");
 };
 
 logoutBtn.onclick = async () => {
@@ -194,6 +242,7 @@ changeEmailForm.onsubmit = async (event) => {
     }
     setStatusMessage(changeEmailMessage, "Sprawdź skrzynkę (starą i nową), żeby potwierdzić zmianę e-maila.", true);
     changeEmailForm.reset();
+    showToast("Wysłano potwierdzenie zmiany e-maila.", "success");
 };
 
 changePasswordForm.onsubmit = async (event) => {
@@ -212,6 +261,7 @@ changePasswordForm.onsubmit = async (event) => {
     }
     setStatusMessage(changePasswordMessage, "Hasło zmienione.", true);
     changePasswordForm.reset();
+    showToast("Hasło zmienione.", "success");
 };
 
 deleteAccountBtn.onclick = async () => {
@@ -224,10 +274,11 @@ deleteAccountBtn.onclick = async () => {
 
     if (error) {
         console.error(error);
-        alert("Nie udało się usunąć konta: " + translateAuthError(error.message));
+        showToast("Nie udało się usunąć konta: " + translateAuthError(error.message), "error");
         return;
     }
 
+    showToast("Konto usunięte.", "success");
     await supabase.auth.signOut();
 };
 
@@ -616,7 +667,7 @@ async function saveActiveShift(shift) {
 
     if (error) {
         console.error(error);
-        alert("Nie udało się zapisać zmiany w bazie.");
+        showToast("Nie udało się zapisać zmiany w bazie.", "error");
         return;
     }
     activeShiftCache = shift;
@@ -800,6 +851,7 @@ customPresetsList.addEventListener("click", async (event) => {
         renderCustomPresetsList();
         populateActiveShiftSelect();
         setStatusMessage(customPresetMessage, "Usunięto.", true);
+        showToast("Szablon usunięty.", "success");
     }
 });
 
@@ -831,6 +883,7 @@ customPresetForm.onsubmit = async (event) => {
     renderCustomPresetsList();
     populateActiveShiftSelect();
     setStatusMessage(customPresetMessage, "Zapisano.", true);
+    showToast("Szablon zapisany.", "success");
 };
 
 async function refreshVacationAllowanceCache() {
@@ -879,6 +932,7 @@ vacationAllowanceForm.onsubmit = async (event) => {
     vacationAllowanceCache = days;
     setStatusMessage(vacationAllowanceMessage, "Zapisano.", true);
     renderQuickStats();
+    showToast("Zapisano limit urlopu.", "success");
 };
 
 async function refreshEmployeeNumberCache() {
@@ -929,6 +983,7 @@ async function saveEmployeeNumber(value) {
     employeeNumberInput.value = employeeNumberCache || "";
     setStatusMessage(employeeNumberMessage, employeeNumberCache ? "Zapisano." : "Numer usunięty.", true);
     renderEmployeeNumberFooter();
+    showToast(employeeNumberCache ? "Numer pracownika zapisany." : "Numer pracownika usunięty.", "success");
 }
 
 employeeNumberForm.onsubmit = async (event) => {
@@ -1041,6 +1096,7 @@ polandCycleForm.onsubmit = async (event) => {
     const [y, m, d] = polandCycleAnchorInput.value.split("-").map(Number);
     polandCycleCache = { anchor: new Date(y, m - 1, d), cycleDays: weeks * 7, homeDays };
     setStatusMessage(polandCycleMessage, "Zapisano.", true);
+    showToast("Zapisano cykl zjazdów.", "success");
     renderPolandStatus();
     renderMonthCalendar(selectedMonthKey);
 };
@@ -1069,6 +1125,7 @@ clearPolandCycleBtn.onclick = async () => {
     polandCycleCache = null;
     populatePolandCycleForm();
     setStatusMessage(polandCycleMessage, "Ustawienia cyklu usunięte.", true);
+    showToast("Ustawienia cyklu usunięte.", "success");
     renderPolandStatus();
     renderMonthCalendar(selectedMonthKey);
 };
@@ -1081,7 +1138,7 @@ async function loadHistory() {
 
     if (error) {
         console.error(error);
-        alert("Błąd wczytywania historii z bazy.");
+        showToast("Błąd wczytywania historii z bazy.", "error");
         return [];
     }
     return data;
@@ -1091,7 +1148,7 @@ async function saveEntry(entry) {
     const { error } = await supabase.from("work_sessions").insert({ ...entry, user_id: currentUserId });
     if (error) {
         console.error(error);
-        alert("Nie udało się zapisać wpisu w bazie.");
+        showToast("Nie udało się zapisać wpisu w bazie.", "error");
         return false;
     }
     return true;
@@ -1113,7 +1170,7 @@ async function deleteSessionsForDay(date) {
 
     if (error) {
         console.error(error);
-        alert("Nie udało się usunąć wpisów dla tego dnia.");
+        showToast("Nie udało się usunąć wpisów dla tego dnia.", "error");
         return false;
     }
     return true;
@@ -1165,7 +1222,7 @@ async function resetAllData() {
 
     if (error) {
         console.error(error);
-        alert("Nie udało się zresetować bazy.");
+        showToast("Nie udało się zresetować bazy.", "error");
         return false;
     }
     return true;
@@ -2157,7 +2214,7 @@ exportMonthForm.onsubmit = async (event) => {
 
     const reportData = buildMonthReportData(key);
     if (!reportData) {
-        alert("Brak danych do eksportu w tym miesiącu.");
+        showToast("Brak danych do eksportu w tym miesiącu.", "error");
         return;
     }
 
@@ -2176,9 +2233,11 @@ exportMonthForm.onsubmit = async (event) => {
             buildPdf: () => buildMonthPdfBlob(reportData, monthLabel)
         });
         exportMonthDialog.close();
+        showToast("Eksport gotowy.", "success");
     } catch (err) {
         console.error(err);
         setStatusMessage(exportMonthMessage, "Nie udało się wygenerować pliku — sprawdź połączenie z internetem (Excel/PDF wymagają sieci).", false);
+        showToast("Nie udało się wygenerować pliku.", "error");
     } finally {
         submitBtn.disabled = false;
     }
@@ -2211,7 +2270,7 @@ monthPicker.onchange = () => renderMonth(monthPicker.value);
 
 addTodayShiftBtn.onclick = async () => {
     if (!activeShiftCache) {
-        alert("Najpierw wybierz zmianę w tym tygodniu.");
+        showToast("Najpierw wybierz zmianę w tym tygodniu.", "error");
         return;
     }
 
@@ -2226,9 +2285,10 @@ addTodayShiftBtn.onclick = async () => {
     }
 
     addTodayShiftBtn.disabled = true;
-    await replaceDaySession(today, start, end, DEFAULT_BREAK_MINUTES);
+    const ok = await replaceDaySession(today, start, end, DEFAULT_BREAK_MINUTES);
     refreshHistoryView(await loadHistory());
     addTodayShiftBtn.disabled = false;
+    if (ok) showToast("Dzień dodany.", "success");
 };
 
 function openSettingsDialog(tab = "account") {
@@ -2321,7 +2381,7 @@ editDayForm.onsubmit = async (event) => {
     const targetDate = new Date(y, mo - 1, dd);
     const todayMidnight = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
     if (targetDate > todayMidnight) {
-        alert("Nie można dodać godzin dla dnia, który jeszcze nie nastąpił.");
+        showToast("Nie można dodać godzin dla dnia, który jeszcze nie nastąpił.", "error");
         return;
     }
 
@@ -2357,16 +2417,19 @@ editDayForm.onsubmit = async (event) => {
     submitBtn.disabled = false;
     if (!ok) return;
     editDayDialog.close();
+    showToast("Zapisano dzień.", "success");
 };
 
 deleteDayBtn.onclick = async () => {
     if (!editingDate) return;
 
     deleteDayBtn.disabled = true;
-    await deleteSessionsForDay(editingDate);
+    const ok = await deleteSessionsForDay(editingDate);
     refreshHistoryView(await loadHistory());
     deleteDayBtn.disabled = false;
+    if (!ok) return;
     editDayDialog.close();
+    showToast("Dzień usunięty.", "success");
 };
 
 resetAllBtn.onclick = async () => {
@@ -2380,6 +2443,7 @@ resetAllBtn.onclick = async () => {
     if (ok) {
         settingsDialog.close();
         refreshHistoryView(await loadHistory());
+        showToast("Wszystkie dane wykasowane.", "success");
     }
 };
 
@@ -2426,10 +2490,11 @@ polandTripForm.onsubmit = async (event) => {
     selectedMonthKey = monthKey(tripDay);
     refreshHistoryView(await loadHistory());
     submitBtn.disabled = false;
-    // Przy bledzie deleteSessionsForDay/saveEntry juz pokazaly alert - zostawiamy okno otwarte,
-    // zeby bylo widac ze cos nie wyszlo, zamiast zamykac je tak jak przy pelnym sukcesie.
+    // Przy bledzie deleteSessionsForDay/saveEntry juz pokazal sie toast bledu - zostawiamy okno
+    // otwarte, zeby bylo widac ze cos nie wyszlo, zamiast zamykac je tak jak przy pelnym sukcesie.
     if (!ok) return;
     polandTripDialog.close();
+    showToast("Zapisano wyjazd do Polski.", "success");
 };
 
 function renderVacationSummary() {
@@ -2478,7 +2543,7 @@ vacationForm.onsubmit = async (event) => {
     event.preventDefault();
     const { start: rangeStart, end: rangeEnd } = vacationRangePicker.state;
     if (!rangeStart || !rangeEnd) {
-        alert("Zaznacz zakres w kalendarzu (dla jednego dnia stuknij go dwukrotnie).");
+        showToast("Zaznacz zakres w kalendarzu (dla jednego dnia stuknij go dwukrotnie).", "error");
         return;
     }
 
@@ -2502,10 +2567,11 @@ vacationForm.onsubmit = async (event) => {
     selectedMonthKey = monthKey(rangeStart);
     refreshHistoryView(await loadHistory());
     submitBtn.disabled = false;
-    // Przerwane w polowie zakresu przez blad zapisu (saveDayEntry juz pokazal alert) -
+    // Przerwane w polowie zakresu przez blad zapisu (saveDayEntry juz pokazal toast bledu) -
     // zostawiamy okno otwarte zamiast udawac, ze caly zakres sie zapisal.
     if (!ok) return;
     vacationDialog.close();
+    showToast("Zapisano urlop.", "success");
 };
 
 function renderVacationHistory() {
@@ -2698,7 +2764,7 @@ sickLeaveForm.onsubmit = async (event) => {
     event.preventDefault();
     const { start: rangeStart, end: rangeEnd } = sickLeaveRangePicker.state;
     if (!rangeStart || !rangeEnd) {
-        alert("Zaznacz zakres w kalendarzu (dla jednego dnia stuknij go dwukrotnie).");
+        showToast("Zaznacz zakres w kalendarzu (dla jednego dnia stuknij go dwukrotnie).", "error");
         return;
     }
 
@@ -2727,6 +2793,7 @@ sickLeaveForm.onsubmit = async (event) => {
     submitBtn.disabled = false;
     if (!ok) return;
     sickLeaveDialog.close();
+    showToast("Zapisano zwolnienie lekarskie.", "success");
 };
 
 function previousWeekRange() {
@@ -2985,13 +3052,14 @@ polandExtraList.addEventListener("click", async (event) => {
 
     refreshAfterPolandExtraChange();
     setStatusMessage(polandExtraMessage, "Usunięto.", true);
+    showToast("Usunięto dodatkowy pobyt.", "success");
 });
 
 polandExtraForm.onsubmit = async (event) => {
     event.preventDefault();
     const { start, end } = polandExtraRangePicker.state;
     if (!start || !end) {
-        alert("Zaznacz zakres w kalendarzu (dla jednego dnia stuknij go dwukrotnie).");
+        showToast("Zaznacz zakres w kalendarzu (dla jednego dnia stuknij go dwukrotnie).", "error");
         return;
     }
 
@@ -3007,6 +3075,7 @@ polandExtraForm.onsubmit = async (event) => {
     polandExtraRangePicker.render();
     refreshAfterPolandExtraChange();
     setStatusMessage(polandExtraMessage, "Zapisano.", true);
+    showToast("Zapisano dodatkowy pobyt.", "success");
 };
 
 closePolandExtraBtn.onclick = () => polandExtraDialog.close();
@@ -3028,7 +3097,7 @@ weekHoursForm.onsubmit = async (event) => {
     event.preventDefault();
     const { start: rangeStart, end: rangeEnd } = weekRangePicker.state;
     if (!rangeStart || !rangeEnd) {
-        alert("Zaznacz dzień początkowy i końcowy zakresu w kalendarzu.");
+        showToast("Zaznacz dzień początkowy i końcowy zakresu w kalendarzu.", "error");
         return;
     }
 
@@ -3062,6 +3131,7 @@ weekHoursForm.onsubmit = async (event) => {
     submitBtn.disabled = false;
     if (!ok) return;
     weekHoursDialog.close();
+    showToast("Zapisano godziny na cały tydzień.", "success");
 };
 
 function daysBetween(a, b) {
@@ -3317,7 +3387,7 @@ function polandStayRanges(daysAhead) {
 
 exportPolandScheduleBtn.onclick = () => {
     if (!polandCycleCache) {
-        alert("Najpierw skonfiguruj cykl zjazdów w szybkich akcjach → 🛠️ Konfiguracja.");
+        showToast("Najpierw skonfiguruj cykl zjazdów w szybkich akcjach → 🛠️ Konfiguracja.", "error");
         return;
     }
     exportPolandScheduleDialog.showModal();
@@ -3374,7 +3444,7 @@ exportPolandScheduleForm.onsubmit = async (event) => {
     const daysAhead = Number(exportPolandScheduleRange.value);
     const rows = buildPolandScheduleRows(daysAhead);
     if (!rows) {
-        alert("Brak zjazdów w wybranym okresie.");
+        showToast("Brak zjazdów w wybranym okresie.", "error");
         return;
     }
 
@@ -3393,9 +3463,11 @@ exportPolandScheduleForm.onsubmit = async (event) => {
             buildPdf: () => buildPolandSchedulePdfBlob(rows, `Zjazdy do Polski — ${rangeLabel}`)
         });
         exportPolandScheduleDialog.close();
+        showToast("Eksport gotowy.", "success");
     } catch (err) {
         console.error(err);
         setStatusMessage(exportPolandScheduleMessage, "Nie udało się wygenerować pliku — sprawdź połączenie z internetem (Excel/PDF wymagają sieci).", false);
+        showToast("Nie udało się wygenerować pliku.", "error");
     } finally {
         submitBtn.disabled = false;
     }
