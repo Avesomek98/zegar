@@ -318,12 +318,32 @@ document.querySelectorAll("dialog").forEach((dialog) => {
     });
 });
 
-const SHIFT_PRESETS = [
-    { label: "6:00–16:45", start: "06:00", end: "16:45" },
-    { label: "6:00–15:45", start: "06:00", end: "15:45" },
-    { label: "19:30–6:15", start: "19:30", end: "06:15" },
-    { label: "Sobota 6:00–14:45", start: "06:00", end: "14:45" }
+// Paleta kolorow do wyboru dla wlasnych szablonow (Konfiguracja -> Twoje szablony) - kazdy
+// szablon trzyma klucz koloru (preset.color), a kalendarz i legenda czerpia z tych samych
+// zmiennych CSS (--preset-<klucz>-bg), zeby zawsze byly spojne. Prezety bez zapisanego koloru
+// (starsze dane sprzed tej funkcji) dostaja kolor cyklicznie wg pozycji w liscie (presetColorKey).
+const PRESET_COLORS = [
+    { key: "blue", label: "Niebieski" },
+    { key: "sky", label: "Błękitny" },
+    { key: "teal", label: "Turkusowy" },
+    { key: "amber", label: "Bursztynowy" },
+    { key: "red", label: "Czerwony" },
+    { key: "brown", label: "Brązowy" },
+    { key: "mustard", label: "Musztardowy" }
 ];
+
+function presetColorKey(preset, index) {
+    return (preset && preset.color) || PRESET_COLORS[index % PRESET_COLORS.length].key;
+}
+
+// Dopasowuje przepracowana sesje do wlasnego szablonu uzytkownika po godzinach "od-do" -
+// uzywane do pokolorowania komorki kalendarza kolorem przypisanym temu szablonowi.
+function matchCustomPresetIndex(session) {
+    const startHM = timeInputValue(session.start);
+    const endHM = timeInputValue(session.end);
+    return customPresetsCache.findIndex((p) => p.start === startHM && p.end === endHM);
+}
+
 const MONTH_NAMES = [
     "Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec",
     "Lipiec", "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień"
@@ -386,9 +406,13 @@ const customPresetForm = document.getElementById("customPresetForm");
 const customPresetLabelInput = document.getElementById("customPresetLabelInput");
 const customPresetStartInput = document.getElementById("customPresetStartInput");
 const customPresetEndInput = document.getElementById("customPresetEndInput");
+const customPresetBreakInput = document.getElementById("customPresetBreakInput");
 const customPresetMessage = document.getElementById("customPresetMessage");
 const customPresetSubmitBtn = document.getElementById("customPresetSubmitBtn");
 const cancelCustomPresetEditBtn = document.getElementById("cancelCustomPresetEditBtn");
+const presetColorPicker = document.getElementById("presetColorPicker");
+const calendarLegend = document.getElementById("calendarLegend");
+const activeShiftColorDot = document.getElementById("activeShiftColorDot");
 
 // Dotkniecie/klikniecie gdziekolwiek w polu daty ma od razu otwierac kalendarz,
 // nie tylko klikniecie w ikonke po prawej stronie.
@@ -434,6 +458,7 @@ const editDayPreset = document.getElementById("editDayPreset");
 const editDayStart = document.getElementById("editDayStart");
 const editDayEnd = document.getElementById("editDayEnd");
 const editDayBreak = document.getElementById("editDayBreak");
+const editDayColorPicker = document.getElementById("editDayColorPicker");
 const editDayMarkTripOff = document.getElementById("editDayMarkTripOff");
 const deleteDayBtn = document.getElementById("deleteDayBtn");
 const closeEditDayBtn = document.getElementById("closeEditDayBtn");
@@ -541,8 +566,10 @@ let sickLeaveRecordsCache = []; // [{ date, reason }], najnowsze pierwsze - do o
 let polandCycleCache = null; // { anchor: Date, cycleDays: number, homeDays: number } | null
 let vacationAllowanceCache = null; // liczba dni urlopu przyznanych na biezacy rok | null (nieustawiony)
 let employeeNumberCache = null; // numer pracownika (string, zeby zachowac wiodace zera) | null
-let customPresetsCache = []; // [{ label, start, end }] - wlasne szablony godzin uzytkownika (Konfiguracja -> Twoje szablony)
+let customPresetsCache = []; // [{ label, start, end, color }] - wlasne szablony godzin uzytkownika (Konfiguracja -> Twoje szablony)
 let customPresetEditingIndex = null; // index w customPresetsCache edytowany w formularzu, albo null (tryb dodawania)
+let customPresetSelectedColor = PRESET_COLORS[0].key; // aktualnie podswietlony kolor w #presetColorPicker
+let editDaySelectedColor = null; // null = automatyczny (dopasowanie do szablonu) w #editDayColorPicker
 let polandExtraRangesCache = []; // [{ start: "YYYY-MM-DD", end: "YYYY-MM-DD" }] - dodatkowe (poza cyklem) pobyty w Polsce
 
 const NIGHT_START_HOUR = 20;
@@ -673,11 +700,26 @@ async function saveActiveShift(shift) {
     activeShiftCache = shift;
 }
 
-// Dzisiejsza zmiana NIE pokazuje juz sztywnych, wbudowanych presetow (SHIFT_PRESETS) -
-// tylko wlasne godziny (domyslnie) i wlasne presety uzytkownika, jesli jakies zapisal
-// w Konfiguracji -> Twoje szablony. To samo dotyczy szablonow w "Edytuj dzien" i "Dodaj caly
-// tydzien" (patrz buildCustomPresetOptionsHtml nizej). SHIFT_PRESETS zyje dalej tylko
-// w kolorowaniu kalendarza (matchShiftPresetIndex) - tam sie nic nie zmienia.
+// Dzisiejsza zmiana pokazuje tylko wlasne godziny (domyslnie) i wlasne presety uzytkownika,
+// jesli jakies zapisal w Konfiguracji -> Twoje szablony. To samo dotyczy szablonow w
+// "Edytuj dzien" i "Dodaj caly tydzien" (patrz buildCustomPresetOptionsHtml nizej).
+// Maly kolorowy krazek obok "Dzisiejsza zmiana" - pokazuje kolor, jakim ten dzien zostanie
+// pomalowany w kalendarzu po zapisaniu (kolor przypisany szablonowi w Konfiguracji). Dla
+// "Wlasne godziny" nie ma z gory ustawionego koloru wiec krazek jest ukryty.
+function updateActiveShiftColorDot() {
+    const value = activeShiftSelect.value;
+    if (value && value.startsWith("custom-")) {
+        const idx = Number(value.slice("custom-".length));
+        const preset = customPresetsCache[idx];
+        if (preset) {
+            activeShiftColorDot.className = `active-shift-color-dot legend-swatch--preset-${presetColorKey(preset, idx)}`;
+            activeShiftColorDot.style.display = "";
+            return;
+        }
+    }
+    activeShiftColorDot.style.display = "none";
+}
+
 function populateActiveShiftSelect() {
     const customPresetOptions = customPresetsCache
         .map((p, i) => `<option value="custom-${i}">${escapeHtml(p.label)}</option>`)
@@ -688,6 +730,7 @@ function populateActiveShiftSelect() {
     if (!activeShiftCache) {
         activeShiftSelect.value = "custom";
         customShiftFields.style.display = "flex";
+        updateActiveShiftColorDot();
         return;
     }
 
@@ -702,9 +745,11 @@ function populateActiveShiftSelect() {
         activeShiftCustomEnd.value = activeShiftCache.end;
         customShiftFields.style.display = "flex";
     }
+    updateActiveShiftColorDot();
 }
 
 activeShiftSelect.onchange = async () => {
+    updateActiveShiftColorDot();
     if (activeShiftSelect.value === "custom") {
         customShiftFields.style.display = "flex";
         return;
@@ -715,7 +760,7 @@ activeShiftSelect.onchange = async () => {
     const preset = customPresetsCache[Number(activeShiftSelect.value.slice("custom-".length))];
     if (!preset) return;
     activeShiftSelect.disabled = true;
-    await saveActiveShift({ start: preset.start, end: preset.end, label: preset.label });
+    await saveActiveShift({ start: preset.start, end: preset.end, label: preset.label, breakMinutes: preset.breakMinutes });
     activeShiftSelect.disabled = false;
 };
 
@@ -790,26 +835,99 @@ async function saveExtraPolandRanges(ranges) {
 function renderCustomPresetsList() {
     if (!customPresetsCache.length) {
         customPresetsList.innerHTML = '<p class="hint">Nie masz jeszcze żadnych własnych szablonów.</p>';
-        return;
-    }
-    customPresetsList.innerHTML = customPresetsCache
-        .map((p, i) => `
-            <div class="preset-row">
-                <span class="preset-row-label">${escapeHtml(p.label)} (${p.start}–${p.end})</span>
-                <div>
-                    <button type="button" class="preset-row-btn" data-preset-edit="${i}" title="Edytuj">✏️</button>
-                    <button type="button" class="preset-row-btn" data-preset-delete="${i}" title="Usuń">✕</button>
+    } else {
+        customPresetsList.innerHTML = customPresetsCache
+            .map((p, i) => `
+                <div class="preset-row">
+                    <span class="preset-row-label"><span class="preset-row-swatch legend-swatch--preset-${presetColorKey(p, i)}"></span>${escapeHtml(p.label)} (${p.start}–${p.end})</span>
+                    <div>
+                        <button type="button" class="preset-row-btn" data-preset-edit="${i}" title="Edytuj">✏️</button>
+                        <button type="button" class="preset-row-btn" data-preset-delete="${i}" title="Usuń">✕</button>
+                    </div>
                 </div>
-            </div>
-        `)
-        .join("");
+            `)
+            .join("");
+    }
+    // Zmiana listy szablonow (nazwa/kolor/godziny) nie zmienia tego, ktore dni sa faktycznie
+    // zapisane w wybranym miesiacu - ponownie wykorzystujemy ostatnio policzony stan zamiast
+    // przeliczac go od nowa (i tak zaraz zostanie przeliczony przy kolejnym renderMonthCalendar).
+    renderCalendarLegend(lastLegendState);
 }
+
+// Legenda pod kalendarzem - pokazuje tylko te pozycje, ktore faktycznie wystepuja w aktualnie
+// wybranym miesiacu (patrz `state` liczony w renderMonthCalendar), zamiast sztywnej listy
+// wszystkich mozliwych statusow niezaleznie od tego, czy dany miesiac je w ogole zawiera.
+function renderCalendarLegend(state) {
+    const items = [];
+
+    [...state.presetIndexes]
+        .sort((a, b) => a - b)
+        .forEach((i) => {
+            const p = customPresetsCache[i];
+            if (!p) return;
+            items.push(`<span class="legend-item"><span class="legend-swatch legend-swatch--preset-${presetColorKey(p, i)}"></span>${escapeHtml(p.label)} (${p.start}–${p.end})</span>`);
+        });
+
+    if (state.worked) {
+        items.push(`<span class="legend-item"><span class="legend-swatch legend-swatch--worked"></span>Godziny pracy${state.presetIndexes.size ? " (bez szablonu)" : ""}</span>`);
+    }
+    if (state.sundayWork) {
+        items.push('<span class="legend-item"><span class="legend-swatch legend-swatch--sunday-work"></span>Praca w niedzielę</span>');
+    }
+    if (state.vacation) {
+        items.push('<span class="legend-item"><span class="legend-swatch legend-swatch--vacation"></span>Urlop</span>');
+    }
+    if (state.sick) {
+        items.push('<span class="legend-item"><span class="legend-swatch legend-swatch--sick"></span>Zwolnienie</span>');
+    }
+    if (state.off) {
+        items.push('<span class="legend-item"><span class="legend-swatch legend-swatch--off"></span>Dzień wolny (Polska)</span>');
+    }
+    if (state.weekend) {
+        items.push('<span class="legend-item"><span class="legend-swatch legend-swatch--weekend"></span>Weekend</span>');
+    }
+
+    calendarLegend.innerHTML = items.length
+        ? items.join("")
+        : '<span class="hint">Brak danych do pokazania w tym miesiącu.</span>';
+}
+
+function setPresetColorPickerSelection(colorKey) {
+    customPresetSelectedColor = colorKey;
+    [...presetColorPicker.children].forEach((btn) => {
+        btn.classList.toggle("is-selected", btn.dataset.color === colorKey);
+    });
+}
+
+presetColorPicker.addEventListener("click", (event) => {
+    const btn = event.target.closest("[data-color]");
+    if (!btn) return;
+    setPresetColorPickerSelection(btn.dataset.color);
+});
+
+// null = "Automatyczny" (pierwszy przycisk, data-color="") - kolor dobiera sie sam wg
+// dopasowania do zapisanego szablonu, tak jak dotychczas.
+function setEditDayColorPickerSelection(colorKey) {
+    editDaySelectedColor = colorKey || null;
+    [...editDayColorPicker.children].forEach((btn) => {
+        btn.classList.toggle("is-selected", (btn.dataset.color || null) === editDaySelectedColor);
+    });
+}
+
+editDayColorPicker.addEventListener("click", (event) => {
+    const btn = event.target.closest("[data-color]");
+    if (!btn) return;
+    setEditDayColorPickerSelection(btn.dataset.color);
+});
 
 function resetCustomPresetForm() {
     customPresetEditingIndex = null;
     customPresetForm.reset();
     customPresetSubmitBtn.textContent = "+ Dodaj szablon";
     cancelCustomPresetEditBtn.style.display = "none";
+    // Domyslnie proponuj kolejny nieuzyty (jeszcze) kolor z palety, zeby nowe szablony nie
+    // ladowaly sie od razu tym samym kolorem co poprzedni.
+    setPresetColorPickerSelection(PRESET_COLORS[customPresetsCache.length % PRESET_COLORS.length].key);
 }
 
 function populateCustomPresetsPanel() {
@@ -828,6 +946,8 @@ customPresetsList.addEventListener("click", async (event) => {
         customPresetLabelInput.value = preset.label;
         customPresetStartInput.value = preset.start;
         customPresetEndInput.value = preset.end;
+        customPresetBreakInput.value = String(preset.breakMinutes ?? DEFAULT_BREAK_MINUTES);
+        setPresetColorPickerSelection(presetColorKey(preset, idx));
         customPresetSubmitBtn.textContent = "Zapisz zmiany";
         cancelCustomPresetEditBtn.style.display = "";
         setStatusMessage(customPresetMessage, "");
@@ -866,12 +986,15 @@ customPresetForm.onsubmit = async (event) => {
     const end = customPresetEndInput.value;
     if (!start || !end) return;
     const label = customPresetLabelInput.value.trim() || `${start}–${end}`;
+    const color = customPresetSelectedColor;
+    const breakMinutes = parseInt(customPresetBreakInput.value, 10);
+    if (Number.isNaN(breakMinutes) || breakMinutes < 0) return;
 
     const next = [...customPresetsCache];
     if (customPresetEditingIndex !== null) {
-        next[customPresetEditingIndex] = { label, start, end };
+        next[customPresetEditingIndex] = { label, start, end, color, breakMinutes };
     } else {
-        next.push({ label, start, end });
+        next.push({ label, start, end, color, breakMinutes });
     }
 
     customPresetSubmitBtn.disabled = true;
@@ -1186,7 +1309,10 @@ async function saveDayEntry(date, entry) {
     return saveEntry(entry);
 }
 
-async function replaceDaySession(date, start, end, breakMinutes) {
+// color: opcjonalny, niestandardowy kolor komorki w kalendarzu (klucz z PRESET_COLORS) dla
+// recznie wpisanych godzin, ktore nie pasuja do zadnego zapisanego szablonu - null/undefined
+// oznacza "automatycznie" (dopasowanie do szablonu po godzinach, tak jak dotychczas).
+async function replaceDaySession(date, start, end, breakMinutes, color = null) {
     const deleted = await deleteSessionsForDay(date);
     if (!deleted) return false;
 
@@ -1196,7 +1322,8 @@ async function replaceDaySession(date, start, end, breakMinutes) {
             start_time: start.toISOString(),
             end_time: end.toISOString(),
             hours: Number(hours.toFixed(2)),
-            break_minutes: breakMinutes
+            break_minutes: breakMinutes,
+            color
         });
     }
     return true;
@@ -1383,7 +1510,8 @@ function buildMonthsIndex(entries) {
             end,
             hours: Number(entry.hours),
             breakMinutes: Number(entry.break_minutes ?? DEFAULT_BREAK_MINUTES),
-            note: entry.note || null
+            note: entry.note || null,
+            color: entry.color || null
         });
     });
 
@@ -1488,21 +1616,26 @@ function populateMonthPicker(months) {
 
 const CAL_WEEKDAY_LETTERS = ["Pn", "Wt", "Śr", "Cz", "Pt", "So", "Nd"];
 
-function matchShiftPresetIndex(session) {
-    const startHM = timeInputValue(session.start);
-    const endHM = timeInputValue(session.end);
-    return SHIFT_PRESETS.findIndex((p) => p.start === startHM && p.end === endHM);
+function emptyLegendState() {
+    return { presetIndexes: new Set(), worked: false, sundayWork: false, vacation: false, sick: false, off: false, weekend: false };
 }
+
+let lastLegendState = emptyLegendState();
 
 function renderMonthCalendar(key) {
     monthCalendar.innerHTML = "";
-    if (!key) return;
+    if (!key) {
+        lastLegendState = emptyLegendState();
+        renderCalendarLegend(lastLegendState);
+        return;
+    }
 
     const [y, m] = key.split("-").map(Number);
     const firstOfMonth = new Date(y, m - 1, 1);
     const daysInMonth = new Date(y, m, 0).getDate();
     const month = monthsIndexCache.get(key);
     const todayKey = dateKey(new Date());
+    const legendState = emptyLegendState();
 
     CAL_WEEKDAY_LETTERS.forEach((label) => {
         const head = document.createElement("div");
@@ -1537,24 +1670,42 @@ function renderMonthCalendar(key) {
 
             if (isVacation) {
                 cell.classList.add("cal-cell--vacation");
+                legendState.vacation = true;
             } else if (isSickLeave) {
                 cell.classList.add("cal-cell--sick");
+                legendState.sick = true;
             } else if (isDayOff) {
                 cell.classList.add("cal-cell--off");
+                legendState.off = true;
             } else if (hasHours) {
                 const workedSession = day.sessions.find((s) => !(s.hours === 0 && s.start.getTime() === s.end.getTime()));
                 const hasSundayHours = workedSession && sundayOverlapHours(workedSession.start, workedSession.end) > 0.005;
 
                 if (hasSundayHours) {
                     cell.classList.add("cal-cell--sunday-work");
+                    legendState.sundayWork = true;
+                } else if (workedSession && workedSession.color) {
+                    // Niestandardowy kolor recznie wybrany dla tego konkretnego dnia (Edytuj dzien) ma
+                    // pierwszenstwo przed dopasowaniem do szablonu - jednorazowy wybor, wiec celowo nie
+                    // trafia do legendy (nie jest to powtarzalna kategoria, ktora warto tam tlumaczyc).
+                    cell.classList.add(`cal-cell--preset-${workedSession.color}`);
                 } else {
-                    const presetIdx = workedSession ? matchShiftPresetIndex(workedSession) : -1;
-                    cell.classList.add(presetIdx >= 0 ? `cal-cell--preset-${presetIdx}` : "cal-cell--worked");
+                    const presetIdx = workedSession ? matchCustomPresetIndex(workedSession) : -1;
+                    const colorKey = presetIdx >= 0 ? presetColorKey(customPresetsCache[presetIdx], presetIdx) : null;
+                    cell.classList.add(colorKey ? `cal-cell--preset-${colorKey}` : "cal-cell--worked");
+                    if (presetIdx >= 0) {
+                        legendState.presetIndexes.add(presetIdx);
+                    } else {
+                        legendState.worked = true;
+                    }
                 }
             }
         } else {
             const dow = date.getDay();
-            if (dow === 0 || dow === 6) cell.classList.add("cal-cell--weekend");
+            if (dow === 0 || dow === 6) {
+                cell.classList.add("cal-cell--weekend");
+                legendState.weekend = true;
+            }
         }
 
         if (dKey === todayKey) cell.classList.add("cal-cell--today");
@@ -1563,6 +1714,9 @@ function renderMonthCalendar(key) {
 
         monthCalendar.appendChild(cell);
     }
+
+    lastLegendState = legendState;
+    renderCalendarLegend(legendState);
 }
 
 monthCalendar.addEventListener("click", (event) => {
@@ -1605,6 +1759,7 @@ dayActionHoursBtn.onclick = () => {
         start: null,
         end: null,
         breakMinutes: DEFAULT_BREAK_MINUTES,
+        color: null,
         dateEditable: false
     });
 };
@@ -1708,6 +1863,7 @@ function openEditDialogForDay(dayKey, dateEditable = true) {
         start: earliestStart,
         end: latestEnd,
         breakMinutes: primarySession.breakMinutes,
+        color: primarySession.color,
         dateEditable
     });
 }
@@ -2285,7 +2441,7 @@ addTodayShiftBtn.onclick = async () => {
     }
 
     addTodayShiftBtn.disabled = true;
-    const ok = await replaceDaySession(today, start, end, DEFAULT_BREAK_MINUTES);
+    const ok = await replaceDaySession(today, start, end, activeShiftCache.breakMinutes ?? DEFAULT_BREAK_MINUTES);
     refreshHistoryView(await loadHistory());
     addTodayShiftBtn.disabled = false;
     if (ok) showToast("Dzień dodany.", "success");
@@ -2327,8 +2483,8 @@ accountLogoutBtn.onclick = async () => {
 // editingDate = data dnia, ktory faktycznie istnieje w bazie (do skasowania/przeniesienia).
 // null oznacza tryb "dodaj nowy dzien" - nic nie trzeba usuwac przed zapisem.
 // Szablony w "Edytuj dzien" i "Dodaj caly tydzien" to wlasne presety uzytkownika
-// (Konfiguracja -> Twoje szablony), nie wbudowane SHIFT_PRESETS - budowane na nowo przy kazdym
-// otwarciu okna, zeby zawsze pokazywac aktualna liste.
+// (Konfiguracja -> Twoje szablony) - budowane na nowo przy kazdym otwarciu okna, zeby
+// zawsze pokazywac aktualna liste.
 function buildCustomPresetOptionsHtml() {
     return customPresetsCache
         .map((p, i) => `<option value="${i}">${escapeHtml(p.label)}</option>`)
@@ -2340,10 +2496,11 @@ editDayPreset.onchange = () => {
     if (!preset) return;
     editDayStart.value = preset.start;
     editDayEnd.value = preset.end;
+    if (preset.breakMinutes != null) editDayBreak.value = String(preset.breakMinutes);
     editDayPreset.value = "";
 };
 
-function openEditDialog({ original, date, start, end, breakMinutes, dateEditable = true }) {
+function openEditDialog({ original, date, start, end, breakMinutes, color = null, dateEditable = true }) {
     editingDate = original;
     const dateLabel = date.toLocaleDateString("pl-PL", { day: "numeric", month: "long", year: "numeric" });
     editDayTitle.textContent = dateEditable
@@ -2357,6 +2514,7 @@ function openEditDialog({ original, date, start, end, breakMinutes, dateEditable
     editDayStart.value = start ? timeInputValue(start) : "";
     editDayEnd.value = end ? timeInputValue(end) : "";
     editDayBreak.value = breakMinutes;
+    setEditDayColorPickerSelection(color);
     editDayMarkTripOff.checked = false;
     editDayDialog.showModal();
 }
@@ -2398,7 +2556,7 @@ editDayForm.onsubmit = async (event) => {
     if (editingDate && dateKey(editingDate) !== dateKey(targetDate)) {
         ok = await deleteSessionsForDay(editingDate);
     }
-    if (ok) ok = await replaceDaySession(targetDate, start, end, breakMinutes);
+    if (ok) ok = await replaceDaySession(targetDate, start, end, breakMinutes, editDaySelectedColor);
 
     if (ok && editDayMarkTripOff.checked) {
         const nextDay = new Date(targetDate);
@@ -2812,6 +2970,7 @@ weekHoursPreset.onchange = () => {
     if (!preset) return;
     weekHoursStart.value = preset.start;
     weekHoursEnd.value = preset.end;
+    if (preset.breakMinutes != null) weekHoursBreak.value = String(preset.breakMinutes);
     weekHoursPreset.value = "";
 };
 

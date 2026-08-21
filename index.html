@@ -138,7 +138,10 @@
         <div class="today-module">
             <div class="active-shift-row">
                 <label class="field-label" for="activeShiftSelect">Dzisiejsza zmiana</label>
-                <select id="activeShiftSelect"></select>
+                <div class="active-shift-select-row">
+                    <select id="activeShiftSelect"></select>
+                    <span id="activeShiftColorDot" class="active-shift-color-dot" aria-hidden="true" style="display:none;"></span>
+                </div>
                 <div id="customShiftFields" class="custom-shift-fields" style="display:none;">
                     <input type="time" id="activeShiftCustomStart">
                     <input type="time" id="activeShiftCustomEnd">
@@ -155,6 +158,7 @@
                 <p class="hint">Wybierz miesiąc i kliknij ✏️ przy dniu, żeby poprawić godziny albo go usunąć.</p>
                 <select id="monthPicker" class="month-picker"></select>
                 <div id="monthCalendar" class="month-calendar"></div>
+                <div class="calendar-legend" id="calendarLegend"></div>
             </div>
             <div class="history-section">
                 <div class="history-section-header">
@@ -217,7 +221,7 @@
 
     <div class="dialog-tab-panel" data-tab-panel="data" hidden>
         <h2>Zarządzanie danymi</h2>
-        <p class="hint">Usuwa WSZYSTKIE zapisane godziny pracy z bazy. Tej operacji nie da się cofnąć.</p>
+        <p class="hint">Usuwa WSZYSTKIE dane z kalendarza (godziny pracy, urlop, zwolnienia lekarskie). Tej operacji nie da się cofnąć.</p>
         <button type="button" id="resetAllBtn" class="danger-btn">Wykasuj wszystkie dane</button>
     </div>
 
@@ -288,6 +292,18 @@
             <input type="time" id="customPresetStartInput" required>
             <label class="field-label" for="customPresetEndInput">Do</label>
             <input type="time" id="customPresetEndInput" required>
+            <label class="field-label" for="customPresetBreakInput">Przerwa (min)</label>
+            <input type="number" id="customPresetBreakInput" min="0" step="1" value="45" required>
+            <label class="field-label">Kolor w kalendarzu</label>
+            <div class="preset-color-picker" id="presetColorPicker">
+                <button type="button" class="preset-color-swatch preset-color-swatch--blue" data-color="blue" aria-label="Niebieski"></button>
+                <button type="button" class="preset-color-swatch preset-color-swatch--sky" data-color="sky" aria-label="Błękitny"></button>
+                <button type="button" class="preset-color-swatch preset-color-swatch--teal" data-color="teal" aria-label="Turkusowy"></button>
+                <button type="button" class="preset-color-swatch preset-color-swatch--amber" data-color="amber" aria-label="Bursztynowy"></button>
+                <button type="button" class="preset-color-swatch preset-color-swatch--red" data-color="red" aria-label="Czerwony"></button>
+                <button type="button" class="preset-color-swatch preset-color-swatch--brown" data-color="brown" aria-label="Brązowy"></button>
+                <button type="button" class="preset-color-swatch preset-color-swatch--mustard" data-color="mustard" aria-label="Musztardowy"></button>
+            </div>
             <div class="dialog-actions">
                 <button type="button" id="cancelCustomPresetEditBtn" style="display:none;">Anuluj edycję</button>
                 <button type="submit" id="customPresetSubmitBtn">+ Dodaj szablon</button>
@@ -316,6 +332,18 @@
         <input type="time" id="editDayEnd" required>
         <label class="field-label" for="editDayBreak">Przerwa (min)</label>
         <input type="number" id="editDayBreak" min="0" step="1" value="45" required>
+        <label class="field-label">Kolor w kalendarzu</label>
+        <p class="hint">Domyślnie automatyczny (wg szablonu, jeśli godziny się z nim zgadzają) — wybierz kolor tylko jeśli chcesz go ustawić ręcznie dla tego jednego dnia.</p>
+        <div class="preset-color-picker" id="editDayColorPicker">
+            <button type="button" class="preset-color-swatch preset-color-swatch--auto is-selected" data-color="" aria-label="Automatyczny"></button>
+            <button type="button" class="preset-color-swatch preset-color-swatch--blue" data-color="blue" aria-label="Niebieski"></button>
+            <button type="button" class="preset-color-swatch preset-color-swatch--sky" data-color="sky" aria-label="Błękitny"></button>
+            <button type="button" class="preset-color-swatch preset-color-swatch--teal" data-color="teal" aria-label="Turkusowy"></button>
+            <button type="button" class="preset-color-swatch preset-color-swatch--amber" data-color="amber" aria-label="Bursztynowy"></button>
+            <button type="button" class="preset-color-swatch preset-color-swatch--red" data-color="red" aria-label="Czerwony"></button>
+            <button type="button" class="preset-color-swatch preset-color-swatch--brown" data-color="brown" aria-label="Brązowy"></button>
+            <button type="button" class="preset-color-swatch preset-color-swatch--mustard" data-color="mustard" aria-label="Musztardowy"></button>
+        </div>
         <label class="checkbox-label">
             <input type="checkbox" id="editDayMarkTripOff">
             🛫 To dzień wyjazdu do Polski — oznacz kolejny dzień jako wolny
@@ -639,6 +667,12 @@
         <li>Nowość: <strong>powiadomienia (toast)</strong> — pasek u góry ekranu z kolorem (zielony/czerwony) i kurczącym się paskiem czasu, potwierdza sukces albo błąd niemal każdej akcji w apce (dodanie dnia, edycja/usunięcie, cały tydzień, urlop, zwolnienie, wyjazd do Polski, dodatkowy pobyt, zapis ustawień w Konfiguracji, zmiana konta, eksporty) — widoczne też nad otwartym okienkiem, jeśli akcja go nie zamyka.</li>
         <li>Wszystkie dotychczasowe blokujące okienka błędów (np. "Nie udało się zapisać wpisu w bazie") zastąpione tymi samymi powiadomieniami — nic już nie wymaga kliknięcia "OK", żeby wrócić do pracy.</li>
         <li>Poprawka: "Usuń dzień" w oknie edycji zamykało okienko nawet wtedy, gdy usunięcie się nie powiodło — teraz zamyka się tylko po udanym usunięciu, tak jak reszta formularzy.</li>
+        <li>Nowość: <strong>legenda pod kalendarzem</strong> — pokazuje kolory faktycznie użyte w wybranym miesiącu (szablony, praca w niedzielę, urlop, zwolnienie, dzień wolny po Polsce, weekend) i chowa pozycje, których w danym miesiącu nie było.</li>
+        <li>Nowość: <strong>własny kolor dla każdego szablonu</strong> (Konfiguracja → Twoje szablony) — 7 kolorów do wyboru, widoczny w kalendarzu, na liście szablonów i w legendzie. Usunięty stary, sztywny system kolorowania zmian (nie był podpięty pod Twoje szablony).</li>
+        <li>Nowość: <strong>własna przerwa dla każdego szablonu</strong> — zamiast sztywnych 45 minut, każdy szablon ma teraz swój czas przerwy, używany automatycznie w "Dzisiejsza zmiana", "Edytuj dzień" i "Dodaj cały tydzień".</li>
+        <li>Nowość: kolorowa kropka przy "Dzisiejsza zmiana" — podgląd koloru, jakim zostanie pomalowany dzisiejszy dzień w kalendarzu po zapisaniu.</li>
+        <li>Nowość: w oknie "Edytuj dzień" (dodawanie/edycja godzin) można ręcznie ustawić niestandardowy kolor tylko dla tego jednego dnia — przydatne dla godzin, które nie pasują do żadnego szablonu. Domyślnie zostaje automatyczne dopasowanie, tak jak dotychczas.</li>
+        <li>Poprawka: kolor weekendów w kalendarzu zmieniony z brązowo-pomarańczowego na neutralny, chłodny szary — spójniejszy z resztą palety.</li>
     </ul>
 
     <h3>v1.7 &middot; 2026-08-09</h3>

@@ -31,9 +31,9 @@
     --version-bg: #fffbeb;
     --version-text: #b45309;
 
-    --weekend-bg: #fff7ed;
-    --weekend-accent: #f59e0b;
-    --weekend-text: #9a3412;
+    --weekend-bg: #eef1f6;
+    --weekend-accent: #64748b;
+    --weekend-text: #475569;
 
     --vacation-bg: #f0fdf4;
     --vacation-accent: #22c55e;
@@ -45,10 +45,13 @@
 
     --worked-bg: #4a90d9;
     --worked-text: #ffffff;
-    --shift0-bg: #2563eb;
-    --shift1-bg: #0ea5e9;
-    --shift2-bg: #6366f1;
-    --shift3-bg: #0d9488;
+    --preset-blue-bg: #2563eb;
+    --preset-sky-bg: #0ea5e9;
+    --preset-teal-bg: #0d9488;
+    --preset-amber-bg: #d97706;
+    --preset-red-bg: #dc2626;
+    --preset-brown-bg: #92400e;
+    --preset-mustard-bg: #a16207;
     --sunday-work-bg: #db2777;
     --sunday-work-text: #ffffff;
 
@@ -90,9 +93,9 @@
         --version-bg: #3a2f15;
         --version-text: #f0c674;
 
-        --weekend-bg: #3a2712;
-        --weekend-accent: #f0b429;
-        --weekend-text: #f5c88a;
+        --weekend-bg: #2d3444;
+        --weekend-accent: #94a3b8;
+        --weekend-text: #cbd5e1;
 
         --vacation-bg: #10261a;
         --vacation-accent: #4ade80;
@@ -104,10 +107,13 @@
 
         --worked-bg: #4f8cff;
         --worked-text: #ffffff;
-        --shift0-bg: #3b82f6;
-        --shift1-bg: #38bdf8;
-        --shift2-bg: #818cf8;
-        --shift3-bg: #2dd4bf;
+        --preset-blue-bg: #3b82f6;
+        --preset-sky-bg: #38bdf8;
+        --preset-teal-bg: #2dd4bf;
+        --preset-amber-bg: #f59e0b;
+        --preset-red-bg: #f87171;
+        --preset-brown-bg: #c2703d;
+        --preset-mustard-bg: #ca8a04;
         --sunday-work-bg: #ec4899;
         --sunday-work-text: #ffffff;
 
@@ -141,9 +147,9 @@
     --danger-border: #5c2b30;
     --version-bg: #3a2f15;
     --version-text: #f0c674;
-    --weekend-bg: #3a2712;
-    --weekend-accent: #f0b429;
-    --weekend-text: #f5c88a;
+    --weekend-bg: #2d3444;
+    --weekend-accent: #94a3b8;
+    --weekend-text: #cbd5e1;
     --vacation-bg: #10261a;
     --vacation-accent: #4ade80;
     --vacation-text: #86efac;
@@ -152,10 +158,13 @@
     --sick-text: #c4b5fd;
     --worked-bg: #4f8cff;
     --worked-text: #ffffff;
-    --shift0-bg: #3b82f6;
-    --shift1-bg: #38bdf8;
-    --shift2-bg: #818cf8;
-    --shift3-bg: #2dd4bf;
+    --preset-blue-bg: #3b82f6;
+    --preset-sky-bg: #38bdf8;
+    --preset-teal-bg: #2dd4bf;
+    --preset-amber-bg: #f59e0b;
+    --preset-red-bg: #f87171;
+    --preset-brown-bg: #c2703d;
+    --preset-mustard-bg: #ca8a04;
     --sunday-work-bg: #ec4899;
     --sunday-work-text: #ffffff;
 
@@ -188,9 +197,9 @@
     --danger-border: #fca5a5;
     --version-bg: #fffbeb;
     --version-text: #b45309;
-    --weekend-bg: #fff7ed;
-    --weekend-accent: #f59e0b;
-    --weekend-text: #9a3412;
+    --weekend-bg: #eef1f6;
+    --weekend-accent: #64748b;
+    --weekend-text: #475569;
     --vacation-bg: #f0fdf4;
     --vacation-accent: #22c55e;
     --vacation-text: #166534;
@@ -199,10 +208,13 @@
     --sick-text: #6d28d9;
     --worked-bg: #4a90d9;
     --worked-text: #ffffff;
-    --shift0-bg: #2563eb;
-    --shift1-bg: #0ea5e9;
-    --shift2-bg: #6366f1;
-    --shift3-bg: #0d9488;
+    --preset-blue-bg: #2563eb;
+    --preset-sky-bg: #0ea5e9;
+    --preset-teal-bg: #0d9488;
+    --preset-amber-bg: #d97706;
+    --preset-red-bg: #dc2626;
+    --preset-brown-bg: #92400e;
+    --preset-mustard-bg: #a16207;
     --sunday-work-bg: #db2777;
     --sunday-work-text: #ffffff;
 
@@ -576,10 +588,13 @@ li {
 }
 
 .cal-cell--worked,
-.cal-cell--preset-0,
-.cal-cell--preset-1,
-.cal-cell--preset-2,
-.cal-cell--preset-3,
+.cal-cell--preset-blue,
+.cal-cell--preset-sky,
+.cal-cell--preset-teal,
+.cal-cell--preset-amber,
+.cal-cell--preset-red,
+.cal-cell--preset-brown,
+.cal-cell--preset-mustard,
 .cal-cell--sunday-work {
     color: var(--worked-text);
     font-weight: 700;
@@ -592,20 +607,32 @@ li {
     background: var(--worked-bg);
 }
 
-.cal-cell--preset-0 {
-    background: var(--shift0-bg);
+.cal-cell--preset-blue {
+    background: var(--preset-blue-bg);
 }
 
-.cal-cell--preset-1 {
-    background: var(--shift1-bg);
+.cal-cell--preset-sky {
+    background: var(--preset-sky-bg);
 }
 
-.cal-cell--preset-2 {
-    background: var(--shift2-bg);
+.cal-cell--preset-teal {
+    background: var(--preset-teal-bg);
 }
 
-.cal-cell--preset-3 {
-    background: var(--shift3-bg);
+.cal-cell--preset-amber {
+    background: var(--preset-amber-bg);
+}
+
+.cal-cell--preset-red {
+    background: var(--preset-red-bg);
+}
+
+.cal-cell--preset-brown {
+    background: var(--preset-brown-bg);
+}
+
+.cal-cell--preset-mustard {
+    background: var(--preset-mustard-bg);
 }
 
 .cal-cell--sunday-work {
@@ -688,6 +715,94 @@ li {
 .cal-cell--range-start.cal-cell--has-data::after,
 .cal-cell--range-end.cal-cell--has-data::after {
     background: var(--worked-text);
+}
+
+.calendar-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    margin: 12px 0 2px;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+}
+
+.legend-swatch {
+    width: 11px;
+    height: 11px;
+    border-radius: 4px;
+    flex: none;
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .15);
+}
+
+.legend-swatch--worked { background: var(--worked-bg); }
+.legend-swatch--preset-blue { background: var(--preset-blue-bg); }
+.legend-swatch--preset-sky { background: var(--preset-sky-bg); }
+.legend-swatch--preset-teal { background: var(--preset-teal-bg); }
+.legend-swatch--preset-brown { background: var(--preset-brown-bg); }
+.legend-swatch--preset-mustard { background: var(--preset-mustard-bg); }
+.legend-swatch--preset-amber { background: var(--preset-amber-bg); }
+.legend-swatch--preset-red { background: var(--preset-red-bg); }
+.legend-swatch--sunday-work { background: var(--sunday-work-bg); }
+.legend-swatch--vacation { background: var(--vacation-accent); }
+.legend-swatch--sick { background: var(--sick-accent); }
+.legend-swatch--off { background: var(--night-badge-text); }
+.legend-swatch--weekend { background: var(--weekend-accent); }
+
+.preset-color-picker {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 2px 0 4px;
+}
+
+.preset-color-swatch {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .18);
+    outline-offset: 3px;
+    transition: transform .12s ease, box-shadow .12s ease;
+}
+
+.preset-color-swatch:hover {
+    transform: scale(1.08);
+}
+
+.preset-color-swatch.is-selected {
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .18), 0 0 0 2px var(--card-bg), 0 0 0 4px currentColor;
+}
+
+.preset-color-swatch--auto {
+    background: repeating-linear-gradient(45deg, var(--border), var(--border) 3px, var(--input-bg) 3px, var(--input-bg) 7px);
+    color: var(--text-muted);
+}
+
+.preset-color-swatch--blue { background: var(--preset-blue-bg); color: var(--preset-blue-bg); }
+.preset-color-swatch--sky { background: var(--preset-sky-bg); color: var(--preset-sky-bg); }
+.preset-color-swatch--teal { background: var(--preset-teal-bg); color: var(--preset-teal-bg); }
+.preset-color-swatch--amber { background: var(--preset-amber-bg); color: var(--preset-amber-bg); }
+.preset-color-swatch--red { background: var(--preset-red-bg); color: var(--preset-red-bg); }
+.preset-color-swatch--brown { background: var(--preset-brown-bg); color: var(--preset-brown-bg); }
+.preset-color-swatch--mustard { background: var(--preset-mustard-bg); color: var(--preset-mustard-bg); }
+
+.preset-row-swatch {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex: none;
+    display: inline-block;
+    margin-right: 2px;
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .18);
 }
 
 .week-range-header {
@@ -1016,8 +1131,17 @@ dialog::backdrop {
     margin-bottom: 0;
 }
 
-#activeShiftSelect {
+.active-shift-select-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     flex: 1 1 200px;
+    min-width: 0;
+}
+
+#activeShiftSelect {
+    flex: 1 1 auto;
+    min-width: 0;
     width: auto;
     padding: 10px;
     font-size: 15px;
@@ -1026,6 +1150,14 @@ dialog::backdrop {
     background: var(--input-bg);
     color: var(--text);
     transition: border-color .15s ease, box-shadow .15s ease;
+}
+
+.active-shift-color-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    flex: none;
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .18);
 }
 
 #activeShiftSelect:focus {
@@ -2117,10 +2249,13 @@ dialog::backdrop {
     /* Polysk na kolorowych komorkach (zmiany, niedziela pracujaca) - ta sama gradientowa
        "szklana" nakladka niezaleznie od koloru tla danego wariantu. */
     .cal-cell--worked,
-    .cal-cell--preset-0,
-    .cal-cell--preset-1,
-    .cal-cell--preset-2,
-    .cal-cell--preset-3,
+    .cal-cell--preset-blue,
+    .cal-cell--preset-sky,
+    .cal-cell--preset-teal,
+    .cal-cell--preset-amber,
+    .cal-cell--preset-red,
+    .cal-cell--preset-brown,
+    .cal-cell--preset-mustard,
     .cal-cell--sunday-work {
         background-image: linear-gradient(135deg, rgba(255, 255, 255, .28), rgba(255, 255, 255, 0) 65%);
     }
