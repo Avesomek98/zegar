@@ -463,6 +463,7 @@ const editDayPreset = document.getElementById("editDayPreset");
 const editDayStart = document.getElementById("editDayStart");
 const editDayEnd = document.getElementById("editDayEnd");
 const editDayBreak = document.getElementById("editDayBreak");
+const editDayCustomFields = document.getElementById("editDayCustomFields");
 const editDayColorPicker = document.getElementById("editDayColorPicker");
 const editDayMarkTripOff = document.getElementById("editDayMarkTripOff");
 const deleteDayBtn = document.getElementById("deleteDayBtn");
@@ -639,7 +640,13 @@ function placePolandStatusCard(isDesktop) {
 placePolandStatusCard(desktopLayoutQuery.matches);
 desktopLayoutQuery.addEventListener("change", (event) => placePolandStatusCard(event.matches));
 
+const JUST_REFRESHED_KEY = "justRefreshed";
+
 refreshBtn.onclick = () => {
+    // Sam reload natychmiast niszczy caly JS (wraz z kazdym toastem), wiec sukces mozna pokazac
+    // dopiero PO ponownym uruchomieniu apki - flaga w sessionStorage przezywa reload (czyszczona
+    // przy zamknieciu karty), sprawdzana w initApp() po tym jak dane faktycznie sie wczytaly.
+    sessionStorage.setItem(JUST_REFRESHED_KEY, "1");
     window.location.reload();
 };
 
@@ -888,10 +895,13 @@ function renderCustomPresetsList() {
             `)
             .join("");
     }
-    // Zmiana listy szablonow (nazwa/kolor/godziny) nie zmienia tego, ktore dni sa faktycznie
-    // zapisane w wybranym miesiacu - ponownie wykorzystujemy ostatnio policzony stan zamiast
-    // przeliczac go od nowa (i tak zaraz zostanie przeliczony przy kolejnym renderMonthCalendar).
-    renderCalendarLegend(lastLegendState);
+    // Zmiana listy szablonow (nazwa/kolor/godziny/przerwa) nie zmienia tego, ktore dni sa
+    // faktycznie zapisane w wybranym miesiacu, ale JUZ NARYSOWANE komorki kalendarza trzymaja
+    // stare klasy koloru, dopoki cos ich nie przerysuje - bez tego np. zmiana koloru szablonu
+    // w Konfiguracji byla widoczna w legendzie od razu, ale na samym kalendarzu dopiero po
+    // zmianie miesiaca/odswiezeniu strony. renderMonthCalendar przelicza tez legende na nowo,
+    // wiec osobne wywolanie renderCalendarLegend nie jest tu juz potrzebne.
+    renderMonthCalendar(selectedMonthKey);
 }
 
 // Legenda pod kalendarzem - pokazuje tylko te pozycje, ktore faktycznie wystepuja w aktualnie
@@ -922,9 +932,6 @@ function renderCalendarLegend(state) {
     }
     if (state.off) {
         items.push('<span class="legend-item"><span class="legend-swatch legend-swatch--off"></span>Dzień wolny (Polska)</span>');
-    }
-    if (state.weekend) {
-        items.push('<span class="legend-item"><span class="legend-swatch legend-swatch--weekend"></span>Weekend</span>');
     }
     if (state.customColor) {
         items.push('<span class="legend-item"><span class="legend-custom-dot-chip"></span>Niestandardowy dzień</span>');
@@ -2537,13 +2544,11 @@ function buildCustomPresetOptionsHtml() {
         .join("");
 }
 
+// Wybor szablonu ustawia godziny/przerwe bezposrednio z zapisanego szablonu (nieedytowalne
+// tutaj, jak w "Dodaj caly tydzien") - "Wlasne godziny" pokazuje pola do recznego wpisania
+// razem z wyborem koloru.
 editDayPreset.onchange = () => {
-    const preset = customPresetsCache[editDayPreset.value];
-    if (!preset) return;
-    editDayStart.value = preset.start;
-    editDayEnd.value = preset.end;
-    if (preset.breakMinutes != null) editDayBreak.value = String(preset.breakMinutes);
-    editDayPreset.value = "";
+    editDayCustomFields.style.display = editDayPreset.value === "custom" ? "flex" : "none";
 };
 
 function openEditDialog({ original, date, start, end, breakMinutes, color = null, dateEditable = true }) {
@@ -2556,7 +2561,22 @@ function openEditDialog({ original, date, start, end, breakMinutes, color = null
     deleteDayBtn.style.display = original ? "" : "none";
     editDayDateInput.value = dateKey(date);
     editDayDateInput.max = dateKey(new Date());
-    editDayPreset.innerHTML = `<option value="">— wybierz —</option>${buildCustomPresetOptionsHtml()}`;
+    editDayPreset.innerHTML = `${buildCustomPresetOptionsHtml()}<option value="custom">Własne godziny</option>`;
+
+    // Dzien z jawnie ustawionym kolorem zawsze traktujemy jako "Wlasne godziny" (tak samo jak
+    // przy kolorowaniu komorki w renderMonthCalendar - jawny kolor ma pierwszenstwo przed
+    // dopasowaniem po godzinach), zeby nie zgubic tego wyboru przy ponownym otwarciu.
+    const matchedIdx = (!color && start && end)
+        ? customPresetsCache.findIndex((p) => p.start === timeInputValue(start) && p.end === timeInputValue(end))
+        : -1;
+
+    if (matchedIdx >= 0) {
+        editDayPreset.value = String(matchedIdx);
+        editDayCustomFields.style.display = "none";
+    } else {
+        editDayPreset.value = "custom";
+        editDayCustomFields.style.display = "flex";
+    }
     editDayStart.value = start ? timeInputValue(start) : "";
     editDayEnd.value = end ? timeInputValue(end) : "";
     editDayBreak.value = breakMinutes;
@@ -2577,10 +2597,23 @@ editDayForm.onsubmit = async (event) => {
     event.preventDefault();
 
     const [y, mo, dd] = editDayDateInput.value.split("-").map(Number);
-    const [sh, sm] = editDayStart.value.split(":").map(Number);
-    const [eh, em] = editDayEnd.value.split(":").map(Number);
-    const breakMinutes = parseInt(editDayBreak.value, 10);
-    if ([y, mo, dd, sh, sm, eh, em].some((n) => Number.isNaN(n)) || Number.isNaN(breakMinutes) || breakMinutes < 0) return;
+    if ([y, mo, dd].some((n) => Number.isNaN(n))) return;
+
+    let sh, sm, eh, em, breakMinutes, color;
+    if (editDayPreset.value === "custom") {
+        [sh, sm] = editDayStart.value.split(":").map(Number);
+        [eh, em] = editDayEnd.value.split(":").map(Number);
+        breakMinutes = parseInt(editDayBreak.value, 10);
+        if ([sh, sm, eh, em].some((n) => Number.isNaN(n)) || Number.isNaN(breakMinutes) || breakMinutes < 0) return;
+        color = editDaySelectedColor;
+    } else {
+        const preset = customPresetsCache[editDayPreset.value];
+        if (!preset) return;
+        [sh, sm] = preset.start.split(":").map(Number);
+        [eh, em] = preset.end.split(":").map(Number);
+        breakMinutes = preset.breakMinutes ?? DEFAULT_BREAK_MINUTES;
+        color = null;
+    }
 
     const targetDate = new Date(y, mo - 1, dd);
     const todayMidnight = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
@@ -2602,7 +2635,7 @@ editDayForm.onsubmit = async (event) => {
     if (editingDate && dateKey(editingDate) !== dateKey(targetDate)) {
         ok = await deleteSessionsForDay(editingDate);
     }
-    if (ok) ok = await replaceDaySession(targetDate, start, end, breakMinutes, editDaySelectedColor);
+    if (ok) ok = await replaceDaySession(targetDate, start, end, breakMinutes, color);
 
     if (ok && editDayMarkTripOff.checked) {
         const nextDay = new Date(targetDate);
@@ -3720,4 +3753,9 @@ async function initApp() {
     populateActiveShiftSelect();
     renderEmployeeNumberFooter();
     refreshHistoryView(history);
+
+    if (sessionStorage.getItem(JUST_REFRESHED_KEY)) {
+        sessionStorage.removeItem(JUST_REFRESHED_KEY);
+        showToast("Odświeżono.", "success");
+    }
 }
