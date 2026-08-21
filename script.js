@@ -415,6 +415,9 @@ const calendarLegend = document.getElementById("calendarLegend");
 const activeShiftColorDot = document.getElementById("activeShiftColorDot");
 const activeShiftColorPicker = document.getElementById("activeShiftColorPicker");
 let activeShiftSelectedColor = null; // null = automatyczny, w #activeShiftColorPicker (Wlasne godziny)
+const weekHoursCustomFields = document.getElementById("weekHoursCustomFields");
+const weekHoursColorPicker = document.getElementById("weekHoursColorPicker");
+let weekHoursSelectedColor = null; // null = automatyczny, w #weekHoursColorPicker (Dodaj caly tydzien)
 
 // Dotkniecie/klikniecie gdziekolwiek w polu daty ma od razu otwierac kalendarz,
 // nie tylko klikniecie w ikonke po prawej stronie.
@@ -553,7 +556,6 @@ const weekHoursPreset = document.getElementById("weekHoursPreset");
 const weekHoursStart = document.getElementById("weekHoursStart");
 const weekHoursEnd = document.getElementById("weekHoursEnd");
 const weekHoursBreak = document.getElementById("weekHoursBreak");
-const weekHoursSkipWeekends = document.getElementById("weekHoursSkipWeekends");
 const closeWeekHoursBtn = document.getElementById("closeWeekHoursBtn");
 
 let editingDate = null;
@@ -739,6 +741,19 @@ activeShiftColorPicker.addEventListener("click", (event) => {
     if (!btn) return;
     setActiveShiftColorPickerSelection(btn.dataset.color);
     updateActiveShiftColorDot();
+});
+
+function setWeekHoursColorPickerSelection(colorKey) {
+    weekHoursSelectedColor = colorKey || null;
+    [...weekHoursColorPicker.children].forEach((btn) => {
+        btn.classList.toggle("is-selected", (btn.dataset.color || null) === weekHoursSelectedColor);
+    });
+}
+
+weekHoursColorPicker.addEventListener("click", (event) => {
+    const btn = event.target.closest("[data-color]");
+    if (!btn) return;
+    setWeekHoursColorPickerSelection(btn.dataset.color);
 });
 
 function populateActiveShiftSelect() {
@@ -2518,7 +2533,7 @@ accountLogoutBtn.onclick = async () => {
 // zawsze pokazywac aktualna liste.
 function buildCustomPresetOptionsHtml() {
     return customPresetsCache
-        .map((p, i) => `<option value="${i}">${escapeHtml(p.label)}</option>`)
+        .map((p, i) => `<option value="${i}">${escapeHtml(p.label)} (${p.start}–${p.end})</option>`)
         .join("");
 }
 
@@ -2996,13 +3011,11 @@ function previousWeekRange() {
     return { start: prevMonday, end: prevSunday };
 }
 
+// Wybor szablonu ustawia godziny/przerwe/kolor bezposrednio z zapisanego szablonu (nieedytowalne
+// tutaj) - jesli potrzebne inne godziny, "Wlasne godziny" pokazuje pola do recznego wpisania
+// (razem z wyborem koloru), tak samo jak w "Dzisiejsza zmiana".
 weekHoursPreset.onchange = () => {
-    const preset = customPresetsCache[weekHoursPreset.value];
-    if (!preset) return;
-    weekHoursStart.value = preset.start;
-    weekHoursEnd.value = preset.end;
-    if (preset.breakMinutes != null) weekHoursBreak.value = String(preset.breakMinutes);
-    weekHoursPreset.value = "";
+    weekHoursCustomFields.style.display = weekHoursPreset.value === "custom" ? "flex" : "none";
 };
 
 function defaultRangeSummary(start, end) {
@@ -3273,11 +3286,14 @@ closePolandExtraBtn.onclick = () => polandExtraDialog.close();
 weekHoursBtn.onclick = () => {
     const { start, end } = previousWeekRange();
     weekRangePicker.setRange(start, end);
-    weekHoursPreset.innerHTML = `<option value="">— wybierz —</option>${buildCustomPresetOptionsHtml()}`;
+    weekHoursPreset.innerHTML = `${buildCustomPresetOptionsHtml()}<option value="custom">Własne godziny</option>`;
+    weekHoursPreset.value = "custom";
+    weekHoursCustomFields.style.display = "flex";
     if (activeShiftCache) {
         weekHoursStart.value = activeShiftCache.start;
         weekHoursEnd.value = activeShiftCache.end;
     }
+    setWeekHoursColorPickerSelection(null);
     weekHoursDialog.showModal();
 };
 
@@ -3291,12 +3307,21 @@ weekHoursForm.onsubmit = async (event) => {
         return;
     }
 
-    const [sh, smi] = weekHoursStart.value.split(":").map(Number);
-    const [eh, emi] = weekHoursEnd.value.split(":").map(Number);
-    const breakMinutes = parseInt(weekHoursBreak.value, 10);
-    if ([sh, smi, eh, emi].some((n) => Number.isNaN(n)) || Number.isNaN(breakMinutes) || breakMinutes < 0) return;
-
-    const skipWeekends = weekHoursSkipWeekends.checked;
+    let sh, smi, eh, emi, breakMinutes, color;
+    if (weekHoursPreset.value === "custom") {
+        [sh, smi] = weekHoursStart.value.split(":").map(Number);
+        [eh, emi] = weekHoursEnd.value.split(":").map(Number);
+        breakMinutes = parseInt(weekHoursBreak.value, 10);
+        if ([sh, smi, eh, emi].some((n) => Number.isNaN(n)) || Number.isNaN(breakMinutes) || breakMinutes < 0) return;
+        color = weekHoursSelectedColor;
+    } else {
+        const preset = customPresetsCache[weekHoursPreset.value];
+        if (!preset) return;
+        [sh, smi] = preset.start.split(":").map(Number);
+        [eh, emi] = preset.end.split(":").map(Number);
+        breakMinutes = preset.breakMinutes ?? DEFAULT_BREAK_MINUTES;
+        color = null;
+    }
 
     const submitBtn = weekHoursForm.querySelector('button[type="submit"]');
     submitBtn.disabled = true;
@@ -3304,15 +3329,12 @@ weekHoursForm.onsubmit = async (event) => {
     const day = new Date(rangeStart);
     let ok = true;
     while (ok && day <= rangeEnd) {
-        const dow = day.getDay();
-        if (!(skipWeekends && (dow === 0 || dow === 6))) {
-            const start = new Date(day.getFullYear(), day.getMonth(), day.getDate(), sh, smi, 0, 0);
-            const end = new Date(day.getFullYear(), day.getMonth(), day.getDate(), eh, emi, 0, 0);
-            if (end <= start) {
-                end.setDate(end.getDate() + 1);
-            }
-            ok = await replaceDaySession(new Date(day), start, end, breakMinutes);
+        const start = new Date(day.getFullYear(), day.getMonth(), day.getDate(), sh, smi, 0, 0);
+        const end = new Date(day.getFullYear(), day.getMonth(), day.getDate(), eh, emi, 0, 0);
+        if (end <= start) {
+            end.setDate(end.getDate() + 1);
         }
+        ok = await replaceDaySession(new Date(day), start, end, breakMinutes, color);
         day.setDate(day.getDate() + 1);
     }
 
