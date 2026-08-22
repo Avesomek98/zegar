@@ -842,6 +842,11 @@ async function refreshScheduleCache() {
 
     if (error) {
         console.error(error);
+        // Bez tego niepowodzenie bylo ciche - kalendarz i legenda wygladaly jakby szablony
+        // zniknely, mimo ze w bazie byly caly czas nietkniete (patrz fetchCurrentSchedule -
+        // od teraz kazdy zapis i tak pobiera swiezy stan, wiec to juz nie nadpisze danych, ale
+        // uzytkownik powinien wiedziec, ze wczytywanie sie nie udalo, zamiast zgadywac).
+        showToast("Nie udało się wczytać Twoich szablonów i pobytów w Polsce — spróbuj odświeżyć stronę.", "error");
         return;
     }
     customPresetsCache = Array.isArray(data?.schedule?.customPresets) ? data.schedule.customPresets : [];
@@ -863,23 +868,63 @@ async function saveScheduleColumn(next) {
     return true;
 }
 
+// Pobiera SWIEZY stan kolumny "schedule" wprost z bazy (nie ufa lokalnemu cache) - uzywane tuz
+// przed zapisem jednej polowki (customPresets/extraPolandRanges), zeby zawsze wyslac aktualna
+// wartosc drugiej. Bez tego nieaktualny/pusty lokalny cache (np. po nieudanym poczatkowym
+// wczytaniu danych albo w dawno otwartej karcie przegladarki) moze po cichu nadpisac w bazie
+// prawdziwe dane druga, niezwiazana akcja - to sie realnie zdarzylo (zniknely zapisane szablony).
+async function fetchCurrentSchedule() {
+    const { data, error } = await supabase
+        .from("app_settings")
+        .select("schedule")
+        .eq("user_id", currentUserId)
+        .maybeSingle();
+
+    if (error) {
+        console.error(error);
+        return null;
+    }
+    return {
+        customPresets: Array.isArray(data?.schedule?.customPresets) ? data.schedule.customPresets : [],
+        extraPolandRanges: Array.isArray(data?.schedule?.extraPolandRanges) ? data.schedule.extraPolandRanges : []
+    };
+}
+
 async function saveCustomPresets(presets) {
-    const ok = await saveScheduleColumn({ customPresets: presets, extraPolandRanges: polandExtraRangesCache });
+    const current = await fetchCurrentSchedule();
+    if (!current) {
+        setStatusMessage(customPresetMessage, "Nie udało się zapisać szablonu.", false);
+        showToast("Nie udało się zapisać szablonu.", "error");
+        return false;
+    }
+
+    const ok = await saveScheduleColumn({ customPresets: presets, extraPolandRanges: current.extraPolandRanges });
     if (!ok) {
         setStatusMessage(customPresetMessage, "Nie udało się zapisać szablonu.", false);
+        showToast("Nie udało się zapisać szablonu.", "error");
         return false;
     }
     customPresetsCache = presets;
+    polandExtraRangesCache = current.extraPolandRanges;
     return true;
 }
 
 async function saveExtraPolandRanges(ranges) {
-    const ok = await saveScheduleColumn({ customPresets: customPresetsCache, extraPolandRanges: ranges });
+    const current = await fetchCurrentSchedule();
+    if (!current) {
+        setStatusMessage(polandExtraMessage, "Nie udało się zapisać zakresu.", false);
+        showToast("Nie udało się zapisać zakresu.", "error");
+        return false;
+    }
+
+    const ok = await saveScheduleColumn({ customPresets: current.customPresets, extraPolandRanges: ranges });
     if (!ok) {
         setStatusMessage(polandExtraMessage, "Nie udało się zapisać zakresu.", false);
+        showToast("Nie udało się zapisać zakresu.", "error");
         return false;
     }
     polandExtraRangesCache = ranges;
+    customPresetsCache = current.customPresets;
     return true;
 }
 
