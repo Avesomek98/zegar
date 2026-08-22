@@ -808,9 +808,14 @@ activeShiftSelect.onchange = async () => {
 
     const preset = customPresetsCache[Number(activeShiftSelect.value.slice("custom-".length))];
     if (!preset) return;
+    // "Dodaj dzien" tez musi czekac, bo czyta activeShiftCache - kliknieta zbyt szybko (przed
+    // zakonczeniem tego zapisu) dodawala dzien ze STARA, poprzednia zmiana zamiast tej wlasnie
+    // wybranej (realnie zglaszany bug: wybrany szablon, a zapisaly sie inne, wczesniejsze godziny).
     activeShiftSelect.disabled = true;
+    addTodayShiftBtn.disabled = true;
     await saveActiveShift({ start: preset.start, end: preset.end, label: preset.label, breakMinutes: preset.breakMinutes });
     activeShiftSelect.disabled = false;
+    addTodayShiftBtn.disabled = false;
 };
 
 applyCustomShiftBtn.onclick = async () => {
@@ -824,9 +829,11 @@ applyCustomShiftBtn.onclick = async () => {
     };
 
     applyCustomShiftBtn.disabled = true;
+    addTodayShiftBtn.disabled = true;
     await saveActiveShift(shift);
     updateActiveShiftColorDot();
     applyCustomShiftBtn.disabled = false;
+    addTodayShiftBtn.disabled = false;
 };
 
 // Wlasne presety uzytkownika (Konfiguracja -> Twoje szablony) trzymane sa w kolumnie "schedule" (jsonb),
